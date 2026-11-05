@@ -137,10 +137,10 @@ function app_admin_product_create(PDO $db, array $tenant, array $session): never
         $stmt = $db->prepare(
             "INSERT INTO products
               (tenant_id, category_id, sku, barcode, title, brand, description,
-               unit_label, price_rial, compare_at_rial, is_weighted, is_active)
+               unit_label, price_rial, compare_at_rial, is_weighted, is_active, low_stock_threshold)
              VALUES
               (:tenant, :category_id, :sku, :barcode, :title, :brand, :description,
-               :unit_label, :price_rial, :compare_at_rial, :is_weighted, :is_active)"
+               :unit_label, :price_rial, :compare_at_rial, :is_weighted, :is_active, :low_stock_threshold)"
         );
         $stmt->execute([
             'tenant' => $tenant['id'],
