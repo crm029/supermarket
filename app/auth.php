@@ -92,6 +92,55 @@ function app_auth_prune(PDO $db, int $tenantId): void {
     $limits->execute([$tenantId]);
 }
 
+function app_auth_register(PDO $db, array $tenant): never {
+    $body = app_auth_request_body();
+    $name = trim((string)($body['full_name'] ?? ''));
+    $mobile = app_auth_mobile((string)($body['mobile'] ?? ''));
+    $referralCode = strtoupper(trim((string)($body['referral_code'] ?? '')));
+    if ($name === '' || mb_strlen($name) > 160 || $mobile === null ||
+        ($referralCode !== '' && !preg_match('/^[A-Z0-9]{4,16}$/', $referralCode))) {
+        app_json(['error' => 'نام، شماره موبایل یا کد معرف معتبر نیست.'], 422);
+    }
+
+    $referrerId = null;
+    if ($referralCode !== '') {
+        $referrer = $db->prepare("SELECT id FROM users WHERE tenant_id = ? AND referral_code = ? AND status = 'active' LIMIT 1");
+        $referrer->execute([$tenant['id'], $referralCode]);
+        $referrerId = $referrer->fetchColumn();
+        if (!$referrerId) app_json(['error' => 'کد معرف معتبر نیست.'], 422);
+    }
+
+    $existing = $db->prepare('SELECT id, status FROM users WHERE tenant_id = ? AND mobile = ? LIMIT 1');
+    $existing->execute([$tenant['id'], $mobile]);
+    $row = $existing->fetch();
+    if ($row) {
+        if ($row['status'] === 'pending') {
+            app_json(['message' => 'ثبت‌نام شما قبلاً آغاز شده است؛ کد تأیید را درخواست کنید.'], 200);
+        }
+        app_json(['error' => 'با این شماره قبلاً حساب کاربری ایجاد شده است؛ وارد شوید.'], 409);
+    }
+
+    $code = strtoupper(substr(bin2hex(random_bytes(8)), 0, 10));
+    $insert = $db->prepare(
+        "INSERT INTO users (tenant_id, full_name, mobile, status, referral_code, referred_by_user_id)
+         VALUES (?, ?, ?, 'pending', ?, ?)"
+    );
+    try {
+        $insert->execute([$tenant['id'], $name, $mobile, $code, $referrerId]);
+    } catch (PDOException $e) {
+        if ($e->getCode() === '23000') app_json(['error' => 'ثبت‌نام با این شماره امکان‌پذیر نیست.'], 409);
+        throw $e;
+    }
+    app_json(['message' => 'حساب اولیه ساخته شد؛ برای فعال‌سازی کد تأیید را درخواست کنید.'], 201);
+}
+
+function app_auth_refresh_csrf(PDO $db, array $session): never {
+    $csrf = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
+    $stmt = $db->prepare('UPDATE auth_sessions SET csrf_hash = ? WHERE id = ? AND revoked_at IS NULL');
+    $stmt->execute([hash('sha256', $csrf), $session['session_id']]);
+    app_json(['data' => ['csrf_token' => $csrf]]);
+}
+
 function app_auth_request_otp(PDO $db, array $tenant): never {
     if (!app_auth_sms_ready()) {
         app_json(['error' => 'سرویس ارسال پیامک هنوز برای این فروشگاه پیکربندی نشده است.'], 503);
@@ -110,7 +159,7 @@ function app_auth_request_otp(PDO $db, array $tenant): never {
 
     // The same response is returned for unknown, blocked and active accounts.
     $userQuery = $db->prepare(
-        "SELECT id FROM users WHERE tenant_id = ? AND mobile = ? AND status = 'active' LIMIT 1"
+        "SELECT id FROM users WHERE tenant_id = ? AND mobile = ? AND status IN ('active','pending') LIMIT 1"
     );
     $userQuery->execute([$tenant['id'], $mobile]);
     if (!$userQuery->fetchColumn()) {
@@ -217,6 +266,18 @@ function app_auth_verify_otp(PDO $db, array $tenant): never {
 
         $consume = $db->prepare('UPDATE auth_challenges SET consumed_at = UTC_TIMESTAMP() WHERE id = ?');
         $consume->execute([$challenge['id']]);
+
+        if ($user['status'] === 'pending') {
+            $activate = $db->prepare("UPDATE users SET status = 'active', mobile_verified_at = UTC_TIMESTAMP() WHERE tenant_id = ? AND id = ? AND status = 'pending'");
+            $activate->execute([$tenant['id'], $user['id']]);
+            if ($user['referred_by_user_id'] !== null) {
+                $referral = $db->prepare(
+                    "INSERT IGNORE INTO referral_events (tenant_id, referrer_user_id, referred_user_id, status)
+                     VALUES (?, ?, ?, 'pending')"
+                );
+                $referral->execute([$tenant['id'], $user['referred_by_user_id'], $user['id']]);
+            }
+        }
 
         $token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
         $csrf = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
