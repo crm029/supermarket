@@ -14,7 +14,7 @@ CREATE TABLE stock_batches (
   received_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_stock_batch_tenant_id (tenant_id,id),
-  UNIQUE KEY uq_stock_batch_code (tenant_id,warehouse_id,product_id,batch_number),
+  KEY ix_stock_batch_code (tenant_id,warehouse_id,product_id,batch_number),
   KEY ix_stock_batch_fefo (tenant_id,warehouse_id,product_id,expiry_date,received_at,id),
   KEY ix_stock_batch_expiry (tenant_id,expiry_date,on_hand),
   KEY ix_stock_batch_receipt (tenant_id,receipt_item_id),
