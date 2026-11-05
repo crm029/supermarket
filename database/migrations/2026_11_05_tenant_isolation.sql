@@ -116,6 +116,20 @@ ALTER TABLE referral_events
 
 -- Audit actor must belong to the tenant recorded on the audit row.
 -- A trigger is used because tenant_id is nullable for platform-level events.
+-- Backfill user_roles. This is intentionally performed before adding the
+-- tenant-aware user FK; existing role links are then checked by the triggers
+-- on subsequent writes. Review tenant-specific legacy role assignments first.
+ALTER TABLE user_roles ADD COLUMN tenant_id BIGINT UNSIGNED NULL AFTER user_id;
+UPDATE user_roles ur
+JOIN users u ON u.id = ur.user_id
+SET ur.tenant_id = u.tenant_id;
+ALTER TABLE user_roles
+  MODIFY tenant_id BIGINT UNSIGNED NOT NULL,
+  ADD KEY ix_user_roles_tenant_role (tenant_id, role_id),
+  ADD CONSTRAINT fk_user_roles_user_same_tenant
+    FOREIGN KEY (tenant_id, user_id) REFERENCES users (tenant_id, id);
+
+
 DELIMITER //
 CREATE TRIGGER trg_audit_actor_tenant_insert
 BEFORE INSERT ON audit_logs
@@ -174,18 +188,6 @@ BEGIN
 END//
 DELIMITER ;
 
--- Backfill user_roles. This is intentionally performed before adding the
--- tenant-aware user FK; existing role links are then checked by the triggers
--- on subsequent writes. Review tenant-specific legacy role assignments first.
-ALTER TABLE user_roles ADD COLUMN tenant_id BIGINT UNSIGNED NULL AFTER user_id;
-UPDATE user_roles ur
-JOIN users u ON u.id = ur.user_id
-SET ur.tenant_id = u.tenant_id;
-ALTER TABLE user_roles
-  MODIFY tenant_id BIGINT UNSIGNED NOT NULL,
-  ADD KEY ix_user_roles_tenant_role (tenant_id, role_id),
-  ADD CONSTRAINT fk_user_roles_user_same_tenant
-    FOREIGN KEY (tenant_id, user_id) REFERENCES users (tenant_id, id);
 
 -- Existing role links are validated during migration; this query should
 -- return zero rows before the migration is considered successful.
