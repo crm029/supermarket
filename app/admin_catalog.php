@@ -77,7 +77,7 @@ function app_admin_product_payload(array $body, bool $partial = false): array {
 
 function app_admin_validate_product_category(PDO $db, int $tenantId, array $data): void {
     if (!array_key_exists('category_id', $data) || $data['category_id'] === null) return;
-    $stmt = $db->prepare('SELECT 1 FROM categories WHERE tenant_id = ? AND id = ? AND is_active = 1 LIMIT 1');
+    $stmt = $db->prepare('SELECT id FROM categories WHERE tenant_id = ? AND id = ? AND is_active = 1 LIMIT 1 FOR UPDATE');
     $stmt->execute([$tenantId, $data['category_id']]);
     if (!$stmt->fetchColumn()) {
         app_json(['error' => 'دسته‌بندی انتخاب‌شده متعلق به این فروشگاه نیست.'], 422);
@@ -123,10 +123,9 @@ function app_admin_product_list(PDO $db, array $tenant): never {
 
 function app_admin_product_create(PDO $db, array $tenant, array $session): never {
     $data = app_admin_product_payload(app_auth_request_body());
-    app_admin_validate_product_category($db, (int)$tenant['id'], $data);
-
     $db->beginTransaction();
     try {
+        app_admin_validate_product_category($db, (int)$tenant['id'], $data);
         $stmt = $db->prepare(
             "INSERT INTO products
               (tenant_id, category_id, sku, barcode, title, brand, description,
@@ -170,8 +169,6 @@ function app_admin_product_create(PDO $db, array $tenant, array $session): never
 function app_admin_product_update(PDO $db, array $tenant, array $session, int $id): never {
     $data = app_admin_product_payload(app_auth_request_body(), true);
     if ($data === []) app_json(['error' => 'هیچ فیلدی برای ویرایش ارسال نشده است.'], 422);
-    app_admin_validate_product_category($db, (int)$tenant['id'], $data);
-
     $allowed = [
         'sku', 'title', 'price_rial', 'category_id', 'compare_at_rial',
         'barcode', 'brand', 'unit_label', 'description', 'is_weighted', 'is_active',
@@ -194,6 +191,7 @@ function app_admin_product_update(PDO $db, array $tenant, array $session, int $i
             $db->rollBack();
             app_json(['error' => 'کالا پیدا نشد.'], 404);
         }
+        app_admin_validate_product_category($db, (int)$tenant['id'], $data);
         $nextPrice = $data['price_rial'] ?? (int)$current['price_rial'];
         $nextCompare = array_key_exists('compare_at_rial', $data)
             ? $data['compare_at_rial']
@@ -326,7 +324,7 @@ function app_admin_validate_category_links(PDO $db, int $tenantId, array $data, 
     }
 
     if (array_key_exists('image_media_id', $data) && $data['image_media_id'] !== null) {
-        $media = $db->prepare('SELECT 1 FROM media_assets WHERE tenant_id = ? AND id = ? LIMIT 1');
+        $media = $db->prepare('SELECT id FROM media_assets WHERE tenant_id = ? AND id = ? LIMIT 1 FOR UPDATE');
         $media->execute([$tenantId, $data['image_media_id']]);
         if (!$media->fetchColumn()) {
             app_json(['error' => 'تصویر انتخاب‌شده متعلق به این فروشگاه نیست.'], 422);
@@ -345,10 +343,9 @@ function app_admin_category_list(PDO $db, array $tenant): never {
 
 function app_admin_category_create(PDO $db, array $tenant, array $session): never {
     $data = app_admin_category_payload(app_auth_request_body());
-    app_admin_validate_category_links($db, (int)$tenant['id'], $data);
-
     $db->beginTransaction();
     try {
+        app_admin_validate_category_links($db, (int)$tenant['id'], $data);
         $stmt = $db->prepare(
             "INSERT INTO categories
               (tenant_id, parent_id, title, slug, image_media_id, sort_order, is_active)
@@ -384,8 +381,6 @@ function app_admin_category_create(PDO $db, array $tenant, array $session): neve
 function app_admin_category_update(PDO $db, array $tenant, array $session, int $id): never {
     $data = app_admin_category_payload(app_auth_request_body(), true);
     if ($data === []) app_json(['error' => 'هیچ فیلدی برای ویرایش ارسال نشده است.'], 422);
-    app_admin_validate_category_links($db, (int)$tenant['id'], $data, $id);
-
     $allowed = ['parent_id', 'title', 'slug', 'image_media_id', 'sort_order', 'is_active'];
     $sets = [];
     $params = ['tenant' => $tenant['id'], 'id' => $id];
@@ -404,6 +399,7 @@ function app_admin_category_update(PDO $db, array $tenant, array $session, int $
             $db->rollBack();
             app_json(['error' => 'دسته‌بندی پیدا نشد.'], 404);
         }
+        app_admin_validate_category_links($db, (int)$tenant['id'], $data, $id);
         if (($data['is_active'] ?? 1) === 0) {
             $usage = $db->prepare(
                 "SELECT
