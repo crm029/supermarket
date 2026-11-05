@@ -8,6 +8,7 @@ require_once dirname(__DIR__, 2) . '/app/admin_catalog.php';
 require_once dirname(__DIR__, 2) . '/app/media.php';
 require_once dirname(__DIR__, 2) . '/app/commerce.php';
 require_once dirname(__DIR__, 2) . '/app/payments.php';
+require_once dirname(__DIR__, 2) . '/app/admin_orders.php';
 
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
@@ -29,6 +30,30 @@ try {
     }
     $method = app_method();
     $db = app_db();
+
+    if ($path === '/admin/orders' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'orders.read');
+        app_admin_orders_list($db, $tenant);
+    }
+
+    if (preg_match('#^/admin/orders/([1-9][0-9]*)/transition$#', $path, $orderTransitionMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'orders.manage');
+        app_admin_order_transition($db, $tenant, $session, (int)$orderTransitionMatch[1]);
+    }
+
+    if (preg_match('#^/me/orders/([1-9][0-9]*)$#', $path, $customerOrderMatch) && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_customer_order_detail($db, $tenant, $session, (int)$customerOrderMatch[1]);
+    }
+
+    if (preg_match('#^/me/orders/([1-9][0-9]*)/cancel$#', $path, $customerCancelMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_customer_cancel_order($db, $tenant, $session, (int)$customerCancelMatch[1]);
+    }
 
     if ($path === '/admin/categories') {
         if ($method === 'GET') {
