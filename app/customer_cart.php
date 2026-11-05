@@ -43,7 +43,12 @@ function app_customer_cart_read(PDO $db, array $tenant, array $session): never {
 
 function app_customer_cart_replace(PDO $db, array $tenant, array $session): never {
     $body = app_auth_request_body();
-    $lines = app_commerce_lines($body);
+    $rawItems = $body['items'] ?? null;
+    if (is_array($rawItems) && array_is_list($rawItems) && $rawItems === []) {
+        $lines = [];
+    } else {
+        $lines = app_commerce_lines($body);
+    }
     if ($lines !== []) {
         // Validate that every item is active and belongs to this tenant; prices and stock are not trusted here.
         app_commerce_quote($db, (int)$tenant['id'], $lines, false);
