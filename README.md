@@ -17,19 +17,19 @@ This repository contains a visual PHP storefront prototype plus the first databa
 Implemented in this milestone:
 - Persian RTL responsive storefront demo with category navigation, product cards, search and local demo cart.
 - MySQL schema foundation for tenants/domains, users/roles, media, categories/products, virtual-store scenes/hotspots, multi-warehouse stock, stock movements/reservations, orders, payments, wallet ledger, referrals and audit logs.
-- Verified-host tenant resolver and read-only API routes for store profile, categories and product search.
+- Verified-host tenant resolver and read-only API routes for store profile, categories and product search.\n- Rate-limited OTP login endpoints, hashed one-time challenges, opaque database-backed sessions, HttpOnly cookies and CSRF-protected logout. The development SMS driver logs codes only to the local PHP error log; no production SMS provider is enabled.
 - Local sample tenant seed and API/setup documentation.
 - GitHub Actions PHP/JavaScript checks plus a MySQL 8 schema-migration and tenant-isolation integration job.
 - Additive tenant-isolation migration with composite foreign keys for tenant-owned relations and scope guards for role assignments and audit actors.
 
 Not implemented yet:
-- Real customer registration/OTP, persistent cart and checkout.
+- New customer registration, production SMS delivery, password reset, persistent cart and checkout.
 - Live stock reservation services and order workflow.
 - Zarinpal and 0098.ir integrations.
 - Wallet transactions and referral reward processing.
 - Super-admin/store/cashier/warehouse/courier panels.
 - Scene editor, linked photo-tour hotspots and the actual WebGL free-movement engine.
-- Runtime authentication/authorization policies, CSRF, commerce transaction services, broader security tests and deployment operations. The tenant-isolation migration and cross-tenant negative tests pass in MySQL 8 CI. Existing databases still require a backup and legacy-data review before applying it.
+- Production SMS gateway integration, customer registration/password reset, role-based authorization policies, CSRF on all future write routes, commerce transaction services and deployment operations. Tenant-isolation and auth-schema integration tests run in MySQL 8 CI. Existing databases require a backup and legacy-data review before applying migrations.
 
 ## Architecture principles
 
