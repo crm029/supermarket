@@ -19,7 +19,7 @@ Implemented and covered by repository tests:
 - Tenant-aware MySQL schema, verified-host tenant resolution, composite tenant-scope constraints and cross-tenant negative tests.
 - OTP registration/login foundation, rate limiting, hashed challenges, database-backed sessions, HttpOnly cookies and CSRF protection; Kavenegar Verify Lookup adapter is available when real credentials are configured.
 - Deny-by-default tenant permission checks and audited product/category administration.
-- Seller dashboard, media uploads, scene/hotspot authoring, multi-warehouse receipts/transfers/adjustments, stock reservation and expiry worker.
+- Seller dashboard, merchant branding and checkout settings, media uploads, scene/hotspot authoring, multi-warehouse receipts/transfers/adjustments, stock reservation and expiry worker.
 - Server-validated cart quotes, persistent cross-device customer carts, customer addresses, transactional pending checkout, customer order history/cancellation and fulfilment transitions.
 - ZarinPal v4 request/verification adapter with idempotent callbacks and stock commit after server-side verification.
 - Append-only wallet credit ledger, customer balance/history API and configurable first-paid-order referral rewards.

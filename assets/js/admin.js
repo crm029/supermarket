@@ -53,6 +53,7 @@ async function loadAll() {
     await loadInventory();
     await loadScenes();
     await loadReport();
+    await loadSettings();
     document.getElementById("statProducts").textContent=new Intl.NumberFormat("fa-IR").format(products.filter(x=>Number(x.is_active)).length);
     document.getElementById("statCategories").textContent=new Intl.NumberFormat("fa-IR").format(categories.filter(x=>Number(x.is_active)).length);
     document.getElementById("statConnection").textContent="متصل";
@@ -63,6 +64,59 @@ async function loadAll() {
     message(error.message,"error");
   }
 }
+async function loadSettings() {
+  try {
+    const result=await request("admin/settings");
+    const data=result.data||{};
+    const profile=data.profile||{}, checkout=data.checkout||{};
+    document.getElementById("settingStoreName").value=profile.name||"";
+    document.getElementById("settingTagline").value=profile.tagline||"";
+    document.getElementById("settingSupportPhone").value=profile.support_phone||"";
+    document.getElementById("settingPrimaryColor").value=profile.primary_color||"#173D2D";
+    document.getElementById("settingAccentColor").value=profile.accent_color||"#E6A23C";
+    document.getElementById("settingDeliveryEnabled").checked=checkout.delivery_enabled!==false;
+    document.getElementById("settingPickupEnabled").checked=checkout.pickup_enabled!==false;
+    document.getElementById("settingDeliveryFee").value=Math.round(Number(checkout.delivery_fee_rial||0)/10);
+    document.getElementById("settingMinimumOrder").value=Math.round(Number(checkout.minimum_order_rial||0)/10);
+    document.getElementById("settingReservationMinutes").value=Number(checkout.reservation_minutes||20);
+  } catch(error) {
+    document.getElementById("storeSettingsMessage").textContent=error.message;
+    document.getElementById("storeSettingsMessage").className="form-message error";
+  }
+}
+document.getElementById("reloadSettings").addEventListener("click",loadSettings);
+document.getElementById("storeSettingsForm").addEventListener("submit",async event=>{
+  event.preventDefault();
+  const fee=Number(document.getElementById("settingDeliveryFee").value);
+  const minimum=Number(document.getElementById("settingMinimumOrder").value);
+  const reservation=Number(document.getElementById("settingReservationMinutes").value);
+  if(!Number.isSafeInteger(fee)||!Number.isSafeInteger(minimum)||!Number.isInteger(reservation)){
+    message("مقادیر مالی و زمان رزرو باید عدد صحیح باشند.","error");return;
+  }
+  try{
+    await request("admin/settings",{method:"PUT",csrf:true,body:JSON.stringify({
+      profile:{
+        name:document.getElementById("settingStoreName").value.trim(),
+        tagline:document.getElementById("settingTagline").value.trim(),
+        support_phone:document.getElementById("settingSupportPhone").value.trim(),
+        primary_color:document.getElementById("settingPrimaryColor").value,
+        accent_color:document.getElementById("settingAccentColor").value
+      },
+      checkout:{
+        delivery_enabled:document.getElementById("settingDeliveryEnabled").checked,
+        pickup_enabled:document.getElementById("settingPickupEnabled").checked,
+        delivery_fee_rial:fee*10,
+        minimum_order_rial:minimum*10,
+        reservation_minutes:reservation
+      }
+    })});
+    document.getElementById("storeSettingsMessage").textContent="تنظیمات با موفقیت ذخیره شد.";
+    document.getElementById("storeSettingsMessage").className="form-message success";
+  }catch(error){
+    document.getElementById("storeSettingsMessage").textContent=error.message;
+    document.getElementById("storeSettingsMessage").className="form-message error";
+  }
+});
 async function loadReport() {
   try {
     const result=await request("admin/reports/overview");

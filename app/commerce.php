@@ -201,6 +201,19 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
     $note = trim((string)($body['customer_note'] ?? ''));
     if (mb_strlen($note) > 1000) app_json(['error' => 'یادداشت سفارش بیش از حد طولانی است.'], 422);
 
+    $settingsQuery = $db->prepare("SELECT setting_value FROM store_settings WHERE tenant_id = ? AND setting_key = 'store.checkout' LIMIT 1");
+    $settingsQuery->execute([$tenant['id']]);
+    $checkoutSettings = json_decode((string)($settingsQuery->fetchColumn() ?: '{}'), true);
+    if (!is_array($checkoutSettings)) $checkoutSettings = [];
+    $deliveryEnabled = array_key_exists('delivery_enabled', $checkoutSettings) ? (bool)$checkoutSettings['delivery_enabled'] : true;
+    $pickupEnabled = array_key_exists('pickup_enabled', $checkoutSettings) ? (bool)$checkoutSettings['pickup_enabled'] : true;
+    if (($fulfillment === 'delivery' && !$deliveryEnabled) || ($fulfillment === 'pickup' && !$pickupEnabled)) {
+        app_json(['error' => 'این روش دریافت در حال حاضر توسط فروشگاه ارائه نمی‌شود.'], 409);
+    }
+    $deliveryFeeRial = $fulfillment === 'delivery' ? max(0, (int)($checkoutSettings['delivery_fee_rial'] ?? 0)) : 0;
+    $minimumOrderRial = max(0, (int)($checkoutSettings['minimum_order_rial'] ?? 0));
+    $reservationMinutes = min(120, max(5, (int)($checkoutSettings['reservation_minutes'] ?? 20)));
+
     $db->beginTransaction();
     try {
         if ($addressId !== null) {
@@ -223,15 +236,20 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
             app_json(['error' => 'یکی از کالاها دیگر قابل سفارش نیست.'], 409);
         }
         $quote = app_commerce_quote($db, (int)$tenant['id'], $lines);
+        if ((int)$quote['total_rial'] < $minimumOrderRial) {
+            $db->rollBack();
+            app_json(['error' => 'حداقل مبلغ سفارش رعایت نشده است.'], 422);
+        }
+        $orderTotalRial = (int)$quote['total_rial'] + $deliveryFeeRial;
         $orderNumber = 'SM' . gmdate('ymdHis') . strtoupper(bin2hex(random_bytes(3)));
         $insertOrder = $db->prepare(
             "INSERT INTO orders
              (tenant_id,user_id,address_id,order_number,status,fulfillment,subtotal_rial,discount_rial,delivery_fee_rial,total_rial,customer_note)
-             VALUES (?,?,?,?,'pending_payment',?,?,0,0,?,?)"
+             VALUES (?,?,?,?,'pending_payment',?,?,0,?,?,?)"
         );
         $insertOrder->execute([
             $tenant['id'], $session['id'], $addressId, $orderNumber, $fulfillment,
-            $quote['subtotal_rial'], $quote['total_rial'], $note === '' ? null : $note,
+            $quote['subtotal_rial'], $deliveryFeeRial, $orderTotalRial, $note === '' ? null : $note,
         ]);
         $orderId = (int)$db->lastInsertId();
 
@@ -241,7 +259,7 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
         );
         $reserve = $db->prepare(
             "INSERT INTO stock_reservations (tenant_id,order_id,warehouse_id,product_id,quantity,status,expires_at)
-             VALUES (?,?,?,?,?,'active',DATE_ADD(UTC_TIMESTAMP(), INTERVAL 20 MINUTE))"
+             VALUES (?,?,?,?,?,'active',DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? MINUTE))"
         );
         $reservationMovement = $db->prepare(
             "INSERT INTO stock_movements (tenant_id,warehouse_id,product_id,actor_user_id,movement_type,quantity,reference_type,reference_id,reason) VALUES (?,?,?,?,'reservation',?,'order',?,'رزرو برای پرداخت')"
@@ -268,7 +286,7 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
                 $take = min($remaining, $available);
                 $updateStock->execute([$take, $tenant['id'], $stock['warehouse_id'], $item['product_id'], $take]);
                 if ($updateStock->rowCount() !== 1) throw new RuntimeException('Stock changed during reservation.');
-                $reserve->execute([$tenant['id'], $orderId, $stock['warehouse_id'], $item['product_id'], $take]);
+                $reserve->execute([$tenant['id'], $orderId, $stock['warehouse_id'], $item['product_id'], $take, $reservationMinutes]);
                 $reservationMovement->execute([$tenant['id'],$stock['warehouse_id'],$item['product_id'],$session['id'],$take,$orderId]);
                 $remaining -= $take;
             }
@@ -281,8 +299,8 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
         app_json(['data' => [
             'id' => $orderId, 'order_number' => $orderNumber, 'status' => 'pending_payment',
             'fulfillment' => $fulfillment, 'items' => $quote['items'],
-            'subtotal_rial' => $quote['subtotal_rial'], 'delivery_fee_rial' => 0,
-            'total_rial' => $quote['total_rial'], 'reservation_expires_in_seconds' => 1200,
+            'subtotal_rial' => $quote['subtotal_rial'], 'delivery_fee_rial' => $deliveryFeeRial,
+            'total_rial' => $orderTotalRial, 'reservation_expires_in_seconds' => $reservationMinutes * 60,
             'payment_required' => true,
         ], 'message' => 'سفارش ثبت اولیه شد؛ برای نهایی‌شدن باید پرداخت تأیید شود.'], 201);
     } catch (Throwable $e) {

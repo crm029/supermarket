@@ -121,3 +121,7 @@ After applying schema.sql and every migration, edit database/bootstrap-store-own
 - Wallet balance is calculated from append-only ledger entries; no browser endpoint can directly set a balance.
 - Set `REFERRAL_REWARD_BASIS_POINTS` to configure the referrer reward rate (100 = 1%). It defaults to `0`, which disables reward credits until the merchant deliberately configures a rate.
 - A reward is posted only after the referred customer's first server-verified paid order. The wallet credit and referral status update share the payment transaction.
+
+
+## Store branding and checkout settings
+The store owner can configure the public store name, tagline, support phone, primary/accent colors, delivery and pickup availability, delivery fee, minimum order and payment reservation duration from `admin.php`. Settings are tenant-scoped and saved through the permission-guarded `/api/v1/admin/settings` endpoint. Delivery fee and minimum order are stored in IRR; the panel accepts toman and converts them. The checkout service revalidates all policies server-side.

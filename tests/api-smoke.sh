@@ -73,6 +73,19 @@ assert_json() {
       exit(0);
     }
     if ($check === "addresses-empty") { if (!is_array($data["data"] ?? null) || count($data["data"]) !== 0) exit(1); exit(0); }
+    if ($check === "store-settings") {
+      $profile = $data["data"]["profile"] ?? [];
+      $checkout = $data["data"]["checkout"] ?? [];
+      if (($profile["name"] ?? "") !== "فروشگاه آزمایشی" ||
+          (int)($checkout["delivery_fee_rial"] ?? -1) !== 1000 ||
+          (int)($checkout["reservation_minutes"] ?? -1) !== 15) exit(1);
+      exit(0);
+    }
+    if ($check === "public-store-settings") {
+      if (($data["data"]["fulfillment"]["delivery"] ?? null) !== true ||
+          ($data["data"]["settings"]["checkout"]["delivery_fee_rial"] ?? null) != 1000) exit(1);
+      exit(0);
+    }
     if ($check === "cart-empty") {
       if (!is_array($data["data"]["items"] ?? null) || count($data["data"]["items"]) !== 0) exit(1);
       exit(0);
@@ -146,6 +159,14 @@ request GET /admin/reports/overview 200 "" "$TOKEN"
 request GET /admin/warehouses 200 "" "$TOKEN"
 request GET /admin/stock 200 "" "$TOKEN"
 request GET /admin/scenes 200 "" "$TOKEN"
+request GET /admin/settings 403 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
+request GET /admin/settings 200 "" "$TOKEN"
+request PUT /admin/settings 419 '{"profile":{},"checkout":{}}' "$TOKEN"
+request PUT /admin/settings 200 '{"profile":{"name":"فروشگاه آزمایشی","tagline":"تست تنظیمات","support_phone":"02112345678","primary_color":"#173D2D","accent_color":"#E6A23C"},"checkout":{"delivery_enabled":true,"pickup_enabled":true,"delivery_fee_rial":1000,"minimum_order_rial":1,"reservation_minutes":15}}' "$TOKEN" "$CSRF"
+request GET /admin/settings 200 "" "$TOKEN"
+assert_json store-settings
+request GET /store 200
+assert_json public-store-settings
 request GET /admin/products 403 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
 request POST /admin/products 419 '{"sku":"NO-CSRF-1","title":"نباید ثبت شود","price_rial":1000}' "$TOKEN"
 
@@ -184,9 +205,15 @@ request PATCH "/me/addresses/$ADDRESS_ID" 419 "" "$CUSTOMER_TOKEN"
 request PATCH "/me/addresses/$ADDRESS_ID" 200 '{"title":"خانه ویرایش‌شده","city":"کرج"}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}],"fulfillment":"delivery","address_id":'$ADDRESS_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 ORDER_ID="$(assert_json order-created)"
+ORDER_FEE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT delivery_fee_rial FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
+ORDER_TOTAL="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT total_rial FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
+if [[ "$ORDER_FEE" != "1000" || "$ORDER_TOTAL" != "251000" ]]; then echo "Store checkout settings were not applied to the order."; exit 1; fi
 RESERVED="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT reserved FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID LIMIT 1")"
 if [[ "$RESERVED" != "2" ]]; then echo "Expected 2 reserved units, received $RESERVED"; exit 1; fi
 request POST "/me/orders/$ORDER_ID/cancel" 200 "" "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+request PUT /admin/settings 200 '{"profile":{"name":"فروشگاه آزمایشی","tagline":"تست تنظیمات","support_phone":"02112345678","primary_color":"#173D2D","accent_color":"#E6A23C"},"checkout":{"delivery_enabled":false,"pickup_enabled":true,"delivery_fee_rial":1000,"minimum_order_rial":1,"reservation_minutes":15}}' "$TOKEN" "$CSRF"
+request POST /checkout 409 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}],"fulfillment":"delivery","address_id":'$ADDRESS_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+request PUT /admin/settings 200 '{"profile":{"name":"فروشگاه آزمایشی","tagline":"تست تنظیمات","support_phone":"02112345678","primary_color":"#173D2D","accent_color":"#E6A23C"},"checkout":{"delivery_enabled":true,"pickup_enabled":true,"delivery_fee_rial":1000,"minimum_order_rial":1,"reservation_minutes":15}}' "$TOKEN" "$CSRF"
 RESERVED="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT reserved FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID LIMIT 1")"
 ORDER_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
 if [[ "$RESERVED" != "0" || "$ORDER_STATUS" != "cancelled" ]]; then echo "Customer cancellation did not release stock or update order"; exit 1; fi

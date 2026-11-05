@@ -135,3 +135,11 @@ Checkout intentionally does not mark an order paid. Reservations expire after 20
 - `PATCH /me/addresses/{id}` updates an address owned by the authenticated customer; partial fields are accepted and the complete merged address is validated.
 - `DELETE /me/addresses/{id}` retires an address from the active list without breaking historical order references.
 - Address writes require the session CSRF token. Checkout accepts only an active address owned by the same customer and tenant.
+
+
+## Store settings
+- `GET /admin/settings` returns the tenant's validated profile and checkout settings; requires `store.settings.manage`.
+- `PUT /admin/settings` replaces profile and checkout settings; requires the same permission and CSRF token.
+- Profile fields: name, tagline, support phone, primary color and accent color.
+- Checkout fields: delivery/pickup availability, delivery fee in IRR, minimum order in IRR and reservation duration (5–120 minutes).
+- Public `GET /store` exposes the safe profile and checkout settings and fulfillment availability. Checkout independently enforces enabled fulfillment, minimum order, delivery fee and reservation expiry on the server.
