@@ -82,3 +82,10 @@ php /path/to/supermarket/bin/expire-reservations.php
 ```
 
 The worker releases reserved quantities and cancels pending-payment orders once all their active reservations have expired. It is safe to run repeatedly; it processes at most 100 expired reservation rows per invocation. Configure the same database environment variables used by the API. Monitor its stderr/exit code; do not expose this script through the web server.
+
+
+## ZarinPal setup
+
+Set ZARINPAL_MERCHANT_ID to the merchant ID issued for the store, ZARINPAL_SANDBOX=true for sandbox testing, and APP_BASE_URL to the exact public store origin. The callback URL is generated as /api/v1/payments/zarinpal/callback; its domain must match the domain registered for the merchant terminal. Production requires HTTPS. Enable PHP's cURL extension.
+
+Never commit a real merchant ID or other payment credentials. Test success, cancellation, duplicate callbacks, delayed callbacks after reservation expiry, and the exact registered callback domain before enabling live payments.
