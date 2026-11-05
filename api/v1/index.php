@@ -11,6 +11,7 @@ require_once dirname(__DIR__, 2) . '/app/payments.php';
 require_once dirname(__DIR__, 2) . '/app/admin_orders.php';
 require_once dirname(__DIR__, 2) . '/app/inventory.php';
 require_once dirname(__DIR__, 2) . '/app/admin_scenes.php';
+require_once dirname(__DIR__, 2) . '/app/reports.php';
 
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
@@ -127,6 +128,12 @@ try {
         app_auth_require_csrf($session);
         app_auth_require_permission($db, $tenant, $session, 'inventory.manage');
         app_inventory_transfer($db, $tenant, $session);
+    }
+
+    if ($path === '/admin/reports/overview' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'reports.read');
+        app_admin_report_overview($db, $tenant);
     }
 
     if ($path === '/admin/orders' && $method === 'GET') {
