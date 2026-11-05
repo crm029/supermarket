@@ -423,35 +423,86 @@ try {
 
     if ($path === '/products') {
         $query = trim((string)($_GET['q'] ?? ''));
+        $brand = trim((string)($_GET['brand'] ?? ''));
         $category = filter_input(INPUT_GET, 'category', FILTER_VALIDATE_INT);
+        $minimum = filter_input(INPUT_GET, 'min_price', FILTER_VALIDATE_INT);
+        $maximum = filter_input(INPUT_GET, 'max_price', FILTER_VALIDATE_INT);
         $page = max(1, min(1000, (int)($_GET['page'] ?? 1)));
-        $limit = 24;
+        $limit = max(1, min(48, (int)($_GET['per_page'] ?? 24)));
+        $sort = (string)($_GET['sort'] ?? 'title_asc');
+        $inStock = isset($_GET['in_stock']) ? (string)$_GET['in_stock'] : '';
+        if (($category !== null && $category !== false && $category < 1) ||
+            ($minimum !== null && $minimum !== false && $minimum < 0) ||
+            ($maximum !== null && $maximum !== false && $maximum < 0) ||
+            ($minimum !== null && $minimum !== false && $maximum !== null && $maximum !== false && $minimum > $maximum) ||
+            mb_strlen($query) > 80 || mb_strlen($brand) > 120 ||
+            !in_array($sort, ['title_asc','price_asc','price_desc','newest'], true) ||
+            ($inStock !== '' && !in_array($inStock, ['0','1'], true))) {
+            app_json(['error' => 'فیلترهای جست‌وجوی محصولات معتبر نیستند.'], 422);
+        }
+
         $where = ['p.tenant_id = :tenant', 'p.is_active = 1'];
         $params = ['tenant' => $tenant['id']];
         if ($query !== '') {
             $where[] = '(p.title LIKE :q_title OR p.sku LIKE :q_sku OR p.barcode LIKE :q_barcode)';
-            $search = '%' . mb_substr($query, 0, 80) . '%';
+            $search = '%' . $query . '%';
             $params['q_title'] = $search;
             $params['q_sku'] = $search;
             $params['q_barcode'] = $search;
         }
-        if ($category) {
+        if ($brand !== '') {
+            $where[] = 'p.brand LIKE :brand';
+            $params['brand'] = '%' . $brand . '%';
+        }
+        if ($category !== null && $category !== false) {
             $where[] = 'p.category_id = :category';
             $params['category'] = $category;
         }
+        if ($minimum !== null && $minimum !== false) {
+            $where[] = 'p.price_rial >= :minimum_price';
+            $params['minimum_price'] = $minimum;
+        }
+        if ($maximum !== null && $maximum !== false) {
+            $where[] = 'p.price_rial <= :maximum_price';
+            $params['maximum_price'] = $maximum;
+        }
+        if ($inStock !== '') {
+            $stockExists = "EXISTS (
+                SELECT 1 FROM stock_levels filter_stock
+                JOIN warehouses filter_warehouse
+                  ON filter_warehouse.tenant_id=filter_stock.tenant_id
+                 AND filter_warehouse.id=filter_stock.warehouse_id
+                WHERE filter_stock.tenant_id=p.tenant_id
+                  AND filter_stock.product_id=p.id
+                  AND filter_warehouse.is_active=1
+                  AND filter_stock.on_hand > filter_stock.reserved
+            )";
+            $where[] = $inStock === '1' ? $stockExists : 'NOT ' . $stockExists;
+        }
+
         $sqlWhere = implode(' AND ', $where);
+        $sortSql = [
+            'title_asc' => 'p.title ASC,p.id DESC',
+            'price_asc' => 'p.price_rial ASC,p.id DESC',
+            'price_desc' => 'p.price_rial DESC,p.id DESC',
+            'newest' => 'p.id DESC',
+        ][$sort];
         $count = $db->prepare("SELECT COUNT(*) FROM products p WHERE {$sqlWhere}");
         $count->execute($params);
         $stmt = $db->prepare(
-            "SELECT p.id, p.sku, p.title, p.brand, p.description, p.unit_label, p.price_rial,
+            "SELECT p.id, p.sku, p.barcode, p.title, p.brand, p.description, p.unit_label, p.price_rial,
                     p.compare_at_rial, p.image_media_id, p.is_weighted, c.slug AS category_slug,
+                    COALESCE((SELECT SUM(sl.on_hand-sl.reserved)
+                              FROM stock_levels sl
+                              JOIN warehouses w ON w.tenant_id=sl.tenant_id AND w.id=sl.warehouse_id
+                              WHERE sl.tenant_id=p.tenant_id AND sl.product_id=p.id AND w.is_active=1),0) AS available_quantity,
                     m.storage_key AS media_storage_key, m.alt_text AS media_alt_text,
                     m.width AS media_width, m.height AS media_height
              FROM products p
              LEFT JOIN media_assets m ON m.tenant_id = p.tenant_id AND m.id = p.image_media_id
              LEFT JOIN categories c ON c.tenant_id = p.tenant_id AND c.id = p.category_id AND c.is_active = 1
              WHERE {$sqlWhere}
-             ORDER BY p.title LIMIT {$limit} OFFSET " . (($page - 1) * $limit)
+             ORDER BY {$sortSql} LIMIT {$limit} OFFSET " . (($page - 1) * $limit)
         );
         $stmt->execute($params);
         $products = $stmt->fetchAll();
@@ -462,13 +513,16 @@ try {
                 'width' => $productRow['media_width'] === null ? null : (int)$productRow['media_width'],
                 'height' => $productRow['media_height'] === null ? null : (int)$productRow['media_height'],
             ];
+            $productRow['available_quantity'] = (int)$productRow['available_quantity'];
+            $productRow['in_stock'] = $productRow['available_quantity'] > 0;
             $productRow['is_weighted'] = (bool)$productRow['is_weighted'];
             unset($productRow['image_media_id'], $productRow['media_storage_key'],
                 $productRow['media_alt_text'], $productRow['media_width'], $productRow['media_height']);
         }
         unset($productRow);
         app_json(['data' => $products, 'meta' => [
-            'page' => $page, 'per_page' => $limit, 'total' => (int)$count->fetchColumn()
+            'page' => $page, 'per_page' => $limit, 'total' => (int)$count->fetchColumn(),
+            'sort' => $sort,
         ]]);
     }
 
