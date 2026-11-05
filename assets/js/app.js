@@ -121,12 +121,12 @@ async function syncCustomerCart() {
     (remote?.items || []).forEach(item => {
       const id = Number(item.product_id), quantity = Number(item.quantity);
       if (Number.isInteger(id) && id > 0 && Number.isInteger(quantity) && quantity > 0) {
-        cart.set(id, Math.min(99, (cart.get(id) || 0) + quantity));
+        cart.set(id, Math.min(99, Math.max(cart.get(id) || 0, quantity)));
       }
     });
     updateCart();
-    localStorage.setItem("sm360_cart_owner", String(currentUser.id));
     await apiPut("me/cart", {items:[...cart].map(([product_id,quantity])=>({product_id,quantity}))}, true);
+    localStorage.setItem("sm360_cart_owner", String(currentUser.id));
     synchronized = true;
   } catch (_) {
     // Keep the local cart usable if the server cart is temporarily unavailable.
