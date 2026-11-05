@@ -118,26 +118,28 @@ function app_inventory_movement_list(PDO $db, array $tenant): never {
         $where[] = 'sm.movement_type = ?';
         $params[] = $movementType;
     }
-    $parseDate = static function(mixed $value, string $label): ?string {
+    $tenantTimezone = new DateTimeZone((string)($tenant['timezone'] ?? 'Asia/Tehran'));
+    $parseDate = static function(mixed $value, string $label) use ($tenantTimezone): ?DateTimeImmutable {
         if ($value === null || $value === '') return null;
         if (!is_string($value)) app_json(['error'=>$label.' معتبر نیست.'],422);
-        $date = DateTimeImmutable::createFromFormat('!Y-m-d',$value,new DateTimeZone('UTC'));
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d',$value,$tenantTimezone);
         $errors = DateTimeImmutable::getLastErrors();
         if (!$date || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0)) || $date->format('Y-m-d') !== $value) {
             app_json(['error'=>$label.' معتبر نیست.'],422);
         }
-        return $value;
+        return $date;
     };
     $from = $parseDate($_GET['from'] ?? null,'تاریخ شروع');
     $to = $parseDate($_GET['to'] ?? null,'تاریخ پایان');
-    if ($from !== null && $to !== null && $from > $to) app_json(['error'=>'تاریخ شروع نباید بعد از تاریخ پایان باشد.'],422);
+    if ($from !== null && $to !== null && $from->format('Y-m-d') > $to->format('Y-m-d')) app_json(['error'=>'تاریخ شروع نباید بعد از تاریخ پایان باشد.'],422);
+    $utc = new DateTimeZone('UTC');
     if ($from !== null) {
         $where[] = 'sm.created_at >= ?';
-        $params[] = $from.' 00:00:00';
+        $params[] = $from->setTimezone($utc)->format('Y-m-d H:i:s');
     }
     if ($to !== null) {
-        $where[] = 'sm.created_at < DATE_ADD(?, INTERVAL 1 DAY)';
-        $params[] = $to.' 00:00:00';
+        $where[] = 'sm.created_at < ?';
+        $params[] = $to->modify('+1 day')->setTimezone($utc)->format('Y-m-d H:i:s');
     }
     $stmt = $db->prepare(
         "SELECT sm.id,sm.movement_type,sm.quantity,sm.reference_type,sm.reference_id,sm.reason,sm.created_at,
