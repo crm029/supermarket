@@ -76,6 +76,7 @@ $compareToman = $product['compare_at_rial'] === null ? null : number_format((int
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="index,follow,max-image-preview:large">
+  <?= app_seo_tracking_markup($profile) ?>
   <title><?= $e($title) ?></title>
   <meta name="description" content="<?= $e($description) ?>">
   <link rel="canonical" href="<?= $e($canonical) ?>">
