@@ -76,6 +76,10 @@ assert_json() {
       if ((int)($data["data"]["total_rial"] ?? 0) !== 250000 || (int)($data["data"]["items"][0]["available_quantity"] ?? 0) !== 10) exit(1);
       exit(0);
     }
+    if ($check === "registered-user") {
+      if (($data["data"]["user"]["mobile"] ?? "") !== "09120000004") exit(1);
+      exit(0);
+    }
     if ($check === "order-created") {
       if (($data["data"]["status"] ?? "") !== "pending_payment" || empty($data["data"]["order_number"])) exit(1);
       echo (int)$data["data"]["id"];
@@ -167,4 +171,13 @@ request POST "/admin/scenes/$SCENE_ID/hotspots" 201 '{"label":"کالای تست
 HOTSPOT_ID="$(assert_json created-id)"
 request GET "/admin/scenes/$SCENE_ID/hotspots" 200 "" "$TOKEN"
 request DELETE "/admin/hotspots/$HOTSPOT_ID" 200 "" "$TOKEN" "$CSRF"
+request POST /auth/register 201 '{"full_name":"مشتری ثبت‌نامی","mobile":"09120000004","referral_code":"API-CUSTOMER"}'
+request POST /auth/request-otp 200 '{"mobile":"09120000004"}'
+OTP_HASH="$(php -r 'echo hash_hmac("sha256", "123456", "ci-test-secret-with-more-than-thirty-two-characters");')"
+mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "INSERT INTO auth_challenges (tenant_id,mobile,purpose,otp_hash,attempts,expires_at) VALUES (1,'09120000004','login','$OTP_HASH',0,DATE_ADD(UTC_TIMESTAMP(), INTERVAL 5 MINUTE))"
+request POST /auth/verify-otp 200 '{"mobile":"09120000004","code":"123456"}'
+assert_json registered-user
+REGISTERED_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM users WHERE tenant_id=1 AND mobile='09120000004'")"
+REFERRAL_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM referral_events re JOIN users u ON u.id=re.referred_user_id WHERE u.tenant_id=1 AND u.mobile='09120000004'")"
+if [[ "$REGISTERED_STATUS" != "active" || "$REFERRAL_COUNT" != "1" ]]; then echo "OTP registration or referral activation failed"; exit 1; fi
 echo "HTTP API and commerce smoke tests passed."
