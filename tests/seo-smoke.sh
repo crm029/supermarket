@@ -27,8 +27,12 @@ check_page "/robots.php" "Sitemap: http://localhost/sitemap.xml"
 check_page "/sitemap.php" "http://localhost/product/1"
 check_page "/sitemap.php" "http://localhost/category/dairy"
 check_page "/product.php?id=1" "شیر پرچرب یک لیتری"
+check_page "/product.php?id=1" "عنوان سئو محصول تست"
+check_page "/product.php?id=1" "توضیحات متا محصول تست"
 check_page "/product.php?id=1" 'application/ld+json'
 check_page "/category.php?slug=dairy" "/product/1"
+check_page "/category.php?slug=dairy" "عنوان سئو دسته تست"
+check_page "/category.php?slug=dairy" "توضیحات متا دسته تست"
 check_page "/index.php" 'rel="canonical" href="http://localhost/"'
 check_page "/index.php" 'application/ld+json'
 check_page "/category.php?slug=dairy" 'application/ld+json'
