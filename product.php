@@ -39,7 +39,6 @@ $description = mb_substr(preg_replace('/\s+/u',' ',$metaDescription) ?? $metaDes
 $image = app_media_public_data($seo['db'],(int)$seo['tenant']['id'],$product['image_media_id'] === null ? null : (int)$product['image_media_id']);
 $canonicalPath = app_seo_product_path($product);
 $canonical = app_seo_url($seo,$canonicalPath);
-$currentSlug = trim((string)($product['seo_slug'] ?? ''));
 $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '',PHP_URL_PATH) ?: '';
 $expectedPath = '/'.$canonicalPath;
 if ($currentPath !== $expectedPath || (string)($_SERVER['HTTP_HOST'] ?? '') !== (string)$seo['host']) {
