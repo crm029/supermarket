@@ -23,6 +23,8 @@ This platform is multi-tenant. SEO output must be generated for the verified hos
 - Optional store address, city/region, country code, postal code, geographic coordinates and opening hours are editable in store settings and included in GroceryStore structured data. Merchants must enter accurate, verified public details.
 - Product image quality and descriptive alt text depend on each merchant's real catalogue/media uploads.
 - The sitemap and metadata are code-ready, but a store is not discoverable until its domain is verified, deployed over HTTPS and crawled.
+- Uploading a media item with type `logo` automatically uses it in the storefront header/footer. The latest `hero` media item becomes the homepage hero and social-share image; if no hero item exists, the first published virtual-store scene is used. Media alt text is reused for accessibility and preview metadata.
+- Each tenant sitemap is capped at the protocol limit of 50,000 URLs. If a catalogue grows beyond the available slots, the most recently updated product pages are included first; introduce a sitemap index and partitioned product sitemaps before a store approaches that scale.
 - The merchant must still verify the production domain in Search Console and submit its sitemap. GA4 view_item, view_item_list, add_to_cart, begin_checkout and verified purchase events are available after analytics consent; event receipt must be checked against the merchant's real GA4 property.
 - Core Web Vitals, mobile performance, image delivery and crawl behaviour must be measured on the final hosting environment with real catalogue volume.
 

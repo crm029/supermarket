@@ -62,6 +62,12 @@ if ($metaDescription === '') $metaDescription = $defaultDescription;
 $description = mb_substr(preg_replace('/\s+/u',' ',$metaDescription) ?? $metaDescription,0,160);
 $pageTitle = trim((string)($category['seo_title'] ?? '')) ?: ((string)$category['title'].' | '.$storeName);
 $canonical = app_seo_url($seo,'category/'.rawurlencode((string)$category['slug']));
+$currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '',PHP_URL_PATH) ?: '';
+$expectedPath = '/category/'.rawurlencode((string)$category['slug']);
+if ($currentPath !== $expectedPath || (string)$seo['request_host'] !== (string)$seo['host']) {
+    header('Location: '.$canonical,true,301);
+    exit;
+}
 $categoryImage = $category['storage_key'] ? app_media_public_url((string)$category['storage_key']) : null;
 $e = static fn(mixed $value): string => htmlspecialchars((string)$value,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');
 $listItems = [];
@@ -106,12 +112,16 @@ $analyticsViewListJson = json_encode($analyticsViewList,JSON_UNESCAPED_UNICODE|J
   <meta name="description" content="<?= $e($description) ?>">
   <link rel="canonical" href="<?= $e($canonical) ?>">
   <meta property="og:type" content="website">
+  <meta property="og:locale" content="fa_IR">
   <meta property="og:site_name" content="<?= $e($storeName) ?>">
   <meta property="og:title" content="<?= $e($pageTitle) ?>">
   <meta property="og:description" content="<?= $e($description) ?>">
   <meta property="og:url" content="<?= $e($canonical) ?>">
   <?php if ($categoryImage): ?><meta property="og:image" content="<?= $e($categoryImage) ?>"><?php endif; ?>
   <meta name="twitter:card" content="<?= $categoryImage?'summary_large_image':'summary' ?>">
+  <meta name="twitter:title" content="<?= $e($pageTitle) ?>">
+  <meta name="twitter:description" content="<?= $e($description) ?>">
+  <?php if ($categoryImage): ?><meta name="twitter:image" content="<?= $e($categoryImage) ?>"><?php endif; ?>
   <link rel="stylesheet" href="/assets/css/app.css">
   <script type="application/ld+json"><?= $jsonLd ?: '{}' ?></script>
   <script>

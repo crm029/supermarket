@@ -10,6 +10,38 @@ $seoDescription = mb_substr($seoDescription,0,160);
 $seoTitle = $seoStoreName.' | خرید آنلاین سوپرمارکت';
 $seoCanonical = $seoContext ? app_seo_url($seoContext) : null;
 $seoCategories = $seoContext ? app_seo_category_list($seoContext) : [];
+$seoLogoImage = null;
+$seoHeroImage = null;
+if ($seoContext) {
+    $tenantId = (int)$seoContext["tenant"]["id"];
+    $logoQuery = $seoContext["db"]->prepare(
+        "SELECT id FROM media_assets WHERE tenant_id=? AND media_type='logo' ORDER BY id DESC LIMIT 1"
+    );
+    $logoQuery->execute([$tenantId]);
+    $logoMediaId = $logoQuery->fetchColumn();
+    if ($logoMediaId) {
+        $seoLogoImage = app_media_public_data($seoContext["db"],$tenantId,(int)$logoMediaId);
+    }
+
+    $heroQuery = $seoContext["db"]->prepare(
+        "SELECT id FROM media_assets WHERE tenant_id=? AND media_type='hero' ORDER BY id DESC LIMIT 1"
+    );
+    $heroQuery->execute([$tenantId]);
+    $heroMediaId = $heroQuery->fetchColumn();
+    if (!$heroMediaId) {
+        $heroQuery = $seoContext["db"]->prepare(
+            "SELECT COALESCE(media_id,fallback_media_id)
+             FROM store_scenes
+             WHERE tenant_id=? AND is_published=1 AND COALESCE(media_id,fallback_media_id) IS NOT NULL
+             ORDER BY sort_order,id LIMIT 1"
+        );
+        $heroQuery->execute([$tenantId]);
+        $heroMediaId = $heroQuery->fetchColumn();
+    }
+    if ($heroMediaId) {
+        $seoHeroImage = app_media_public_data($seoContext["db"],$tenantId,(int)$heroMediaId);
+    }
+}
 $seoStructuredData = [
     '@context'=>'https://schema.org',
     '@type'=>'GroceryStore',
@@ -52,11 +84,16 @@ $seoJsonLd = $seoCanonical ? json_encode($seoStructuredData,JSON_UNESCAPED_UNICO
   <title><?= htmlspecialchars($seoTitle,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?></title>
   <?php if ($seoCanonical): ?><link rel="canonical" href="<?= htmlspecialchars($seoCanonical,ENT_QUOTES,'UTF-8') ?>"><?php endif; ?>
   <meta property="og:type" content="website">
+  <meta property="og:locale" content="fa_IR">
   <meta property="og:site_name" content="<?= htmlspecialchars($seoStoreName,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?>">
   <meta property="og:title" content="<?= htmlspecialchars($seoTitle,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?>">
   <meta property="og:description" content="<?= htmlspecialchars($seoDescription,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?>">
   <?php if ($seoCanonical): ?><meta property="og:url" content="<?= htmlspecialchars($seoCanonical,ENT_QUOTES,'UTF-8') ?>"><?php endif; ?>
-  <meta name="twitter:card" content="summary">
+  <?php if (!empty($seoHeroImage["url"])): ?><meta property="og:image" content="<?= htmlspecialchars($seoHeroImage["url"],ENT_QUOTES,"UTF-8") ?>"><meta property="og:image:alt" content="<?= htmlspecialchars($seoHeroImage["alt_text"] ?: $seoStoreName,ENT_QUOTES|ENT_SUBSTITUTE,"UTF-8") ?>"><?php endif; ?>
+  <meta name="twitter:card" content="<?= !empty($seoHeroImage["url"]) ? "summary_large_image" : "summary" ?>">
+  <meta name="twitter:title" content="<?= htmlspecialchars($seoTitle,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?>">
+  <meta name="twitter:description" content="<?= htmlspecialchars($seoDescription,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?>">
+  <?php if (!empty($seoHeroImage["url"])): ?><meta name="twitter:image" content="<?= htmlspecialchars($seoHeroImage["url"],ENT_QUOTES,"UTF-8") ?>"><meta name="twitter:image:alt" content="<?= htmlspecialchars($seoHeroImage["alt_text"] ?: $seoStoreName,ENT_QUOTES|ENT_SUBSTITUTE,"UTF-8") ?>"><?php endif; ?>
   <?php if ($seoJsonLd): ?><script type="application/ld+json"><?= $seoJsonLd ?></script><?php endif; ?>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -65,7 +102,7 @@ $seoJsonLd = $seoCanonical ? json_encode($seoStructuredData,JSON_UNESCAPED_UNICO
 </head>
 <body>
 <header class="topbar">
-  <a class="brand" href="/" aria-label="<?= htmlspecialchars($seoStoreName,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?>"><span class="brand-mark">۳۶۰</span><span><?= htmlspecialchars($seoStoreName,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?></span></a>
+  <a class="brand" href="/" aria-label="<?= htmlspecialchars($seoStoreName,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?>"><?php if (!empty($seoLogoImage["url"])): ?><img class="brand-logo-image" src="<?= htmlspecialchars($seoLogoImage["url"],ENT_QUOTES,"UTF-8") ?>" alt="<?= htmlspecialchars($seoLogoImage["alt_text"] ?: $seoStoreName,ENT_QUOTES|ENT_SUBSTITUTE,"UTF-8") ?>" width="40" height="40"><?php else: ?><?php if (!empty($seoLogoImage["url"])): ?><img class="brand-logo-image" src="<?= htmlspecialchars($seoLogoImage["url"],ENT_QUOTES,"UTF-8") ?>" alt="<?= htmlspecialchars($seoLogoImage["alt_text"] ?: $seoStoreName,ENT_QUOTES|ENT_SUBSTITUTE,"UTF-8") ?>" width="40" height="40"><?php else: ?><span class="brand-mark">۳۶۰</span><?php endif; ?><?php endif; ?><span><?= htmlspecialchars($seoStoreName,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?></span></a>
   <label class="search"><span>⌕</span><input id="searchInput" type="search" placeholder="دنبال چی می‌گردی؟ مثلاً شیر، برنج، چیپس..." aria-label="جست‌وجوی محصولات"></label>
   <nav class="top-actions" aria-label="دسترسی سریع">
     <button class="icon-button" id="accountButton" type="button">ورود / عضویت</button>
@@ -86,7 +123,8 @@ $seoJsonLd = $seoCanonical ? json_encode($seoStructuredData,JSON_UNESCAPED_UNICO
       </div>
       <div class="trust-row"><span>✓ قیمت شفاف</span><span>✓ ارسال با پیک فروشگاه</span><span>✓ تحویل حضوری</span></div>
     </div>
-    <div class="hero-art" role="img" aria-label="تصویر نمونه از راهروی یک سوپرمارکت">
+    <div class="hero-art">
+      <?php if (!empty($seoHeroImage["url"])): ?><img class="hero-store-image" src="<?= htmlspecialchars($seoHeroImage["url"],ENT_QUOTES,"UTF-8") ?>" alt="<?= htmlspecialchars($seoHeroImage["alt_text"] ?: $seoStoreName,ENT_QUOTES|ENT_SUBSTITUTE,"UTF-8") ?>" width="<?= (int)($seoHeroImage["width"] ?? 1200) ?>" height="<?= (int)($seoHeroImage["height"] ?? 800) ?>" fetchpriority="high"><?php endif; ?>
       <div class="hero-chip"><span class="live-dot"></span> فروشگاه مجازی ۳۶۰</div>
       <div class="aisle-label">راهروی شماره ۰۱ <small>خوراکی‌های روزمره</small></div>
     </div>
@@ -148,7 +186,7 @@ $seoJsonLd = $seoCanonical ? json_encode($seoStructuredData,JSON_UNESCAPED_UNICO
 <footer><div class="brand"><span class="brand-mark">۳۶۰</span><span><?= htmlspecialchars($seoStoreName,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?></span></div><div class="footer-links"><a href="#about">درباره ما</a><a href="#contact">تماس با ما</a><a href="admin.php">مدیریت فروشگاه</a><a href="#policies">قوانین و مقررات</a></div><?php if ($seoCategories): ?><nav class="footer-links" aria-label="دسته‌بندی‌های فروشگاه"><strong>دسته‌ها:</strong><?php foreach ($seoCategories as $seoCategory): ?><a href="/category/<?= htmlspecialchars(rawurlencode((string)$seoCategory['slug']),ENT_QUOTES,'UTF-8') ?>"><?= htmlspecialchars((string)$seoCategory['title'],ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?></a><?php endforeach; ?></nav><?php endif; ?><small>© <?= date('Y') ?> <?= htmlspecialchars($seoStoreName,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?></small></footer>
 
 <dialog id="productDialog" class="product-dialog"><button class="dialog-close" data-close="productDialog" aria-label="بستن">×</button><div id="productDetail"></div></dialog>
-<dialog id="cartDialog" class="cart-dialog"><button class="dialog-close" data-close="cartDialog" aria-label="بستن">×</button><small class="eyebrow">انتخاب‌های خوشمزه‌ات</small><h2>سبد خرید</h2><div id="cartItems"></div><div class="cart-total"><span>جمع کل</span><strong id="cartTotal">۰ تومان</strong></div><button class="primary-button full" id="checkoutButton" type="button">ادامه و ثبت سفارش</button><p class="demo-note">این نسخه نمایشی است؛ پرداخت و ثبت سفارش در مراحل بعدی فعال می‌شود.</p></dialog>
+<dialog id="cartDialog" class="cart-dialog"><button class="dialog-close" data-close="cartDialog" aria-label="بستن">×</button><small class="eyebrow">انتخاب‌های خوشمزه‌ات</small><h2>سبد خرید</h2><div id="cartItems"></div><div class="cart-total"><span>جمع کل</span><strong id="cartTotal">۰ تومان</strong></div><button class="primary-button full" id="checkoutButton" type="button">ادامه و ثبت سفارش</button><p class="demo-note">قیمت و موجودی هنگام ثبت سفارش از سمت سرور دوباره بررسی می‌شود؛ پرداخت پس از پیکربندی درگاه فعال است.</p></dialog>
 <dialog id="ordersDialog" class="cart-dialog">
   <button class="dialog-close" data-close="ordersDialog" aria-label="بستن">×</button>
   <small class="eyebrow">خریدهای قبلی</small><h2>سفارش‌های من</h2>

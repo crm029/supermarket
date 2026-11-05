@@ -339,8 +339,9 @@ declare(strict_types=1);
     <section class="admin-panel" id="panel-scenes">
       <div class="admin-heading"><div><p class="eyebrow">تجربه خرید تعاملی</p><h2>طراحی فروشگاه مجازی</h2></div><button class="text-button" id="reloadScenes">به‌روزرسانی</button></div>
       <form id="mediaUploadForm" class="admin-form">
-        <h3>بارگذاری تصویر راهرو یا قفسه</h3>
-        <div class="admin-form-grid"><label>فایل تصویر (JPG، PNG، WebP)<input id="mediaFile" type="file" accept="image/jpeg,image/png,image/webp" required></label><label>نوع تصویر<select id="mediaType"><option value="aisle">راهرو</option><option value="panorama">پانوراما ۳۶۰</option><option value="product">محصول</option><option value="category">دسته‌بندی</option><option value="hero">بنر اصلی</option></select></label></div>
+        <h3>بارگذاری تصویر فروشگاه</h3>
+        <p class="admin-hint">تصویر «لوگو» در سربرگ و پابرگ نمایش داده می‌شود؛ تصویر «بنر اصلی» به‌صورت خودکار تصویر اصلی صفحه و پیش‌نمایش اشتراک‌گذاری خواهد شد.</p>
+        <div class="admin-form-grid"><label>فایل تصویر (JPG، PNG، WebP)<input id="mediaFile" type="file" accept="image/jpeg,image/png,image/webp" required></label><label>نوع تصویر<select id="mediaType"><option value="logo">لوگو</option><option value="aisle">راهرو</option><option value="panorama">پانوراما ۳۶۰</option><option value="product">محصول</option><option value="category">دسته‌بندی</option><option value="hero">بنر اصلی</option></select></label></div>
         <label>توضیح تصویر<input id="mediaAlt" maxlength="255" placeholder="مثلاً راهروی لبنیات"></label><button class="primary-button" type="submit">بارگذاری تصویر</button><p id="mediaUploadMessage" class="form-message"></p>
       </form>
       <form id="sceneForm" class="admin-form">

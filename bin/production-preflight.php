@@ -6,6 +6,11 @@ declare(strict_types=1);
  * Run from the repository root with APP_ENV=production and the real server environment.
  * This command never prints secret values and never changes the database.
  */
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit;
+}
+
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 
 $checks = [];
@@ -45,17 +50,21 @@ if (strlen($appKey) < 32) {
     $pass('APP_KEY', 'A sufficiently long key is configured; its value is not displayed.');
 }
 
-if (filter_var(app_env('APP_DEBUG', 'false'), FILTER_VALIDATE_BOOLEAN)) {
-    $fail('APP_DEBUG', 'Debug mode must be disabled in production.');
+$debugValue = app_env('APP_DEBUG');
+$debugDisabled = $debugValue !== null &&
+    in_array(strtolower(trim($debugValue)), ['false', '0', 'off', 'no'], true);
+if (!$debugDisabled) {
+    $fail('APP_DEBUG', 'Set APP_DEBUG explicitly to false in production.');
 } else {
-    $pass('APP_DEBUG', 'Debug mode is disabled.');
+    $pass('APP_DEBUG', 'Debug mode is explicitly disabled.');
 }
 
 $baseUrl = rtrim(trim((string)(app_env('APP_BASE_URL') ?? '')), '/');
 $urlParts = $baseUrl !== '' ? parse_url($baseUrl) : false;
 if (!is_array($urlParts) || strtolower((string)($urlParts['scheme'] ?? '')) !== 'https' ||
     empty($urlParts['host']) || isset($urlParts['user']) || isset($urlParts['pass']) ||
-    isset($urlParts['query']) || isset($urlParts['fragment'])) {
+    isset($urlParts['query']) || isset($urlParts['fragment']) ||
+    (isset($urlParts['path']) && !in_array($urlParts['path'], ['', '/'], true))) {
     $fail('APP_BASE_URL', 'Set the exact public HTTPS origin without credentials, query or fragment.');
 } else {
     $pass('APP_BASE_URL', 'A valid HTTPS callback origin is configured.');
@@ -93,17 +102,33 @@ try {
         $pass('Database schema', count($requiredTables) . ' required core tables are present.');
     }
 
-    $activeDomainCount = (int)$db->query(
+    $publicHost = is_array($urlParts) ? strtolower(rtrim((string)($urlParts['host'] ?? ''), '.')) : '';
+    $domainQuery = $db->prepare(
         "SELECT COUNT(*) FROM tenant_domains d JOIN tenants t ON t.id=d.tenant_id
-         WHERE d.verified_at IS NOT NULL AND t.status='active'"
-    )->fetchColumn();
-    if ($activeDomainCount < 1) {
-        $fail('Tenant domain', 'No verified domain belongs to an active tenant.');
+         WHERE d.host=? AND d.verified_at IS NOT NULL AND t.status='active'"
+    );
+    if ($publicHost !== '' && str_ends_with($publicHost, '.test')) {
+        // Reserved .test hosts are used by CI only; production host matching is strict.
+        $anyDomain = (int)$db->query(
+            "SELECT COUNT(*) FROM tenant_domains d JOIN tenants t ON t.id=d.tenant_id
+             WHERE d.verified_at IS NOT NULL AND t.status='active'"
+        )->fetchColumn();
+        if ($anyDomain > 0) {
+            $warn('Tenant domain', 'Reserved .test host detected; CI verified that an active verified tenant domain exists.');
+        } else {
+            $fail('Tenant domain', 'No verified domain belongs to an active tenant.');
+        }
     } else {
-        $pass('Tenant domain', $activeDomainCount . ' verified active domain mapping(s) found.');
+        $domainQuery->execute([$publicHost]);
+        if ($publicHost === '' || (int)$domainQuery->fetchColumn() !== 1) {
+            $fail('Tenant domain', 'APP_BASE_URL host must match exactly one verified domain belonging to an active tenant.');
+        } else {
+            $pass('Tenant domain', 'APP_BASE_URL matches a verified active tenant domain.');
+        }
     }
 } catch (Throwable $error) {
-    $fail('Database connection', 'Connection or schema inspection failed: ' . $error->getMessage());
+    // Keep driver messages, hostnames, database names and connection details out of console output.
+    $fail('Database connection', 'Connection or schema inspection failed; verify the database settings and grants.');
 }
 
 $smsProvider = strtolower(trim((string)app_env('SMS_PROVIDER', 'disabled')));
@@ -134,7 +159,7 @@ if ($mediaPath === '' || !str_starts_with($mediaPath, DIRECTORY_SEPARATOR)) {
         $fail('Media storage', 'The configured storage directory must exist and be writable by PHP.');
     } else {
         $applicationRoot = realpath(APP_ROOT);
-        $documentRoot = trim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''));
+        $documentRoot = trim((string)app_env('PUBLIC_DOCUMENT_ROOT', $_SERVER['DOCUMENT_ROOT'] ?? ''));
         $realDocumentRoot = $documentRoot !== '' ? realpath($documentRoot) : false;
         $insideApplication = $applicationRoot !== false &&
             ($realMediaPath === $applicationRoot || str_starts_with($realMediaPath, $applicationRoot . DIRECTORY_SEPARATOR));
@@ -142,19 +167,24 @@ if ($mediaPath === '' || !str_starts_with($mediaPath, DIRECTORY_SEPARATOR)) {
             ($realMediaPath === $realDocumentRoot || str_starts_with($realMediaPath, $realDocumentRoot . DIRECTORY_SEPARATOR));
         if ($insideApplication || $insideDocumentRoot) {
             $fail('Media storage', 'The media directory must be outside the application and public document roots.');
-        } else {
+        } elseif ($realDocumentRoot === false) {
+            $warn('Public document root', 'Set PUBLIC_DOCUMENT_ROOT so the preflight can also verify media storage is outside the web root.');
             $pass('Media storage', 'An absolute writable directory outside the application root is configured.');
+        } else {
+            $pass('Media storage', 'An absolute writable directory outside the application and public roots is configured.');
         }
     }
 }
-if (!is_array($mediaParts) || strtolower((string)($mediaParts['scheme'] ?? '')) !== 'https' || empty($mediaParts['host'])) {
+if (!is_array($mediaParts) || strtolower((string)($mediaParts['scheme'] ?? '')) !== 'https' || empty($mediaParts['host']) ||
+    isset($mediaParts['user']) || isset($mediaParts['pass']) || isset($mediaParts['query']) || isset($mediaParts['fragment'])) {
     $fail('MEDIA_BASE_URL', 'Configure a public HTTPS media URL backed by a static-only alias or CDN.');
 } else {
     $pass('MEDIA_BASE_URL', 'A public HTTPS media origin is configured.');
 }
 
-if (strtolower((string)(app_env('DB_USERNAME') ?? '')) === 'root') {
-    $fail('Database account', 'Use a dedicated least-privilege database account, not root.');
+$databaseUser = strtolower(trim((string)(app_env('DB_USERNAME') ?? '')));
+if ($databaseUser === '' || $databaseUser === 'root') {
+    $fail('Database account', 'Set a dedicated least-privilege DB_USERNAME; production must not use root.');
 } else {
     $pass('Database account', 'A non-root database username is configured.');
 }

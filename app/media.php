@@ -55,7 +55,9 @@ function app_admin_media_list(PDO $db, array $tenant): never {
         "SELECT m.id,m.media_type,m.storage_key,m.alt_text,m.width,m.height,m.created_at,
           ((SELECT COUNT(*) FROM products p WHERE p.tenant_id=m.tenant_id AND p.image_media_id=m.id) +
            (SELECT COUNT(*) FROM categories c WHERE c.tenant_id=m.tenant_id AND c.image_media_id=m.id) +
-           (SELECT COUNT(*) FROM store_scenes s WHERE s.tenant_id=m.tenant_id AND (s.media_id=m.id OR s.fallback_media_id=m.id))) AS usage_count
+           (SELECT COUNT(*) FROM store_scenes s WHERE s.tenant_id=m.tenant_id AND (s.media_id=m.id OR s.fallback_media_id=m.id)) +
+           (CASE WHEN m.media_type='logo' AND m.id=(SELECT MAX(current_logo.id) FROM media_assets current_logo WHERE current_logo.tenant_id=m.tenant_id AND current_logo.media_type='logo') THEN 1 ELSE 0 END) +
+           (CASE WHEN m.media_type='hero' AND m.id=(SELECT MAX(current_hero.id) FROM media_assets current_hero WHERE current_hero.tenant_id=m.tenant_id AND current_hero.media_type='hero') THEN 1 ELSE 0 END)) AS usage_count
          FROM media_assets m WHERE m.tenant_id = ?
          ORDER BY m.created_at DESC,m.id DESC LIMIT 200"
     );
