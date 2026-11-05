@@ -72,6 +72,19 @@ assert_json() {
       if (!$product || !$category) exit(1);
       exit(0);
     }
+    if ($check === "cart-empty") {
+      if (!is_array($data["data"]["items"] ?? null) || count($data["data"]["items"]) !== 0) exit(1);
+      exit(0);
+    }
+    if ($check === "cart-saved") {
+      if ((int)($data["data"]["item_count"] ?? 0) !== 2) exit(1);
+      exit(0);
+    }
+    if ($check === "cart-item") {
+      if (count($data["data"]["items"] ?? []) !== 1 ||
+          (int)($data["data"]["items"][0]["quantity"] ?? 0) !== 2) exit(1);
+      exit(0);
+    }
     if ($check === "wallet-summary") {
       if ((int)($data["data"]["balance_rial"] ?? -1) !== 0 || !is_array($data["data"]["entries"] ?? null)) exit(1);
       exit(0);
@@ -153,6 +166,12 @@ request POST /cart/quote 200 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2
 assert_json cart-quote
 request GET /me/wallet 200 "" "$CUSTOMER_TOKEN"
 assert_json wallet-summary
+request GET /me/cart 200 "" "$CUSTOMER_TOKEN"
+assert_json cart-empty
+request PUT /me/cart 200 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}]}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+assert_json cart-saved
+request GET /me/cart 200 "" "$CUSTOMER_TOKEN"
+assert_json cart-item
 request POST /me/addresses 201 '{"title":"خانه تست","recipient":"مشتری تست","mobile":"09120000003","province":"تهران","city":"تهران","address":"خیابان نمونه، پلاک ۱","postal_code":"1234567890"}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 ADDRESS_ID="$(assert_json created-id)"
 request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}],"fulfillment":"delivery","address_id":'$ADDRESS_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
