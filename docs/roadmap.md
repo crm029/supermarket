@@ -39,7 +39,8 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [ ] Real-store media onboarding and responsive image delivery.
 
 ## Phase 4 — store operations
-- [ ] Multi-warehouse stock receipt, transfer, adjustment and return services.
+- [x] Multi-warehouse stock receipt, transfer and adjustment services with tenant checks, reserved-stock protection and audit trail.
+- [ ] Supplier purchase orders, stock returns, expiry/batch tracking and low-stock alerts.
 - [ ] Transactional reservations, expiry/release and paid-order stock commit.
 - [x] Customer cancellation for pending-payment orders with transactional stock release.
 - [x] Tenant-scoped order queue and guarded fulfilment transitions (accept, picking, packing, pickup/dispatch, delivery).
