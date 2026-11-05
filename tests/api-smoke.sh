@@ -48,7 +48,7 @@ assert_json() {
       exit(1);
     }
     if ($check === "product-detail") {
-      if (($data["data"]["in_stock"] ?? null) !== false ||
+      if (($data["data"]["in_stock"] ?? null) !== true ||
           ($data["data"]["image"]["url"] ?? null) !== "https://cdn.example.test/assets/products/ci%20milk%20bottle.jpg") exit(1);
       exit(0);
     }
