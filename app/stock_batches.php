@@ -191,3 +191,49 @@ function app_admin_stock_expiry_summary(PDO $db, array $tenant): never {
     }
     app_json(['data' => $summary]);
 }
+
+
+/** Write off only unreserved stock from a batch that is already expired. */
+function app_admin_stock_batch_writeoff(PDO $db, array $tenant, array $session): never {
+    $body=app_auth_request_body();
+    $batchId=filter_var($body['batch_id']??null,FILTER_VALIDATE_INT);
+    $quantity=filter_var($body['quantity']??null,FILTER_VALIDATE_INT);
+    $reason=trim((string)($body['reason']??''));
+    if($batchId===false||$batchId<1||$quantity===false||$quantity<1||$quantity>1000000||$reason===''||mb_strlen($reason)>255){
+        app_json(['error'=>'شناسه بچ، تعداد و دلیل امحا معتبر نیست.'],422);
+    }
+    $db->beginTransaction();
+    try {
+        $stock=$db->prepare('SELECT warehouse_id,product_id,on_hand,reserved FROM stock_levels WHERE tenant_id=? AND warehouse_id=(SELECT warehouse_id FROM stock_batches WHERE tenant_id=? AND id=?) AND product_id=(SELECT product_id FROM stock_batches WHERE tenant_id=? AND id=?) FOR UPDATE');
+        $stock->execute([$tenant['id'],$tenant['id'],$batchId,$tenant['id'],$batchId]);
+        $balance=$stock->fetch(PDO::FETCH_ASSOC);
+        $batchStmt=$db->prepare('SELECT warehouse_id,product_id,batch_number,expiry_date,on_hand,reserved,unit_cost_rial FROM stock_batches WHERE tenant_id=? AND id=? FOR UPDATE');
+        $batchStmt->execute([$tenant['id'],$batchId]);
+        $batch=$batchStmt->fetch(PDO::FETCH_ASSOC);
+        if(!$batch || !$balance){$db->rollBack();app_json(['error'=>'بچ یا موجودی انبار پیدا نشد.'],404);}
+        if($batch['expiry_date']===null || $batch['expiry_date']>=gmdate('Y-m-d')){
+            $db->rollBack();app_json(['error'=>'فقط بچی که تاریخ انقضای آن گذشته باشد قابل امحاست.'],409);
+        }
+        $available=(int)$batch['on_hand']-(int)$batch['reserved'];
+        if($quantity>$available || $quantity>(int)$balance['on_hand']-(int)$balance['reserved']){
+            $db->rollBack();app_json(['error'=>'تعداد امحا از موجودی آزاد این بچ بیشتر است.'],409);
+        }
+        $batchUpdate=$db->prepare('UPDATE stock_batches SET on_hand=on_hand-? WHERE tenant_id=? AND id=? AND on_hand-reserved>=?');
+        $batchUpdate->execute([$quantity,$tenant['id'],$batchId,$quantity]);
+        if($batchUpdate->rowCount()!==1)throw new RuntimeException('Expired batch changed during write-off.');
+        $stockUpdate=$db->prepare('UPDATE stock_levels SET on_hand=on_hand-? WHERE tenant_id=? AND warehouse_id=? AND product_id=? AND on_hand-reserved>=?');
+        $stockUpdate->execute([$quantity,$tenant['id'],$batch['warehouse_id'],$batch['product_id'],$quantity]);
+        if($stockUpdate->rowCount()!==1)throw new RuntimeException('Warehouse stock changed during write-off.');
+        $movement=$db->prepare("INSERT INTO stock_movements (tenant_id,warehouse_id,product_id,actor_user_id,movement_type,quantity,reference_type,reference_id,reason) VALUES (?,?,?,?,'expiry_writeoff',?,'stock_batch',?,?)");
+        $movement->execute([$tenant['id'],$batch['warehouse_id'],$batch['product_id'],$session['id'],-$quantity,$batchId,$reason]);
+        app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'inventory.expired_stock.written_off','stock_batch',$batchId,[
+            'batch_number'=>$batch['batch_number'],'expiry_date'=>$batch['expiry_date'],'quantity'=>$quantity,'reason'=>$reason,
+            'warehouse_id'=>(int)$batch['warehouse_id'],'product_id'=>(int)$batch['product_id']
+        ]);
+        $db->commit();
+        app_json(['message'=>'امحای موجودی منقضی‌شده ثبت شد.','data'=>['batch_id'=>$batchId,'quantity'=>$quantity]]);
+    } catch(Throwable $e) {
+        if($db->inTransaction())$db->rollBack();
+        throw $e;
+    }
+}
