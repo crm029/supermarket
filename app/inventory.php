@@ -55,7 +55,7 @@ function app_inventory_stock_list(PDO $db, array $tenant): never {
          JOIN warehouses w ON w.tenant_id=sl.tenant_id AND w.id=sl.warehouse_id
          JOIN products p ON p.tenant_id=sl.tenant_id AND p.id=sl.product_id
          LEFT JOIN products parent ON parent.tenant_id=p.tenant_id AND parent.id=p.parent_product_id
-         WHERE '.implode(' AND ',$where).'
+         WHERE ".implode(' AND ',$where)."
          ORDER BY w.id,p.title LIMIT 500"
     );
     $stmt->execute($params);
