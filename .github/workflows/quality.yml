@@ -94,3 +94,29 @@ jobs:
 
       - name: Run permission scope tests
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/permissions.sql
+
+      - name: Set up PHP for HTTP API tests
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: pdo_mysql, mbstring
+          coverage: none
+
+      - name: Create public API smoke fixtures
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/api-smoke-fixtures.sql
+
+      - name: Run tenant-aware HTTP API smoke tests
+        env:
+          APP_ENV: testing
+          APP_KEY: ci-test-secret-with-more-than-thirty-two-characters
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: supermarket360
+          DB_USERNAME: root
+          DB_PASSWORD: root
+          MEDIA_BASE_URL: https://cdn.example.test/assets
+        run: |
+          set -euo pipefail
+          php -S 127.0.0.1:8099 tests/php-router.php >/tmp/supermarket-api.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          bash tests/api-smoke.sh
