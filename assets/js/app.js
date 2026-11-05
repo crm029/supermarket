@@ -91,7 +91,8 @@ function focusFreeCategory(category){
   const position=freeWorld&&freeWorld.shelfPositions[category];if(!position)return;
   freeWorld.camera.position.set(position.laneX,1.62,position.z+2.4);
   freeWorld.yaw=position.side === 1 ? 0.62 : -0.62;freeWorld.camera.rotation.set(0,freeWorld.yaw,0);
-  document.getElementById("freeMovementStatus").textContent="راهرو: "+(categoryNames[category]||"فروشگاه");
+  const aisleNumber=position.laneX< -1?1:(position.laneX>1?3:2);
+  document.getElementById("freeMovementStatus").textContent="راهروی "+["","۱","۲","۳"][aisleNumber]+" · "+(categoryNames[category]||"فروشگاه");
 }
 function startFreeMovement(){
   const view=document.getElementById("aisleScene"),controls=document.getElementById("freeMovementControls");
@@ -221,7 +222,7 @@ document.getElementById("nextAisle").addEventListener("click",()=>{if(publicScen
 function setMovementMode(mode){
   movementMode=mode;
   document.querySelectorAll("[data-mode]").forEach(button=>button.classList.toggle("active",button.dataset.mode===mode));
-  const hints={guided:"با انتخاب هر دسته، به قفسه مربوط هدایت می‌شی.",tour:"با کشیدن تصویر می‌تونی محیط واقعی فروشگاه رو تماشا کنی و نقاط راهنما رو انتخاب کنی.",free:"در محیط سه‌بعدی با کلیدهای جهت‌دار یا دکمه‌های لمسی بین قفسه‌ها حرکت کن."};
+  const hints={guided:"با انتخاب هر دسته، به قفسه مربوط هدایت می‌شی.",tour:"با کشیدن تصویر می‌تونی محیط واقعی فروشگاه رو تماشا کنی و نقاط راهنما رو انتخاب کنی.",free:"در سه راهروی متصل حرکت کن؛ برای رفتن به راهروی کناری از مسیر عرضی ابتدا یا انتهای فروشگاه عبور کن."};
   document.getElementById("modeHint").textContent=hints[mode];
   if(mode==="free")startFreeMovement();else stopFreeMovement();
 }
