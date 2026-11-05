@@ -9,7 +9,7 @@
 - Secrets only in environment/secret manager; never in Git or frontend JavaScript.
 - Payment callback verification server-to-server; idempotency and reconciliation.
 - Append-only wallet and stock ledgers with actor, timestamp and source references.
-- Audit sensitive changes; avoid logging OTPs, tokens, full payment secrets or unnecessary personal data.
+- Audit sensitive changes; production logs must not contain OTPs, tokens, full payment secrets or unnecessary personal data. The development-only OTP log driver is forbidden in production.
 - Upload validation: MIME/content inspection, size limits, randomized names, image re-encoding and non-executable storage.
 - Backups encrypted, access-controlled and restore-tested.
 - Dependency scanning, PHP static analysis, automated tests and security headers in CI.
