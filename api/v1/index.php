@@ -13,6 +13,7 @@ require_once dirname(__DIR__, 2) . '/app/inventory.php';
 require_once dirname(__DIR__, 2) . '/app/admin_scenes.php';
 require_once dirname(__DIR__, 2) . '/app/reports.php';
 require_once dirname(__DIR__, 2) . '/app/wallet.php';
+require_once dirname(__DIR__, 2) . '/app/customer_cart.php';
 
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
@@ -256,6 +257,17 @@ try {
         $session = app_auth_require($db, $tenant);
         app_auth_require_csrf($session);
         app_commerce_create_order($db, $tenant, $session);
+    }
+
+    if ($path === '/me/cart') {
+        $session = app_auth_require($db, $tenant);
+        if ($method === 'GET') app_customer_cart_read($db, $tenant, $session);
+        if ($method === 'PUT') {
+            app_auth_require_csrf($session);
+            app_customer_cart_replace($db, $tenant, $session);
+        }
+        header('Allow: GET, PUT');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
     }
 
     if ($path === '/me/wallet' && $method === 'GET') {
