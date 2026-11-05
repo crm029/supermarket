@@ -106,6 +106,7 @@ declare(strict_types=1);
     <label>روش دریافت
       <select id="fulfillmentSelect"><option value="delivery">ارسال رایگان با پیک فروشگاه</option><option value="pickup">تحویل حضوری</option></select>
     </label>
+    <label>نشانی ذخیره‌شده <select id="savedAddressSelect"><option value="new">ثبت نشانی جدید</option></select></label>
     <div id="deliveryAddressFields">
       <label>عنوان نشانی <input id="addressTitle" value="خانه" maxlength="80"></label>
       <label>تحویل‌گیرنده <input id="addressRecipient" autocomplete="name" maxlength="160"></label>
