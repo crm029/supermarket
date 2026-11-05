@@ -591,13 +591,27 @@ function app_admin_category_update(PDO $db, array $tenant, array $session, int $
 
     $db->beginTransaction();
     try {
-        $exists = $db->prepare('SELECT id FROM categories WHERE tenant_id = ? AND id = ? FOR UPDATE');
+        $exists = $db->prepare('SELECT id,slug FROM categories WHERE tenant_id = ? AND id = ? FOR UPDATE');
         $exists->execute([$tenant['id'], $id]);
-        if (!$exists->fetchColumn()) {
+        $current = $exists->fetch(PDO::FETCH_ASSOC);
+        if (!$current) {
             $db->rollBack();
             app_json(['error' => 'دسته‌بندی پیدا نشد.'], 404);
         }
         app_admin_validate_category_links($db, (int)$tenant['id'], $data, $id);
+        if (array_key_exists('slug',$data) && $data['slug'] !== (string)$current['slug']) {
+            $oldPath = '/category/'.rawurlencode((string)$current['slug']);
+            $newPath = '/category/'.rawurlencode((string)$data['slug']);
+            $refreshRedirects = $db->prepare(
+                'UPDATE seo_url_redirects SET target_path=? WHERE tenant_id=? AND target_path=?'
+            );
+            $refreshRedirects->execute([$newPath,$tenant['id'],$oldPath]);
+            $saveRedirect = $db->prepare(
+                'INSERT INTO seo_url_redirects (tenant_id,source_path,target_path) VALUES (?,?,?)
+                 ON DUPLICATE KEY UPDATE target_path=VALUES(target_path)'
+            );
+            $saveRedirect->execute([$tenant['id'],$oldPath,$newPath]);
+        }
         if (($data['is_active'] ?? 1) === 0) {
             $usage = $db->prepare(
                 "SELECT

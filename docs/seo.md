@@ -9,7 +9,7 @@ This platform is multi-tenant. SEO output must be generated for the verified hos
 - Production canonical URLs use HTTPS; local/testing environments retain HTTP when TLS is not enabled.
 - /robots.txt is served by robots.php and points to the tenant-aware /sitemap.xml.
 - /sitemap.xml is generated from the current tenant's active categories and active non-variant product pages.
-- /category/{slug} serves crawlable category pages with product links and CollectionPage / ItemList structured data.
+- /category/{slug} serves crawlable category pages with product links and CollectionPage / ItemList structured data; changing a category slug records a permanent redirect from its previous URL.
 - /product/{id}/{seo-slug} serves crawlable product detail pages; the slug is optional until the merchant assigns one.
 - The homepage includes a tenant-specific title, meta description, canonical, social metadata, GroceryStore structured data and server-rendered category links.
 - Optional merchant-verified street address, postal address, geo coordinates and opening hours are emitted as local-business structured data.

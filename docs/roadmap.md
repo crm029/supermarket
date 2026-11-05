@@ -98,6 +98,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] CI smoke tests for SEO pages, sitemap and robots output.
 - [x] Merchant-managed product/category SEO titles and descriptions in the seller dashboard.
 - [x] Merchant-managed unique product slugs, canonical slug URLs, legacy ID-only redirects and permanent redirects from outdated slug variants.
+- [x] Permanent tenant-scoped redirect history when a category slug changes, including redirect-chain updates.
 - [x] Merchant-configurable Search Console HTML verification and consent-gated GA4 with product/list, add-to-cart, begin-checkout and server-verified purchase events.
 - [ ] Verify the production domain in Search Console, submit the tenant sitemap and confirm live GA4 event receipt.
 - [ ] Production Core Web Vitals, image delivery, mobile and index coverage review.
