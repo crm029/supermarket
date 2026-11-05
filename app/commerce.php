@@ -378,7 +378,12 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
                 if ($updateStock->rowCount() !== 1) throw new RuntimeException('Stock changed during reservation.');
                 $reserve->execute([$tenant['id'], $orderId, $stock['warehouse_id'], $item['product_id'], $take, $reservationMinutes]);
                 $reservationId=(int)$db->lastInsertId();
-                app_stock_batch_reserve($db,(int)$tenant['id'],$reservationId,(int)$stock['warehouse_id'],(int)$item['product_id'],$take);
+                try {
+                    app_stock_batch_reserve($db,(int)$tenant['id'],$reservationId,(int)$stock['warehouse_id'],(int)$item['product_id'],$take);
+                } catch (RuntimeException $batchError) {
+                    $db->rollBack();
+                    app_json(['error'=>'موجودی قابل فروشِ دارای تاریخ انقضای معتبر کافی نیست.'],409);
+                }
                 $reservationMovement->execute([$tenant['id'],$stock['warehouse_id'],$item['product_id'],$session['id'],$take,$orderId]);
                 $remaining -= $take;
             }
