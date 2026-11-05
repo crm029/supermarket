@@ -172,3 +172,10 @@ Checkout intentionally does not mark an order paid. Reservations expire after 20
 - `DELETE /admin/media/{id}` requires `media.manage` and CSRF. The API refuses deletion while a product, category or store scene references the asset.
 - Unused media records are removed and a tenant-scoped cleanup job is queued. The worker only deletes files whose storage key matches the upload naming convention and whose resolved path remains inside the configured `MEDIA_STORAGE_PATH` tenant/type directory; symlinks and unsafe paths are refused.
 - Run `php scripts/cleanup-media.php` from cron/scheduler to retry pending file removals. The API also attempts immediate cleanup after queuing.
+
+
+## Delivery zones
+- `GET /admin/delivery-zones` lists tenant zones; `POST` creates; `PATCH /admin/delivery-zones/{id}` updates; `DELETE` deactivates. All routes require `store.settings.manage`, and mutations require CSRF.
+- A zone matches an address by exact province/city plus an optional postal-code prefix. The longest matching prefix wins; an empty prefix covers the whole city.
+- If no zones have ever been configured, checkout uses the store-wide delivery fee/minimum. Once any zone exists, delivery is allowed only for an active matching zone. Zone fee and minimum apply, with the store-wide minimum retained as a floor.
+- The selected zone ID is stored on the order for traceability; delivery fee and total are snapshotted at checkout.
