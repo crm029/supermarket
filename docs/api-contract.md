@@ -81,3 +81,10 @@ Base path: `/api/v1`. JSON responses use UTF-8 and Persian user-facing messages.
 - `GET /me/orders` — authenticated customer's latest 100 orders.
 
 Checkout intentionally does not mark an order paid. Reservations expire after 20 minutes; run `bin/expire-reservations.php` from cron/Task Scheduler every minute. A verified payment provider is still required before production payment/order completion. Delivery is currently free by the original store brief; delivery zones and configurable fees remain future work.
+
+
+## ZarinPal payment adapter
+- POST /payments/zarinpal/request — authenticated and CSRF-protected; creates a payment request for an owned pending-payment order, returns a gateway redirect URL, and reuses an existing active redirect where possible.
+- GET /payments/zarinpal/callback — provider callback; server-side verification is required before an order is marked paid. The amount sent to the provider is the stored Rial total, never a browser-supplied amount.
+- Configure ZARINPAL_MERCHANT_ID, ZARINPAL_SANDBOX, and APP_BASE_URL. The callback origin must be registered with the payment provider; production requires HTTPS. PHP cURL must be enabled.
+- Payment verification consumes active stock reservations and records stock movements. If payment arrives after reservations have expired, the payment is recorded and an audit event flags the order for manual fulfilment review.
