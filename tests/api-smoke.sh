@@ -284,7 +284,9 @@ RESERVED="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-nam
 ORDER_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
 if [[ "$RESERVED" != "0" || "$ORDER_STATUS" != "cancelled" ]]; then echo "Customer cancellation did not release stock or update order"; exit 1; fi
 
-request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"fulfillment":"pickup"}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+request POST /admin/pickup-slots 201 '{"title":"نوبت آزمون انقضای رزرو","starts_at":"2030-01-02T10:00","ends_at":"2030-01-02T11:00","capacity":1}' "$TOKEN" "$CSRF"
+EXPIRY_PICKUP_SLOT_ID="$(assert_json created-id)"
+request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"fulfillment":"pickup","pickup_slot_id":'$EXPIRY_PICKUP_SLOT_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 EXPIRING_ORDER_ID="$(assert_json order-created)"
 mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "UPDATE stock_reservations SET expires_at=DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 MINUTE) WHERE tenant_id=1 AND order_id=$EXPIRING_ORDER_ID AND status='active'"
 php bin/expire-reservations.php
