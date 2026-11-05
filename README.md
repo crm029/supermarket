@@ -29,7 +29,7 @@ Not implemented yet:
 - Wallet transactions and referral reward processing.
 - Super-admin/store/cashier/warehouse/courier panels.
 - Scene editor, linked photo-tour hotspots and the actual WebGL free-movement engine.
-- Runtime authentication/authorization policies, CSRF, commerce transaction services, broader security tests and deployment operations. The tenant-isolation migration is included but must pass CI and be applied to a backed-up database before use.
+- Runtime authentication/authorization policies, CSRF, commerce transaction services, broader security tests and deployment operations. The tenant-isolation migration and cross-tenant negative tests pass in MySQL 8 CI. Existing databases still require a backup and legacy-data review before applying it.
 
 ## Architecture principles
 
