@@ -72,6 +72,10 @@ assert_json() {
       }
       exit(1);
     }
+    if ($check === "variant-detail") {
+      if (($data["data"]["has_variants"] ?? null) !== true || count($data["data"]["variants"] ?? []) !== 2) exit(1);
+      exit(0);
+    }
     if ($check === "product-detail") {
       if (($data["data"]["in_stock"] ?? null) !== true ||
           ($data["data"]["image"]["url"] ?? null) !== "https://cdn.example.test/assets/products/ci%20milk%20bottle.jpg") exit(1);
