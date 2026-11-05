@@ -91,6 +91,7 @@ let cartSaveChain = Promise.resolve();
 let pendingCheckout = false;
 let pendingPaymentOrderId = null;
 let savedAddresses = [];
+let editingAddressId = null;
 let publicScenes = [];
 let currentScene = 0;
 let panoramaOffset = 50;
@@ -100,6 +101,22 @@ async function apiPost(path, body, withCsrf = false) {
   const headers = { Accept: "application/json", "Content-Type": "application/json" };
   if (withCsrf && csrfToken) headers["X-CSRF-Token"] = csrfToken;
   const response = await fetch(apiBase + path, { method: "POST", headers, credentials: "same-origin", body: JSON.stringify(body) });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "درخواست انجام نشد.");
+  return payload;
+}
+async function apiPatch(path, body, withCsrf = false) {
+  const headers = { Accept: "application/json", "Content-Type": "application/json" };
+  if (withCsrf && csrfToken) headers["X-CSRF-Token"] = csrfToken;
+  const response = await fetch(apiBase + path, { method: "PATCH", headers, credentials: "same-origin", body: JSON.stringify(body) });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "درخواست انجام نشد.");
+  return payload;
+}
+async function apiDelete(path, withCsrf = false) {
+  const headers = { Accept: "application/json" };
+  if (withCsrf && csrfToken) headers["X-CSRF-Token"] = csrfToken;
+  const response = await fetch(apiBase + path, { method: "DELETE", headers, credentials: "same-origin" });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.error || "درخواست انجام نشد.");
   return payload;
@@ -170,6 +187,83 @@ async function requestOtp() {
   await apiPost("auth/request-otp", { mobile });
   setFormMessage("accountMessage", "اگر حساب فعالی با این شماره وجود داشته باشد، کد تأیید ارسال می‌شود. در حالت توسعه کد در گزارش سرور ثبت می‌شود.", "success");
 }
+function renderSavedAddressManager() {
+  const manager = document.getElementById("savedAddressManager");
+  if (!manager) return;
+  manager.innerHTML = savedAddresses.map(a =>
+    '<article class="saved-address-row"><div><strong>'+escapeHTML(a.title)+'</strong><small>'+escapeHTML(a.recipient)+' · '+escapeHTML(a.mobile)+' · '+escapeHTML(a.city||"")+'</small><small>'+escapeHTML(a.address)+'</small></div><div class="saved-address-actions"><button type="button" class="text-button" data-address-edit="'+Number(a.id)+'">ویرایش</button><button type="button" class="text-button danger-text" data-address-delete="'+Number(a.id)+'">حذف</button></div></article>'
+  ).join("") || '<p class="address-empty">هنوز نشانی ذخیره‌شده‌ای ندارید.</p>';
+}
+function resetAddressEditor() {
+  editingAddressId = null;
+  document.getElementById("addressEditActions").hidden = true;
+  document.getElementById("deliveryAddressFields").hidden = document.getElementById("savedAddressSelect").value !== "new";
+}
+function fillAddressEditor(address) {
+  document.getElementById("addressTitle").value = address.title || "";
+  document.getElementById("addressRecipient").value = address.recipient || "";
+  document.getElementById("addressMobile").value = address.mobile || "";
+  document.getElementById("addressProvince").value = address.province || "";
+  document.getElementById("addressCity").value = address.city || "";
+  document.getElementById("addressText").value = address.address || "";
+  document.getElementById("addressPostal").value = address.postal_code || "";
+}
+function addressEditorPayload() {
+  return {
+    title:document.getElementById("addressTitle").value.trim(),
+    recipient:document.getElementById("addressRecipient").value.trim(),
+    mobile:document.getElementById("addressMobile").value.trim(),
+    province:document.getElementById("addressProvince").value.trim(),
+    city:document.getElementById("addressCity").value.trim(),
+    address:document.getElementById("addressText").value.trim(),
+    postal_code:document.getElementById("addressPostal").value.trim()
+  };
+}
+document.getElementById("savedAddressManager").addEventListener("click", async event => {
+  const edit = event.target.closest("[data-address-edit]");
+  const remove = event.target.closest("[data-address-delete]");
+  try {
+    if (edit) {
+      const id = Number(edit.dataset.addressEdit);
+      const address = savedAddresses.find(item => Number(item.id) === id);
+      if (!address) return;
+      editingAddressId = id;
+      document.getElementById("savedAddressSelect").value = String(id);
+      fillAddressEditor(address);
+      document.getElementById("deliveryAddressFields").hidden = false;
+      document.getElementById("addressEditActions").hidden = false;
+      return;
+    }
+    if (remove) {
+      const id = Number(remove.dataset.addressDelete);
+      if (!window.confirm("این نشانی از فهرست نشانی‌های فعال حذف شود؟")) return;
+      await apiDelete("me/addresses/"+id, true);
+      savedAddresses = await apiGet("me/addresses") || [];
+      renderSavedAddressManager();
+      const select = document.getElementById("savedAddressSelect");
+      select.innerHTML='<option value="new">ثبت نشانی جدید</option>'+savedAddresses.map(a=>'<option value="'+Number(a.id)+'">'+escapeHTML(a.title)+' — '+escapeHTML(a.city||"")+'، '+escapeHTML(a.address)+'</option>').join("");
+      if (savedAddresses.length) select.value=String(savedAddresses[0].id);
+      resetAddressEditor();
+      setFormMessage("checkoutMessage","نشانی حذف شد.","success");
+    }
+  } catch (error) { setFormMessage("checkoutMessage",error.message); }
+});
+document.getElementById("savedAddressSelect").addEventListener("change", () => resetAddressEditor());
+document.getElementById("saveAddressChanges").addEventListener("click", async () => {
+  if (!editingAddressId) return;
+  try {
+    await apiPatch("me/addresses/"+editingAddressId,addressEditorPayload(),true);
+    savedAddresses = await apiGet("me/addresses") || [];
+    renderSavedAddressManager();
+    const select = document.getElementById("savedAddressSelect");
+    select.innerHTML='<option value="new">ثبت نشانی جدید</option>'+savedAddresses.map(a=>'<option value="'+Number(a.id)+'">'+escapeHTML(a.title)+' — '+escapeHTML(a.city||"")+'، '+escapeHTML(a.address)+'</option>').join("");
+    select.value=String(editingAddressId);
+    resetAddressEditor();
+    setFormMessage("checkoutMessage","تغییرات نشانی ذخیره شد.","success");
+  } catch (error) { setFormMessage("checkoutMessage",error.message); }
+});
+document.getElementById("cancelAddressEdit").addEventListener("click", () => resetAddressEditor());
+
 async function startCheckout() {
   if (!cart.size) return;
   document.getElementById("cartDialog").close();
@@ -182,10 +276,12 @@ async function startCheckout() {
   document.getElementById("addressRecipient").value = currentUser.full_name || "";
   document.getElementById("addressMobile").value = currentUser.mobile || "";
   try { savedAddresses = await apiGet("me/addresses") || []; } catch (_) { savedAddresses = []; }
+  renderSavedAddressManager();
   const addressSelect=document.getElementById("savedAddressSelect");
   addressSelect.innerHTML='<option value="new">ثبت نشانی جدید</option>'+savedAddresses.map(a=>'<option value="'+Number(a.id)+'">'+escapeHTML(a.title)+' — '+escapeHTML(a.city||"")+'، '+escapeHTML(a.address)+'</option>').join("");
   if(savedAddresses.length){addressSelect.value=String(savedAddresses[0].id);document.getElementById("deliveryAddressFields").hidden=true;}
   else{addressSelect.value="new";document.getElementById("deliveryAddressFields").hidden=false;}
+  resetAddressEditor();
   document.getElementById("checkoutDialog").showModal();
 }
 
@@ -350,15 +446,7 @@ document.getElementById("placeOrderButton").addEventListener("click",async()=>{
       if(selectedAddress!=="new"){
         addressId=Number(selectedAddress);
       }else{
-      const address=await apiPost("me/addresses",{
-        title:document.getElementById("addressTitle").value.trim(),
-        recipient:document.getElementById("addressRecipient").value.trim(),
-        mobile:document.getElementById("addressMobile").value.trim(),
-        province:document.getElementById("addressProvince").value.trim(),
-        city:document.getElementById("addressCity").value.trim(),
-        address:document.getElementById("addressText").value.trim(),
-        postal_code:document.getElementById("addressPostal").value.trim()
-      },true);
+      const address=await apiPost("me/addresses",addressEditorPayload(),true);
       addressId=address.data.id;
       }
     }
