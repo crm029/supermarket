@@ -166,3 +166,9 @@ Checkout intentionally does not mark an order paid. Reservations expire after 20
 
 ## Advanced public product search
 `GET /products` supports `q` (title/SKU/barcode), `brand` (partial match), `category` (tenant category ID), `min_price` and `max_price` (IRR), `in_stock=1|0`, `sort=title_asc|price_asc|price_desc|newest`, `page`, and `per_page` (1–48). The response includes available quantity and `in_stock`; all filters are tenant-scoped and numeric ranges are validated server-side.
+
+
+## Safe media cleanup
+- `DELETE /admin/media/{id}` requires `media.manage` and CSRF. The API refuses deletion while a product, category or store scene references the asset.
+- Unused media records are removed and a tenant-scoped cleanup job is queued. The worker only deletes files whose storage key matches the upload naming convention and whose resolved path remains inside the configured `MEDIA_STORAGE_PATH` tenant/type directory; symlinks and unsafe paths are refused.
+- Run `php scripts/cleanup-media.php` from cron/scheduler to retry pending file removals. The API also attempts immediate cleanup after queuing.

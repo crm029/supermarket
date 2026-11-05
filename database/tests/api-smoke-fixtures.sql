@@ -11,6 +11,12 @@ VALUES
   (1,'product','products/ci milk bottle.jpg','تصویر تست شیر',600,600);
 SET @api_media_id = LAST_INSERT_ID();
 
+INSERT INTO media_assets
+  (tenant_id,media_type,storage_key,alt_text,width,height)
+VALUES
+  (1,'product','tenant-1/product/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg','تصویر بدون استفاده',320,320);
+SET @api_unused_media_id = LAST_INSERT_ID();
+
 INSERT INTO categories
   (tenant_id,title,slug,image_media_id,sort_order,is_active)
 VALUES

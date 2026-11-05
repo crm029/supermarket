@@ -112,6 +112,9 @@ jobs:
       - name: Test tenant barcode uniqueness and stock thresholds
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/barcode-stock.sql
 
+      - name: Apply media cleanup queue migration
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_05_media_cleanup_queue.sql
+
       - name: Test initial store owner bootstrap
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/bootstrap-store-owner.sql
 
@@ -134,8 +137,10 @@ jobs:
           DB_USERNAME: root
           DB_PASSWORD: root
           MEDIA_BASE_URL: https://cdn.example.test/assets
+          MEDIA_STORAGE_PATH: /tmp/supermarket-media
         run: |
           set -euo pipefail
+          mkdir -p /tmp/supermarket-media
           php -S 127.0.0.1:8099 tests/php-router.php >/tmp/supermarket-api.log 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true' EXIT
