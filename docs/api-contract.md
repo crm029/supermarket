@@ -186,3 +186,10 @@ Checkout intentionally does not mark an order paid. Reservations expire after 20
 - `GET /admin/pickup-slots` lists slots; `POST` creates a future slot; `DELETE /admin/pickup-slots/{id}` deactivates one. Seller routes require `store.settings.manage`; mutations require CSRF.
 - If no pickup slots have ever been configured, immediate pickup remains available. Once slots exist, checkout requires a selected active slot.
 - Checkout locks the selected slot row and checks capacity against paid/fulfilment orders plus pending-payment orders with unexpired stock reservations inside the same transaction. The selected slot is stored on the order. Cancellation/expiry releases capacity because cancelled orders and expired reservations no longer count.
+
+
+## Promotion coupons
+- `GET /admin/coupons` lists tenant coupons and active-use counts; `POST /admin/coupons` creates; `PATCH /admin/coupons/{id}` updates; `DELETE /admin/coupons/{id}` deactivates. Seller routes require `store.settings.manage`; mutations require CSRF.
+- Coupon codes are normalized to uppercase and unique per tenant. Percentage discounts use whole percentage points (1–100); fixed discounts and all minimum/cap amounts are stored in rial.
+- Checkout accepts optional `coupon_code`. The server locks the coupon row, checks active dates, minimum basket value, global usage and per-customer usage, then snapshots `coupon_id` and `discount_rial` on the order. Percentage caps are supported; discounts apply to merchandise subtotal, not delivery fees.
+- Pending-payment orders reserve a coupon use while their stock reservation is active. Paid/fulfilled/refunded orders consume a use. Customer cancellation or reservation expiry releases the use; historical redemption rows remain for audit.

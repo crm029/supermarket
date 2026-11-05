@@ -57,6 +57,7 @@ async function loadAll() {
     await loadSettings();
     await loadDeliveryZones();
     await loadAdminPickupSlots();
+    await loadCoupons();
     await loadStaff();
     document.getElementById("statProducts").textContent=new Intl.NumberFormat("fa-IR").format(products.filter(x=>Number(x.is_active)).length);
     document.getElementById("statCategories").textContent=new Intl.NumberFormat("fa-IR").format(categories.filter(x=>Number(x.is_active)).length);
@@ -142,6 +143,114 @@ document.getElementById("staffRows").addEventListener("click",async event=>{
 });
 let deliveryZones = [];
 let adminPickupSlots=[];
+let adminCoupons=[];
+function resetCouponForm(){
+  document.getElementById("couponForm").reset();
+  document.getElementById("couponId").value="";
+  document.getElementById("couponActive").checked=true;
+  document.getElementById("couponType").value="percentage";
+  document.getElementById("couponPerUserLimit").value="1";
+  document.getElementById("couponMinimum").value="0";
+  document.getElementById("couponFormTitle").textContent="ایجاد کد تخفیف";
+  document.getElementById("couponValueLabel").firstChild.textContent="درصد تخفیف";
+  document.getElementById("couponType").dispatchEvent(new Event("change"));
+}
+document.getElementById("couponType").addEventListener("change",()=>{
+  const fixed=document.getElementById("couponType").value==="fixed";
+  document.getElementById("couponValueLabel").firstChild.textContent=fixed?"مبلغ تخفیف (تومان)":"درصد تخفیف";
+  document.getElementById("couponValue").max=fixed?"100000000":"100";
+  document.getElementById("couponMaxDiscount").disabled=fixed;
+  if(fixed)document.getElementById("couponMaxDiscount").value="";
+});
+async function loadCoupons(){
+  try{
+    const result=await request("admin/coupons");adminCoupons=result.data||[];
+    document.getElementById("couponRows").innerHTML=adminCoupons.map(coupon=>{
+      const value=coupon.discount_type==="percentage"?Number(coupon.discount_value)+" درصد":money(Number(coupon.discount_value)/10);
+      const usage=coupon.usage_limit===null?"نامحدود":Number(coupon.used_count)+" از "+Number(coupon.usage_limit);
+      return '<article><div><strong dir="ltr">'+escapeText(coupon.code)+'</strong><small>'+escapeText(coupon.title)+' · '+value+'</small><small>استفاده: '+usage+' · سهمیه هر مشتری: '+Number(coupon.per_user_limit)+'</small><small>اعتبار: '+escapeText(coupon.starts_at_local)+' تا '+escapeText(coupon.ends_at_local)+'</small></div><span class="admin-status '+(coupon.is_active?"active":"inactive")+'">'+(coupon.is_active?"فعال":"غیرفعال")+'</span><button class="admin-row-action" data-edit-coupon="'+Number(coupon.id)+'">ویرایش</button>'+(coupon.is_active?'<button class="admin-row-action danger" data-disable-coupon="'+Number(coupon.id)+'">غیرفعال‌سازی</button>':"")+'</article>';
+    }).join("")||'<p>هنوز کد تخفیفی ثبت نشده است.</p>';
+  }catch(error){
+    document.getElementById("couponMessage").textContent=error.message;
+    document.getElementById("couponMessage").className="form-message error";
+  }
+}
+document.getElementById("reloadCoupons").addEventListener("click",loadCoupons);
+document.getElementById("cancelCouponEdit").addEventListener("click",resetCouponForm);
+document.getElementById("couponForm").addEventListener("submit",async event=>{
+  event.preventDefault();
+  const id=document.getElementById("couponId").value;
+  const type=document.getElementById("couponType").value;
+  const rawValue=Number(document.getElementById("couponValue").value);
+  const rawMax=document.getElementById("couponMaxDiscount").value.trim();
+  const rawMinimum=Number(document.getElementById("couponMinimum").value);
+  const rawUsage=document.getElementById("couponUsageLimit").value.trim();
+  const perUser=Number(document.getElementById("couponPerUserLimit").value);
+  const value=type==="fixed"?Math.round(rawValue*10):rawValue;
+  const maximum=rawMax===""?null:Math.round(Number(rawMax)*10);
+  const minimum=Math.round(rawMinimum*10);
+  if(!Number.isSafeInteger(value)||value<1||(type==="percentage"&&value>100)||
+     !Number.isSafeInteger(minimum)||minimum<0||
+     (maximum!==null&&(!Number.isSafeInteger(maximum)||maximum<1))||
+     (rawUsage!==""&&(!Number.isInteger(Number(rawUsage))||Number(rawUsage)<1))||
+     !Number.isInteger(perUser)||perUser<1||perUser>1000){
+    document.getElementById("couponMessage").textContent="مقادیر تخفیف، مبلغ سفارش و محدودیت استفاده را بررسی کنید.";
+    document.getElementById("couponMessage").className="form-message error";return;
+  }
+  const payload={
+    code:document.getElementById("couponCode").value.trim().toUpperCase(),
+    title:document.getElementById("couponTitle").value.trim(),
+    discount_type:type,discount_value:value,max_discount_rial:maximum,
+    minimum_order_rial:minimum,usage_limit:rawUsage===""?null:Number(rawUsage),
+    per_user_limit:perUser,starts_at:document.getElementById("couponStart").value,
+    ends_at:document.getElementById("couponEnd").value,
+    is_active:document.getElementById("couponActive").checked
+  };
+  try{
+    await request(id?"admin/coupons/"+id:"admin/coupons",{
+      method:id?"PATCH":"POST",csrf:true,body:JSON.stringify(payload)
+    });
+    resetCouponForm();await loadCoupons();
+    document.getElementById("couponMessage").textContent="کد تخفیف ذخیره شد.";
+    document.getElementById("couponMessage").className="form-message success";
+  }catch(error){
+    document.getElementById("couponMessage").textContent=error.message;
+    document.getElementById("couponMessage").className="form-message error";
+  }
+});
+document.getElementById("couponRows").addEventListener("click",async event=>{
+  const edit=event.target.closest("[data-edit-coupon]");
+  const disable=event.target.closest("[data-disable-coupon]");
+  if(edit){
+    const coupon=adminCoupons.find(item=>Number(item.id)===Number(edit.dataset.editCoupon));if(!coupon)return;
+    document.getElementById("couponId").value=coupon.id;
+    document.getElementById("couponCode").value=coupon.code;
+    document.getElementById("couponTitle").value=coupon.title;
+    document.getElementById("couponType").value=coupon.discount_type;
+    document.getElementById("couponValue").value=coupon.discount_type==="fixed"?Math.round(Number(coupon.discount_value)/10):Number(coupon.discount_value);
+    document.getElementById("couponMaxDiscount").value=coupon.max_discount_rial===null?"":Math.round(Number(coupon.max_discount_rial)/10);
+    document.getElementById("couponMinimum").value=Math.round(Number(coupon.minimum_order_rial)/10);
+    document.getElementById("couponUsageLimit").value=coupon.usage_limit??"";
+    document.getElementById("couponPerUserLimit").value=Number(coupon.per_user_limit);
+    document.getElementById("couponStart").value=coupon.starts_at_local;
+    document.getElementById("couponEnd").value=coupon.ends_at_local;
+    document.getElementById("couponActive").checked=Boolean(coupon.is_active);
+    document.getElementById("couponFormTitle").textContent="ویرایش کد تخفیف";
+    document.getElementById("couponType").dispatchEvent(new Event("change"));
+    document.getElementById("couponForm").scrollIntoView({behavior:"smooth"});
+  }
+  if(disable&&confirm("این کد تخفیف غیرفعال شود؟")){
+    try{
+      await request("admin/coupons/"+Number(disable.dataset.disableCoupon),{method:"DELETE",csrf:true});
+      await loadCoupons();
+      document.getElementById("couponMessage").textContent="کد تخفیف غیرفعال شد.";
+      document.getElementById("couponMessage").className="form-message success";
+    }catch(error){
+      document.getElementById("couponMessage").textContent=error.message;
+      document.getElementById("couponMessage").className="form-message error";
+    }
+  }
+});
 async function loadAdminPickupSlots(){
   try{
     const result=await request("admin/pickup-slots");
@@ -561,8 +670,9 @@ document.getElementById("orderRows").addEventListener("click",async e=>{
       const pickupTime=order.pickup_slot_starts_at_label?(order.pickup_slot_title+" · "+order.pickup_slot_starts_at_label+" تا "+order.pickup_slot_ends_at_label):"";
       const address=order.fulfillment==="delivery"?[order.delivery_recipient,order.delivery_mobile,order.province,order.city,order.delivery_address,order.postal_code].filter(Boolean).join(" · "):("تحویل حضوری"+(pickupTime?" · "+pickupTime:""));
       const box=document.getElementById("adminOrderDetail");
+      const couponInfo=Number(order.discount_rial)>0?'<p>کد تخفیف: '+escapeText(order.coupon_code||"—")+' · مبلغ تخفیف: '+money(Number(order.discount_rial)/10)+'</p>':"";
       box.hidden=false;
-      box.innerHTML='<h3>سفارش '+escapeText(order.order_number)+'</h3><p>مشتری: '+escapeText(order.customer_name)+' · '+escapeText(order.customer_mobile)+'</p><p>نشانی / روش دریافت: '+escapeText(address)+'</p><p>توضیحات: '+escapeText(order.customer_note||"—")+'</p>';
+      box.innerHTML='<h3>سفارش '+escapeText(order.order_number)+'</h3><p>مشتری: '+escapeText(order.customer_name)+' · '+escapeText(order.customer_mobile)+'</p><p>نشانی / روش دریافت: '+escapeText(address)+'</p>'+couponInfo+'<p>توضیحات: '+escapeText(order.customer_note||"—")+'</p>';
     }
     return;
   }

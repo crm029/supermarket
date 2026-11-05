@@ -314,18 +314,28 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
             $db->rollBack();
             app_json(['error' => 'حداقل مبلغ سفارش رعایت نشده است.'], 422);
         }
-        $orderTotalRial = (int)$quote['total_rial'] + $deliveryFeeRial;
+        $coupon = app_coupon_evaluate($db,$tenant,(int)$session['id'],(string)($body['coupon_code']??''),(int)$quote['subtotal_rial']);
+        if (isset($coupon['error'])) {
+            $db->rollBack();
+            app_json(['error'=>$coupon['error']],(int)($coupon['status']??422));
+        }
+        $discountRial = (int)$coupon['discount_rial'];
+        $orderTotalRial = (int)$quote['subtotal_rial'] - $discountRial + $deliveryFeeRial;
         $orderNumber = 'SM' . gmdate('ymdHis') . strtoupper(bin2hex(random_bytes(3)));
         $insertOrder = $db->prepare(
             "INSERT INTO orders
-             (tenant_id,user_id,address_id,delivery_zone_id,pickup_slot_id,order_number,status,fulfillment,subtotal_rial,discount_rial,delivery_fee_rial,total_rial,customer_note)
-             VALUES (?,?,?,?,?,?,'pending_payment',?,?,0,?,?,?)"
+             (tenant_id,user_id,address_id,delivery_zone_id,pickup_slot_id,coupon_id,order_number,status,fulfillment,subtotal_rial,discount_rial,delivery_fee_rial,total_rial,customer_note)
+             VALUES (?,?,?,?,?,?,?,'pending_payment',?,?,?,?,?,?)"
         );
         $insertOrder->execute([
-            $tenant['id'], $session['id'], $addressId, $deliveryZoneId, $pickupSlotId, $orderNumber, $fulfillment,
-            $quote['subtotal_rial'], $deliveryFeeRial, $orderTotalRial, $note === '' ? null : $note,
+            $tenant['id'], $session['id'], $addressId, $deliveryZoneId, $pickupSlotId, $coupon['coupon_id'], $orderNumber, $fulfillment,
+            $quote['subtotal_rial'], $discountRial, $deliveryFeeRial, $orderTotalRial, $note === '' ? null : $note,
         ]);
         $orderId = (int)$db->lastInsertId();
+        if ($coupon['coupon_id'] !== null) {
+            $redemption=$db->prepare('INSERT INTO coupon_redemptions (tenant_id,coupon_id,order_id,user_id,discount_rial) VALUES (?,?,?,?,?)');
+            $redemption->execute([$tenant['id'],$coupon['coupon_id'],$orderId,$session['id'],$discountRial]);
+        }
 
         $insertLine = $db->prepare(
             'INSERT INTO order_items (tenant_id,order_id,product_id,product_title_snapshot,unit_price_rial,quantity,line_total_rial)
@@ -373,7 +383,8 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
         app_json(['data' => [
             'id' => $orderId, 'order_number' => $orderNumber, 'status' => 'pending_payment',
             'fulfillment' => $fulfillment, 'items' => $quote['items'],
-            'subtotal_rial' => $quote['subtotal_rial'], 'delivery_fee_rial' => $deliveryFeeRial,
+            'subtotal_rial' => $quote['subtotal_rial'], 'discount_rial' => $discountRial,
+            'coupon_code' => $coupon['coupon_code'], 'delivery_fee_rial' => $deliveryFeeRial,
             'delivery_zone_id' => $deliveryZoneId, 'pickup_slot_id' => $pickupSlotId,
             'total_rial' => $orderTotalRial, 'reservation_expires_in_seconds' => $reservationMinutes * 60,
             'payment_required' => true,
@@ -387,10 +398,11 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
 function app_commerce_order_history(PDO $db, array $tenant, array $session): never {
     $stmt = $db->prepare(
         'SELECT o.id, o.order_number, o.status, o.fulfillment, o.subtotal_rial, o.discount_rial,
-                o.delivery_fee_rial, o.total_rial, o.created_at,
+                o.delivery_fee_rial, o.total_rial, o.created_at, cp.code AS coupon_code,
                 ps.title AS pickup_slot_title, ps.starts_at AS pickup_slot_starts_at, ps.ends_at AS pickup_slot_ends_at
          FROM orders o
          LEFT JOIN pickup_slots ps ON ps.tenant_id=o.tenant_id AND ps.id=o.pickup_slot_id
+         LEFT JOIN coupons cp ON cp.tenant_id=o.tenant_id AND cp.id=o.coupon_id
          WHERE o.tenant_id = ? AND o.user_id = ? ORDER BY o.id DESC LIMIT 100'
     );
     $stmt->execute([$tenant['id'], $session['id']]);
