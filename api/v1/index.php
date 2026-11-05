@@ -671,12 +671,22 @@ try {
         $productId = (int)$productMatch[1];
         $stmt = $db->prepare(
             "SELECT p.id, p.sku, p.barcode, p.title, p.brand, p.description,
-                    p.unit_label, p.price_rial, p.compare_at_rial, p.image_media_id,
+                    p.unit_label,
+                    CASE WHEN p.product_kind='variant_parent'
+                         THEN COALESCE((SELECT MIN(v.price_rial) FROM products v WHERE v.tenant_id=p.tenant_id AND v.parent_product_id=p.id AND v.product_kind='variant' AND v.is_active=1),0)
+                         ELSE p.price_rial END AS price_rial,
+                    p.compare_at_rial, p.image_media_id,
                     p.is_weighted, p.product_kind, c.id AS category_id, c.title AS category_title, c.slug AS category_slug,
                     (SELECT COALESCE(SUM(sl.on_hand - sl.reserved), 0)
                      FROM stock_levels sl
                      JOIN warehouses w ON w.id = sl.warehouse_id AND w.tenant_id = sl.tenant_id
-                     WHERE sl.tenant_id = p.tenant_id AND sl.product_id = p.id AND w.is_active = 1) AS available_quantity
+                     WHERE sl.tenant_id = p.tenant_id AND sl.product_id = p.id AND w.is_active = 1)
+                    + (SELECT COALESCE(SUM(vsl.on_hand-vsl.reserved),0)
+                       FROM products v
+                       JOIN stock_levels vsl ON vsl.tenant_id=v.tenant_id AND vsl.product_id=v.id
+                       JOIN warehouses vw ON vw.tenant_id=vsl.tenant_id AND vw.id=vsl.warehouse_id
+                       WHERE v.tenant_id=p.tenant_id AND v.parent_product_id=p.id AND v.product_kind='variant'
+                         AND v.is_active=1 AND vw.is_active=1) AS available_quantity
              FROM products p
              LEFT JOIN categories c
                ON c.tenant_id = p.tenant_id AND c.id = p.category_id AND c.is_active = 1
