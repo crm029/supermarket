@@ -147,9 +147,7 @@ async function loadAdminPickupSlots(){
     const result=await request("admin/pickup-slots");
     adminPickupSlots=result.data||[];
     document.getElementById("pickupSlotRows").innerHTML=adminPickupSlots.map(slot=>{
-      const start=new Date(slot.starts_at),end=new Date(slot.ends_at);
-      const fmt=value=>value.toLocaleString("fa-IR",{weekday:"short",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});
-      return '<article><div><strong>'+escapeText(slot.title)+'</strong><small>'+fmt(start)+' تا '+fmt(end)+'</small><small>ظرفیت: '+Number(slot.capacity)+' · وضعیت: '+(slot.is_active?"فعال":"غیرفعال")+'</small></div><span class="admin-status '+(slot.is_active?"active":"inactive")+'">'+(slot.is_active?"فعال":"غیرفعال")+'</span>'+(slot.is_active?'<button class="admin-row-action danger" data-disable-pickup-slot="'+Number(slot.id)+'">غیرفعال‌سازی</button>':"")+'</article>';
+      return '<article><div><strong>'+escapeText(slot.title)+'</strong><small>'+escapeText(slot.starts_at_label||slot.starts_at)+' تا '+escapeText(slot.ends_at_label||slot.ends_at)+'</small><small>ظرفیت: '+Number(slot.capacity)+' · وضعیت: '+(slot.is_active?"فعال":"غیرفعال")+'</small></div><span class="admin-status '+(slot.is_active?"active":"inactive")+'">'+(slot.is_active?"فعال":"غیرفعال")+'</span>'+(slot.is_active?'<button class="admin-row-action danger" data-disable-pickup-slot="'+Number(slot.id)+'">غیرفعال‌سازی</button>':"")+'</article>';
     }).join("")||'<p>هنوز بازه دریافت حضوری ثبت نشده است.</p>';
   }catch(error){
     document.getElementById("pickupSlotAdminMessage").textContent=error.message;
