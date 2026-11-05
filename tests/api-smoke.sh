@@ -86,6 +86,13 @@ for _ in $(seq 1 20); do
   sleep 1
 done
 
+subdirectory_status="$(curl --silent --output "$OUT" --write-out "%{http_code}" -H 'Host: localhost' "http://127.0.0.1:8099/supermarket/api/v1/store")"
+if [[ "$subdirectory_status" != "200" ]]; then
+  echo "API front controller failed under a subdirectory path: $subdirectory_status"
+  cat "$OUT"
+  exit 1
+fi
+
 request GET /categories 200
 assert_json category-image
 request GET /products 200
