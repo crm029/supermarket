@@ -179,3 +179,10 @@ Checkout intentionally does not mark an order paid. Reservations expire after 20
 - A zone matches an address by exact province/city plus an optional postal-code prefix. The longest matching prefix wins; an empty prefix covers the whole city.
 - If no zones have ever been configured, checkout uses the store-wide delivery fee/minimum. Once any zone exists, delivery is allowed only for an active matching zone. Zone fee and minimum apply, with the store-wide minimum retained as a floor.
 - The selected zone ID is stored on the order for traceability; delivery fee and total are snapshotted at checkout.
+
+
+## Scheduled pickup
+- `GET /pickup-slots` returns whether the tenant has configured slots and up to 100 active future slots with remaining capacity, using the store timezone.
+- `GET /admin/pickup-slots` lists slots; `POST` creates a future slot; `DELETE /admin/pickup-slots/{id}` deactivates one. Seller routes require `store.settings.manage`; mutations require CSRF.
+- If no pickup slots have ever been configured, immediate pickup remains available. Once slots exist, checkout requires a selected active slot.
+- Checkout locks the selected slot row and checks capacity against paid/fulfilment orders plus pending-payment orders with unexpired stock reservations inside the same transaction. The selected slot is stored on the order. Cancellation/expiry releases capacity because cancelled orders and expired reservations no longer count.
