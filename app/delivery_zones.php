@@ -76,6 +76,7 @@ function app_admin_delivery_zone_update(PDO $db, array $tenant, array $session, 
     $currentQuery->execute([$tenant['id'],$id]);
     $current=$currentQuery->fetch(PDO::FETCH_ASSOC);
     if(!$current)app_json(['error'=>'محدوده ارسال پیدا نشد.'],404);
+    $current['is_active']=(bool)$current['is_active'];
     $data=app_delivery_zone_payload(array_merge($current,$body));
     try {
         $stmt=$db->prepare(
