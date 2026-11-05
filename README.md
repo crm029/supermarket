@@ -17,7 +17,8 @@ This repository contains a visual PHP storefront prototype plus the first databa
 Implemented in this milestone:
 - Persian RTL responsive storefront demo with category navigation, product cards, search and local demo cart.
 - MySQL schema foundation for tenants/domains, users/roles, media, categories/products, virtual-store scenes/hotspots, multi-warehouse stock, stock movements/reservations, orders, payments, wallet ledger, referrals and audit logs.
-- Verified-host tenant resolver and read-only API routes for store profile, categories and product search.\n- Rate-limited OTP login endpoints, hashed one-time challenges, opaque database-backed sessions, HttpOnly cookies and CSRF-protected logout. The development SMS driver logs codes only to the local PHP error log; no production SMS provider is enabled.
+- Verified-host tenant resolver and read-only API routes for store profile, categories and product search.
+- Rate-limited OTP login endpoints, hashed one-time challenges, opaque database-backed sessions, HttpOnly cookies and CSRF-protected logout. The development SMS driver logs codes only to the local PHP error log; no production SMS provider is enabled.
 - Local sample tenant seed and API/setup documentation.
 - GitHub Actions PHP/JavaScript checks plus a MySQL 8 schema-migration and tenant-isolation integration job.
 - Additive tenant-isolation migration with composite foreign keys for tenant-owned relations and scope guards for role assignments and audit actors.
