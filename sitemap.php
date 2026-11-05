@@ -18,7 +18,6 @@ foreach (app_seo_category_list($seo) as $category) {
     $slug = rawurlencode((string)$category['slug']);
     $urls[] = [
         'loc' => app_seo_url($seo,'category/'.$slug),
-        'lastmod' => app_seo_lastmod($category['updated_at'] ?? null),
     ];
 }
 foreach (app_seo_product_list($seo) as $product) {
@@ -31,7 +30,8 @@ $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
 $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
 foreach ($urls as $url) {
     $xml .= '<url><loc>' . htmlspecialchars($url['loc'],ENT_XML1|ENT_QUOTES,'UTF-8') . '</loc>';
-    $xml .= '<lastmod>' . htmlspecialchars($url['lastmod'],ENT_XML1|ENT_QUOTES,'UTF-8') . '</lastmod></url>' . "\n";
+    if (!empty($url['lastmod'])) $xml .= '<lastmod>' . htmlspecialchars($url['lastmod'],ENT_XML1|ENT_QUOTES,'UTF-8') . '</lastmod>';
+    $xml .= '</url>' . "\n";
 }
 $xml .= '</urlset>';
 echo $xml;
