@@ -108,7 +108,7 @@ assert_json scene-hotspots
 
 request GET /admin/products 200 "" "$TOKEN"
 request GET /admin/categories 200 "" "$TOKEN"
-request GET /admin/products 403 "" "$UNPRIVILEGED_TOKEN"
+request GET /admin/products 403 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
 request POST /admin/products 419 '{"sku":"NO-CSRF-1","title":"نباید ثبت شود","price_rial":1000}' "$TOKEN"
 
 request POST /admin/products 201 "{\"sku\":\"API-CREATED-001\",\"title\":\"کالای ساخته‌شده با تست\",\"price_rial\":120000,\"category_id\":$CATEGORY_ID,\"unit_label\":\"عدد\",\"is_weighted\":false,\"is_active\":true}" "$TOKEN" "$CSRF"
