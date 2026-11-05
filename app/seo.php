@@ -16,12 +16,12 @@ function app_seo_context(): ?array {
         $db = app_db();
         $stmt = $db->prepare(
             "SELECT t.id,t.name,t.slug,t.timezone,t.currency,d.host AS request_host,
-                    COALESCE(primary_domain.host,d.host) AS canonical_host
+                    COALESCE((SELECT primary_domain.host FROM tenant_domains primary_domain
+                              WHERE primary_domain.tenant_id=t.id AND primary_domain.is_primary=1
+                                AND primary_domain.verified_at IS NOT NULL
+                              ORDER BY primary_domain.id LIMIT 1),d.host) AS canonical_host
              FROM tenant_domains d
              JOIN tenants t ON t.id=d.tenant_id
-             LEFT JOIN tenant_domains primary_domain
-               ON primary_domain.tenant_id=t.id AND primary_domain.is_primary=1
-              AND primary_domain.verified_at IS NOT NULL
              WHERE d.host=? AND d.verified_at IS NOT NULL AND t.status='active'
              LIMIT 1"
         );
