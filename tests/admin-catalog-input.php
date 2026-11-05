@@ -32,4 +32,9 @@ if ($patch !== ['price_rial' => 140000]) {
     throw new RuntimeException('Partial product update payload failed.');
 }
 
+$thresholdPatch = app_admin_product_payload(['low_stock_threshold' => '0'], true);
+if ($thresholdPatch !== ['low_stock_threshold' => 0]) {
+    throw new RuntimeException('Low stock threshold patch normalization failed.');
+}
+
 echo "Admin catalog input checks passed.\n";
