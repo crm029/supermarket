@@ -27,7 +27,7 @@ Implemented and covered by repository tests:
 
 Still in progress:
 - Platform super-admin authorization and tenant/domain provisioning.
-- Product variants and variant-level stock/pricing, plus supplier purchase orders, stock returns and batch/expiry workflows.
+- Supplier purchase orders, stock returns and batch/expiry workflows.
 - Wallet spending, refunds/reversals, advanced referral fraud controls and reward policy approval for each merchant.
 - Cashier/picker/courier assignment, courier tracking, notifications, configurable stock alerts and report exports.
 - Real-store photography/onboarding and responsive image delivery.
