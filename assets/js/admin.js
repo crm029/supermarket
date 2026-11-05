@@ -3,6 +3,8 @@ const apiBase = new URL("api/v1/", document.baseURI).toString();
 let csrfToken = "";
 let products = [];
 let categories = [];
+let activeVariantParent = null;
+let adminVariants = [];
 let orders = [];
 let warehouses = [];
 let stockRows = [];
@@ -557,10 +559,17 @@ function renderOrders() {
 }
 function renderProducts() {
   const query=document.getElementById("productSearch").value.trim().toLocaleLowerCase();
-  const rows=products.filter(p=>!query||String(p.title+" "+p.sku).toLocaleLowerCase().includes(query));
-  document.getElementById("productRows").innerHTML=rows.map(p=>
-    '<tr><td><strong>'+escapeText(p.title)+'</strong><small>'+escapeText(p.brand||"")+'</small></td><td>'+escapeText(p.sku)+'<small>'+escapeText(p.barcode||"بدون بارکد")+'</small></td><td>'+money(Number(p.price_rial)/10)+'</td><td><span class="admin-status '+(Number(p.is_active)?"active":"inactive")+'">'+(Number(p.is_active)?"فعال":"غیرفعال")+'</span></td><td><button class="admin-row-action" data-edit-product="'+Number(p.id)+'">ویرایش</button>'+(Number(p.is_active)?'<button class="admin-row-action danger" data-disable-product="'+Number(p.id)+'">غیرفعال‌سازی</button>':"")+'</td></tr>'
-  ).join("")||'<tr><td colspan="5">محصولی پیدا نشد.</td></tr>';
+  const rows=products.filter(p=>!query||String(p.title+" "+p.parent_title+" "+p.variant_label+" "+p.sku).toLocaleLowerCase().includes(query));
+  document.getElementById("productRows").innerHTML=rows.map(p=>{
+    const isVariant=p.product_kind==="variant";
+    const isParent=p.product_kind==="variant_parent";
+    const title=isVariant?(p.parent_title||p.title)+" · "+(p.variant_label||"تنوع"):p.title;
+    const price=isParent&&Number(p.price_rial)>0?"از "+money(Number(p.price_rial)/10):money(Number(p.price_rial)/10);
+    const actions=isParent?'<button class="admin-row-action" data-manage-variants="'+Number(p.id)+'">مدیریت تنوع‌ها</button><button class="admin-row-action" data-edit-product="'+Number(p.id)+'">ویرایش</button>':
+      (isVariant?'<span class="admin-status">تنوع</span>':'<button class="admin-row-action" data-edit-product="'+Number(p.id)+'">ویرایش</button>')+
+      (Number(p.is_active)?'<button class="admin-row-action danger" data-disable-product="'+Number(p.id)+'">غیرفعال‌سازی</button>':"");
+    return '<tr><td><strong>'+escapeText(title)+'</strong><small>'+escapeText(p.brand||"")+'</small></td><td>'+escapeText(p.sku)+'<small>'+escapeText(p.barcode||"بدون بارکد")+'</small></td><td>'+price+'</td><td><span class="admin-status '+(Number(p.is_active)?"active":"inactive")+'">'+(Number(p.is_active)?"فعال":"غیرفعال")+'</span></td><td>'+actions+'</td></tr>';
+  }).join("")||'<tr><td colspan="5">محصولی پیدا نشد.</td></tr>';
 }
 function renderCategories() {
   document.getElementById("productCategory").innerHTML='<option value="">بدون دسته‌بندی</option>'+categories.filter(c=>Number(c.is_active)).map(c=>'<option value="'+Number(c.id)+'">'+escapeText(c.title)+'</option>').join("");
@@ -570,12 +579,24 @@ function escapeText(value) {
   return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 function money(value) {return new Intl.NumberFormat("fa-IR").format(Math.round(value||0))+" تومان";}
+function syncProductKindFields(){
+  const parent=document.getElementById("productKind").value==="variant_parent";
+  const price=document.getElementById("productPrice"),barcode=document.getElementById("productBarcode"),unit=document.getElementById("productUnit");
+  price.disabled=parent;price.required=!parent;if(parent)price.value="0";
+  barcode.disabled=parent;if(parent)barcode.value="";
+  if(parent)unit.value="گزینه‌ها";
+  unit.disabled=parent;
+}
+document.getElementById("productKind").addEventListener("change",syncProductKindFields);
 function resetProductForm() {
   document.getElementById("productForm").reset();
   document.getElementById("productId").value="";
   document.getElementById("productSku").readOnly=false;
+  document.getElementById("productKind").disabled=false;
+  document.getElementById("productKind").value="simple";
   document.getElementById("productFormTitle").textContent="افزودن محصول";
   document.getElementById("productForm").hidden=true;
+  syncProductKindFields();
 }
 document.getElementById("newProductButton").addEventListener("click",()=>{
   resetProductForm();document.getElementById("productForm").hidden=false;document.getElementById("productForm").scrollIntoView({behavior:"smooth"});
@@ -584,8 +605,10 @@ document.getElementById("cancelProductForm").addEventListener("click",resetProdu
 document.getElementById("productSearch").addEventListener("input",renderProducts);
 document.getElementById("reloadProducts").addEventListener("click",loadAll);
 document.getElementById("productRows").addEventListener("click",async e=>{
+  const manage=e.target.closest("[data-manage-variants]");
   const edit=e.target.closest("[data-edit-product]");
   const disable=e.target.closest("[data-disable-product]");
+  if(manage){const parent=products.find(item=>Number(item.id)===Number(manage.dataset.manageVariants));if(parent)openVariantManager(parent);return;}
   if(edit){
     const p=products.find(x=>Number(x.id)===Number(edit.dataset.editProduct));if(!p)return;
     document.getElementById("productId").value=p.id;
@@ -593,10 +616,13 @@ document.getElementById("productRows").addEventListener("click",async e=>{
     document.getElementById("productBarcode").value=p.barcode||"";
     document.getElementById("productSku").readOnly=true;
     document.getElementById("productTitle").value=p.title;
-    document.getElementById("productPrice").value=Math.round(Number(p.price_rial)/10);
+    document.getElementById("productKind").value=p.product_kind==="variant_parent"?"variant_parent":"simple";
+    document.getElementById("productKind").disabled=true;
+    document.getElementById("productPrice").value=p.product_kind==="variant_parent"?"0":Math.round(Number(p.price_rial)/10);
     document.getElementById("productCategory").value=p.category_id||"";
     document.getElementById("productBrand").value=p.brand||"";
-    document.getElementById("productUnit").value=p.unit_label||"عدد";
+    document.getElementById("productUnit").value=p.product_kind==="variant_parent"?"گزینه‌ها":(p.unit_label||"عدد");
+    syncProductKindFields();
     document.getElementById("productLowStockThreshold").value=Number(p.low_stock_threshold??5);
     document.getElementById("productDescription").value=p.description||"";
     document.getElementById("productMediaId").value=p.media_id||"";
@@ -617,7 +643,8 @@ document.getElementById("productForm").addEventListener("submit",async e=>{
     barcode:document.getElementById("productBarcode").value.trim(),
     low_stock_threshold:Number(document.getElementById("productLowStockThreshold").value),
     title:document.getElementById("productTitle").value.trim(),
-    price_rial:Math.round(Number(document.getElementById("productPrice").value)*10),
+    product_kind:document.getElementById("productKind").value,
+    price_rial:document.getElementById("productKind").value==="variant_parent"?0:Math.round(Number(document.getElementById("productPrice").value)*10),
     category_id:document.getElementById("productCategory").value||null,
     brand:document.getElementById("productBrand").value.trim(),
     unit_label:document.getElementById("productUnit").value.trim()||"عدد",
