@@ -23,6 +23,30 @@ function app_admin_supplier_return_list(PDO $db,array $tenant): never {
     app_json(['data'=>$stmt->fetchAll(PDO::FETCH_ASSOC)]);
 }
 
+function app_admin_supplier_return_eligible_lines(PDO $db,array $tenant): never {
+    $supplierId=app_inventory_positive_int($_GET['supplier_id']??null,'شناسه تأمین‌کننده');
+    $warehouseId=app_inventory_positive_int($_GET['warehouse_id']??null,'شناسه انبار');
+    $stmt=$db->prepare(
+        "SELECT pri.id AS receipt_item_id,pri.product_id,pri.quantity AS received_quantity,
+                pri.unit_cost_rial,po.order_number,por.receipt_number,p.sku,
+                CASE WHEN p.product_kind='variant' THEN CONCAT(parent.title,' · ',p.variant_label) ELSE p.title END AS product_title,
+                pri.quantity-COALESCE((
+                    SELECT SUM(sri.quantity) FROM supplier_return_items sri
+                    WHERE sri.tenant_id=pri.tenant_id AND sri.receipt_item_id=pri.id
+                ),0) AS remaining_quantity
+         FROM purchase_order_receipt_items pri
+         JOIN purchase_order_receipts por ON por.tenant_id=pri.tenant_id AND por.id=pri.receipt_id
+         JOIN purchase_orders po ON po.tenant_id=por.tenant_id AND po.id=por.purchase_order_id
+         JOIN products p ON p.tenant_id=pri.tenant_id AND p.id=pri.product_id
+         LEFT JOIN products parent ON parent.tenant_id=p.tenant_id AND parent.id=p.parent_product_id
+         WHERE pri.tenant_id=? AND po.supplier_id=? AND por.warehouse_id=?
+         HAVING remaining_quantity>0
+         ORDER BY por.created_at DESC,pri.id DESC LIMIT 300"
+    );
+    $stmt->execute([$tenant['id'],$supplierId,$warehouseId]);
+    app_json(['data'=>$stmt->fetchAll(PDO::FETCH_ASSOC)]);
+}
+
 function app_admin_supplier_return_create(PDO $db,array $tenant,array $session): never {
     $body=app_auth_request_body();
     $warehouseId=app_inventory_positive_int($body['warehouse_id']??null,'شناسه انبار');
