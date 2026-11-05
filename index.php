@@ -20,6 +20,7 @@ declare(strict_types=1);
   <nav class="top-actions" aria-label="دسترسی سریع">
     <button class="icon-button" id="accountButton" type="button">ورود / عضویت</button>
     <button class="icon-button" id="ordersButton" type="button" hidden>سفارش‌های من</button>
+    <button class="icon-button" id="walletButton" type="button" hidden>کیف پول</button>
     <button class="cart-button" id="cartButton" type="button">سبد خرید <b id="cartCount">۰</b></button>
   </nav>
 </header>
@@ -87,6 +88,14 @@ declare(strict_types=1);
   <div id="customerOrdersList"></div>
   <div id="customerOrderDetail"></div>
 </dialog>
+<dialog id="walletDialog" class="cart-dialog">
+  <button class="dialog-close" data-close="walletDialog" aria-label="بستن">×</button>
+  <small class="eyebrow">اعتبار و دعوت دوستان</small><h2>کیف پول من</h2>
+  <div class="cart-total"><span>موجودی قابل استفاده</span><strong id="walletBalance">در حال بارگذاری...</strong></div>
+  <h3>تراکنش‌های اخیر</h3><div id="walletEntries"><p class="empty-cart">در حال بارگذاری...</p></div>
+  <h3>وضعیت دعوت‌ها</h3><div id="walletReferrals"><p class="empty-cart">در حال بارگذاری...</p></div>
+</dialog>
+
 <dialog id="accountDialog" class="product-dialog">
   <button class="dialog-close" data-close="accountDialog" aria-label="بستن">×</button>
   <p class="eyebrow">حساب کاربری سوپرمارکت ۳۶۰</p>
