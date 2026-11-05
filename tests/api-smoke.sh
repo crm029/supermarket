@@ -119,6 +119,7 @@ assert_json scene-hotspots
 
 request GET /admin/products 200 "" "$TOKEN"
 request GET /admin/categories 200 "" "$TOKEN"
+request GET /admin/orders 200 "" "$TOKEN"
 request GET /admin/products 403 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
 request POST /admin/products 419 '{"sku":"NO-CSRF-1","title":"نباید ثبت شود","price_rial":1000}' "$TOKEN"
 
@@ -144,5 +145,9 @@ request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}]
 ORDER_ID="$(assert_json order-created)"
 RESERVED="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT reserved FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID LIMIT 1")"
 if [[ "$RESERVED" != "2" ]]; then echo "Expected 2 reserved units, received $RESERVED"; exit 1; fi
+request POST "/me/orders/$ORDER_ID/cancel" 200 "" "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+RESERVED="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT reserved FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID LIMIT 1")"
+ORDER_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
+if [[ "$RESERVED" != "0" || "$ORDER_STATUS" != "cancelled" ]]; then echo "Customer cancellation did not release stock or update order"; exit 1; fi
 
 echo "HTTP API and commerce smoke tests passed."
