@@ -118,7 +118,7 @@ declare(strict_types=1);
         <select id="stockBatchDays" aria-label="بازه هشدار"><option value="7">۷ روز آینده</option><option value="15">۱۵ روز آینده</option><option value="30" selected>۳۰ روز آینده</option><option value="60">۶۰ روز آینده</option><option value="90">۹۰ روز آینده</option></select>
       </div>
       <div id="stockExpirySummary" class="admin-welcome" aria-live="polite">در حال دریافت گزارش انقضا...</div>
-      <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>کالا</th><th>انبار</th><th>شماره بچ</th><th>تاریخ انقضا</th><th>موجودی</th><th>رزروشده</th><th>قابل استفاده</th><th>وضعیت</th></tr></thead><tbody id="stockBatchRows"><tr><td colspan="8">در حال بارگذاری...</td></tr></tbody></table></div>
+      <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>کالا</th><th>انبار</th><th>شماره بچ</th><th>تاریخ انقضا</th><th>موجودی</th><th>رزروشده</th><th>قابل استفاده</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody id="stockBatchRows"><tr><td colspan="9">در حال بارگذاری...</td></tr></tbody></table></div>
     </section>
 
     <section class="admin-panel" id="panel-purchasing">
