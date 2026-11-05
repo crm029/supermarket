@@ -13,8 +13,7 @@ function app_stock_batch_add(PDO $db, int $tenantId, int $warehouseId, int $prod
     if ($quantity < 1) throw new InvalidArgumentException('Batch quantity must be positive.');
     $stmt = $db->prepare(
         'INSERT INTO stock_batches (tenant_id,warehouse_id,product_id,receipt_item_id,batch_number,expiry_date,received_quantity,on_hand,reserved,unit_cost_rial)
-         VALUES (?,?,?,?,?,?,?, ?,0,?)
-         ON DUPLICATE KEY UPDATE received_quantity=received_quantity+VALUES(received_quantity),on_hand=on_hand+VALUES(on_hand)'
+         VALUES (?,?,?,?,?,?,?, ?,0,?)'
     );
     $stmt->execute([$tenantId,$warehouseId,$productId,$receiptItemId,$batchNumber,$expiryDate,$quantity,$quantity,$unitCostRial]);
 }
