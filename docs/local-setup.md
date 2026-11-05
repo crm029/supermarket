@@ -15,7 +15,7 @@ The root `index.php` is a visual demo and can be opened without a database. The 
 9. For local OTP testing, set `APP_ENV=local` and `SMS_PROVIDER=log`. The one-time code is written only to the PHP error log. This development driver is forbidden in production.
 10. Route `/api/v1/*` to `api/v1/index.php` using the web server rewrite configuration, or call the PHP entry point directly while developing.
 
-## Authentication endpoints
+## Create a local test account\nThe sample seed contains no customer accounts. In a disposable local database, create one active test user with phpMyAdmin:\n\n```sql\nINSERT INTO users (tenant_id, full_name, mobile, referral_code, status, mobile_verified_at)\nVALUES (1, 'کاربر آزمایشی', '09123456789', 'LOCALTEST01', 'active', UTC_TIMESTAMP());\n```\n\n## Authentication endpoints
 - `POST /api/v1/auth/request-otp` with JSON `{"mobile":"09123456789"}`
 - `POST /api/v1/auth/verify-otp` with JSON `{"mobile":"09123456789","code":"123456"}`
 - `GET /api/v1/me` with the session cookie
