@@ -19,6 +19,7 @@ declare(strict_types=1);
   <label class="search"><span>⌕</span><input id="searchInput" type="search" placeholder="دنبال چی می‌گردی؟ مثلاً شیر، برنج، چیپس..." aria-label="جست‌وجوی محصولات"></label>
   <nav class="top-actions" aria-label="دسترسی سریع">
     <button class="icon-button" id="accountButton" type="button">ورود / عضویت</button>
+    <button class="icon-button" id="ordersButton" type="button" hidden>سفارش‌های من</button>
     <button class="cart-button" id="cartButton" type="button">سبد خرید <b id="cartCount">۰</b></button>
   </nav>
 </header>
@@ -80,6 +81,12 @@ declare(strict_types=1);
 
 <dialog id="productDialog" class="product-dialog"><button class="dialog-close" data-close="productDialog" aria-label="بستن">×</button><div id="productDetail"></div></dialog>
 <dialog id="cartDialog" class="cart-dialog"><button class="dialog-close" data-close="cartDialog" aria-label="بستن">×</button><small class="eyebrow">انتخاب‌های خوشمزه‌ات</small><h2>سبد خرید</h2><div id="cartItems"></div><div class="cart-total"><span>جمع کل</span><strong id="cartTotal">۰ تومان</strong></div><button class="primary-button full" id="checkoutButton" type="button">ادامه و ثبت سفارش</button><p class="demo-note">این نسخه نمایشی است؛ پرداخت و ثبت سفارش در مراحل بعدی فعال می‌شود.</p></dialog>
+<dialog id="ordersDialog" class="cart-dialog">
+  <button class="dialog-close" data-close="ordersDialog" aria-label="بستن">×</button>
+  <small class="eyebrow">خریدهای قبلی</small><h2>سفارش‌های من</h2>
+  <div id="customerOrdersList"></div>
+  <div id="customerOrderDetail"></div>
+</dialog>
 <dialog id="accountDialog" class="product-dialog">
   <button class="dialog-close" data-close="accountDialog" aria-label="بستن">×</button>
   <p class="eyebrow">حساب کاربری سوپرمارکت ۳۶۰</p>
