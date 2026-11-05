@@ -53,7 +53,7 @@ Base path: `/api/v1`. JSON responses use UTF-8 and Persian user-facing messages.
 - OTP codes are stored only as keyed hashes, expire after five minutes, and allow at most five verification attempts.
 - Request and verification limits are tenant-scoped and bucketed by mobile/IP.
 - Session tokens are random opaque values; only SHA-256 hashes are stored. Cookies are HttpOnly and SameSite=Lax, and Secure in HTTPS production.
-- The included `SMS_PROVIDER=log` adapter is development-only. Production OTP delivery remains disabled until a real provider adapter and credentials are configured.
+- The Kavenegar Verify Lookup adapter is available when `SMS_PROVIDER=kavenegar`, the approved template and the private API key are configured. The included `SMS_PROVIDER=log` adapter is development-only and forbidden in production.
 
 ## Authentication implementation notes
 - OTP codes are stored only as keyed hashes, expire after five minutes, and allow at most five verification attempts.
@@ -70,7 +70,7 @@ Base path: `/api/v1`. JSON responses use UTF-8 and Persian user-facing messages.
 ## Public media
 - Public image URLs are built only from the configured `MEDIA_BASE_URL` and a tenant-owned media record. Storage keys are never returned to clients.
 - Production media URLs must use HTTPS. Unsafe path segments are rejected.
-- Media upload and editing are not implemented yet; assets must already exist in the tenant media table and storage.
+- Authenticated tenant-scoped media upload and scene/hotspot authoring are implemented. Configure storage outside the public PHP document root and serve only validated static image files.
 
 
 ## Commerce endpoints (implemented)
@@ -115,3 +115,9 @@ Checkout intentionally does not mark an order paid. Reservations expire after 20
 
 ## Reporting
 - GET /admin/reports/overview — tenant-scoped 30-day revenue/order totals, pending-payment count, low-stock count and seven-day sales series; requires reports.read.
+
+
+## Customer wallet
+- `GET /me/wallet` — authenticated tenant-scoped wallet summary with balance, the latest 50 append-only ledger entries and referral reward status. No client-facing balance mutation endpoint is exposed.
+- Wallet balance is derived from ledger entries; credits and reversals add value, debits subtract value. Ledger entries are never edited or deleted by application routes.
+- Referral reward is credited only after the referred customer's first server-verified paid order. Configure `REFERRAL_REWARD_BASIS_POINTS` (100 = 1%); zero disables rewards by default. Credits use a unique order idempotency key and are committed in the same database transaction as payment finalization.

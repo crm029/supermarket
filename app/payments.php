@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/wallet.php';
 
 function app_payment_config(): array {
     $merchant = trim((string)(app_env('ZARINPAL_MERCHANT_ID') ?? ''));
@@ -270,6 +271,9 @@ function app_payment_callback(PDO $db, array $tenant): never {
         $verified->execute([$reference,$attempt['id']]);
         $paid = $db->prepare("UPDATE orders SET status = 'paid' WHERE tenant_id = ? AND id = ? AND status IN ('pending_payment','cancelled')");
         $paid->execute([$tenant['id'],$order['id']]);
+        if ($paid->rowCount() === 1) {
+            app_wallet_process_referral_reward($db, (int)$tenant['id'], (int)$order['id'], (int)$order['user_id'], (int)$attempt['amount_rial']);
+        }
         $db->commit();
         app_payment_redirect_result('success', (int)$order['id']);
     } catch (Throwable $e) {

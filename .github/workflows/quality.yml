@@ -37,6 +37,7 @@ jobs:
           php tests/media-url.php
           php tests/commerce-input.php
           php tests/payment-config.php
+          php tests/wallet-input.php
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -127,3 +128,4 @@ jobs:
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true' EXIT
           bash tests/api-smoke.sh
+          REFERRAL_REWARD_BASIS_POINTS=500 php tests/wallet-referral-integration.php

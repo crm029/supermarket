@@ -1,7 +1,7 @@
 # Local setup (XAMPP)
 
 ## Current status
-The root `index.php` is a visual demo and can be opened without a database. The API requires PHP 8.1+ with PDO MySQL and MySQL/MariaDB. Public catalog routes are read-only; protected admin product management supports list, create, update and soft-deactivate. Customer OTP login is available for existing active users. Registration, checkout and payments are not implemented.
+The root `index.php` provides a local storefront preview; live tenant catalogue, customer accounts, checkout, wallet and seller operations require the API and database. The API requires PHP 8.2+ with PDO MySQL, mbstring, cURL and fileinfo. Customer registration/login uses OTP; checkout creates pending orders and stock reservations; payment completion requires server-side ZarinPal verification. The local `SMS_PROVIDER=log` driver is development-only.
 
 ## Prepare database
 1. Create a database named `supermarket360` with utf8mb4.
@@ -70,7 +70,7 @@ OTP login works only for an existing user whose status is `active`. The sample s
 The API resolves the tenant by the verified request host. A tenant identifier supplied by a browser is intentionally not accepted.
 
 ## Not production-ready yet
-Before real customers or money are involved, implement a production SMS adapter, registration and account recovery, role-based authorization policies, CSRF on all write routes, transactional checkout, stock reservation, payment-provider verification, broader automated tests, HTTPS, backups and monitoring. Never expose database errors to clients.
+Before real customers or money are involved, configure and test the merchant's live SMS and ZarinPal credentials, HTTPS domain, least-privilege database user, media storage, scheduled reservation worker, backups and monitoring. Complete sandbox and low-value live payment acceptance, refund/reconciliation procedures, security review and desktop/mobile acceptance tests. Platform super-admin and role-management interfaces, wallet spending/refunds and optional WebGL free movement remain unfinished. Never expose database errors or provider secrets to clients.
 
 
 ## Reservation expiry worker
@@ -104,3 +104,11 @@ Configure MEDIA_STORAGE_PATH as an absolute writable directory outside the publi
 ## Initial store owner
 
 After applying schema.sql and every migration, edit database/bootstrap-store-owner.sql with the tenant ID, owner's name and Iranian mobile number, then run it once. It creates the tenant's owner role, grants tenant-scoped permissions, creates a main warehouse and initializes store settings. The owner remains pending until mobile OTP verification. Do not use the example phone number unchanged.
+
+
+## Customer wallet and referral rewards
+
+- `GET /api/v1/me/wallet` returns the signed-in customer's wallet balance, latest 50 ledger entries and referral statuses.
+- Wallet balance is calculated from append-only ledger entries; no browser endpoint can directly set a balance.
+- Set `REFERRAL_REWARD_BASIS_POINTS` to configure the referrer reward rate (100 = 1%). It defaults to `0`, which disables reward credits until the merchant deliberately configures a rate.
+- A reward is posted only after the referred customer's first server-verified paid order. The wallet credit and referral status update share the payment transaction.

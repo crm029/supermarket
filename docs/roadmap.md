@@ -64,9 +64,9 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [ ] Live merchant credentials, sandbox acceptance, settlement reconciliation and refund handling.
 - [x] Kavenegar Verify Lookup OTP adapter with configurable template.
 - [ ] Live SMS account/template credentials, delivery reports and alternate-provider adapter.
-- [ ] Append-only wallet posting and customer transaction history.
+- [x] Append-only wallet credit ledger, customer balance/history endpoint and idempotent first-paid-order referral rewards (merchant-configured rate).
 - [x] Referral attribution on OTP-verified registration.
-- [ ] Qualifying-order reward rules, append-only wallet and anti-abuse controls.
+- [x] Qualifying-order referral reward: only the referred customer's first verified paid order; tenant-scoped attribution, self-referral rejection and idempotent wallet credit. Advanced fraud scoring remains future work.
 
 ## Phase 6 — SaaS launch
 - [ ] Plans, subscription billing, platform support and finance audit.

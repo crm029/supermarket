@@ -72,6 +72,10 @@ assert_json() {
       if (!$product || !$category) exit(1);
       exit(0);
     }
+    if ($check === "wallet-summary") {
+      if ((int)($data["data"]["balance_rial"] ?? -1) !== 0 || !is_array($data["data"]["entries"] ?? null)) exit(1);
+      exit(0);
+    }
     if ($check === "cart-quote") {
       if ((int)($data["data"]["total_rial"] ?? 0) !== 250000 || (int)($data["data"]["items"][0]["available_quantity"] ?? 0) !== 10) exit(1);
       exit(0);
@@ -147,6 +151,8 @@ request GET "/products/$PRODUCT_ID" 404 "" "" "" "tenant-two.localhost"
 
 request POST /cart/quote 200 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}]}' 
 assert_json cart-quote
+request GET /me/wallet 200 "" "$CUSTOMER_TOKEN"
+assert_json wallet-summary
 request POST /me/addresses 201 '{"title":"خانه تست","recipient":"مشتری تست","mobile":"09120000003","province":"تهران","city":"تهران","address":"خیابان نمونه، پلاک ۱","postal_code":"1234567890"}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 ADDRESS_ID="$(assert_json created-id)"
 request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}],"fulfillment":"delivery","address_id":'$ADDRESS_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"

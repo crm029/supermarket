@@ -12,6 +12,7 @@ require_once dirname(__DIR__, 2) . '/app/admin_orders.php';
 require_once dirname(__DIR__, 2) . '/app/inventory.php';
 require_once dirname(__DIR__, 2) . '/app/admin_scenes.php';
 require_once dirname(__DIR__, 2) . '/app/reports.php';
+require_once dirname(__DIR__, 2) . '/app/wallet.php';
 
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
@@ -255,6 +256,11 @@ try {
         $session = app_auth_require($db, $tenant);
         app_auth_require_csrf($session);
         app_commerce_create_order($db, $tenant, $session);
+    }
+
+    if ($path === '/me/wallet' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_wallet_customer_summary($db, $tenant, $session);
     }
 
     if ($path === '/me/orders' && $method === 'GET') {
