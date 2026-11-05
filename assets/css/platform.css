@@ -36,3 +36,15 @@
 .platform-audit-row small{color:#68786d;margin-top:5px;overflow-wrap:anywhere}
 .platform-audit-row p{margin:0;color:#647469;white-space:nowrap}
 @media(max-width:600px){.platform-audit-row{flex-direction:column}.platform-audit-row p{white-space:normal}}
+
+.platform-dns-instructions{margin-top:20px;padding:18px;border:1px solid #b8d4bc;border-radius:16px;background:#f3faf4}
+.platform-dns-instructions h3{margin:0 0 8px}
+.platform-dns-instructions p{color:#526b59;line-height:1.8}
+.platform-dns-instructions dl{display:grid;grid-template-columns:120px minmax(0,1fr);gap:8px 14px;margin:16px 0}
+.platform-dns-instructions dt{font-weight:700;color:#526b59}
+.platform-dns-instructions dd{margin:0;overflow-wrap:anywhere;user-select:all}
+.platform-dns-instructions code{font-size:13px}
+.platform-verify{grid-template-columns:minmax(0,1fr) auto auto}
+.platform-verify p{grid-column:1/-1;direction:rtl}
+.platform-verify small{grid-column:1/-1;color:#7b897f}
+@media(max-width:680px){.platform-verify{grid-template-columns:1fr}.platform-verify p,.platform-verify small{grid-column:auto}}
