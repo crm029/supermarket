@@ -78,7 +78,7 @@ function app_report_date_range(array $tenant): array {
 
 function app_report_csv_value(mixed $value): mixed {
     if (!is_string($value)) return $value;
-    if (preg_match('/^[\t\r ]*[=+\-@]/u',$value)) return "'".$value;
+    if (preg_match('/^[\t\r\n ]*[=+\-@]/u',$value)) return "'".$value;
     return $value;
 }
 
