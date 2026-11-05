@@ -15,6 +15,14 @@ function app_admin_product_payload(array $body, bool $partial = false): array {
         $data['sku'] = $sku;
     }
 
+    if (!$partial || array_key_exists('product_kind', $body)) {
+        $kind = (string)($body['product_kind'] ?? 'simple');
+        if (!in_array($kind, ['simple','variant_parent'], true)) {
+            app_json(['error' => 'نوع کالا معتبر نیست.'], 422);
+        }
+        $data['product_kind'] = $kind;
+    }
+
     if (!$partial || array_key_exists('title', $body)) {
         $title = trim((string)($body['title'] ?? ''));
         if ($title === '' || mb_strlen($title) > 180) {
@@ -75,6 +83,11 @@ function app_admin_product_payload(array $body, bool $partial = false): array {
         }
     }
 
+    if (($data['product_kind'] ?? 'simple') === 'variant_parent' &&
+        (($data['price_rial'] ?? 0) !== 0 || ($data['barcode'] ?? null) !== null || !empty($data['is_weighted']))) {
+        app_json(['error' => 'محصول مادر باید بدون قیمت، بارکد و وزن‌کشی مستقیم باشد؛ مشخصات فروش برای هر تنوع ثبت می‌شود.'], 422);
+    }
+
     if (isset($data['compare_at_rial'], $data['price_rial']) &&
         $data['compare_at_rial'] !== null && $data['compare_at_rial'] < $data['price_rial']) {
         app_json(['error' => 'قیمت قبل از تخفیف نمی‌تواند از قیمت فعلی کمتر باشد.'], 422);
@@ -116,10 +129,16 @@ function app_admin_product_list(PDO $db, array $tenant): never {
     $count = $db->prepare("SELECT COUNT(*) FROM products WHERE {$sqlWhere}");
     $count->execute($params);
     $stmt = $db->prepare(
-        "SELECT id, sku, barcode, title, brand, description, unit_label,
-                price_rial, compare_at_rial, category_id, is_weighted, is_active, low_stock_threshold
-         FROM products WHERE {$sqlWhere}
-         ORDER BY id DESC LIMIT {$limit} OFFSET " . (($page - 1) * $limit)
+        "SELECT p.id, p.sku, p.barcode, p.title, p.brand, p.description, p.unit_label,
+                CASE WHEN p.product_kind='variant_parent'
+                     THEN COALESCE((SELECT MIN(v.price_rial) FROM products v WHERE v.tenant_id=p.tenant_id AND v.parent_product_id=p.id AND v.is_active=1),0)
+                     ELSE p.price_rial END AS price_rial,
+                p.compare_at_rial, p.category_id, p.is_weighted, p.is_active, p.low_stock_threshold,
+                p.product_kind,p.parent_product_id,p.variant_label,parent.title AS parent_title
+         FROM products p
+         LEFT JOIN products parent ON parent.tenant_id=p.tenant_id AND parent.id=p.parent_product_id
+         WHERE {$sqlWhere}
+         ORDER BY COALESCE(p.parent_product_id,p.id) DESC,p.product_kind,p.id DESC LIMIT {$limit} OFFSET " . (($page - 1) * $limit)
     );
     $stmt->execute($params);
     app_json(['data' => $stmt->fetchAll(), 'meta' => [
@@ -137,10 +156,10 @@ function app_admin_product_create(PDO $db, array $tenant, array $session): never
         $stmt = $db->prepare(
             "INSERT INTO products
               (tenant_id, category_id, sku, barcode, title, brand, description,
-               unit_label, price_rial, compare_at_rial, is_weighted, is_active, low_stock_threshold)
+               unit_label, price_rial, compare_at_rial, is_weighted, product_kind, is_active, low_stock_threshold)
              VALUES
               (:tenant, :category_id, :sku, :barcode, :title, :brand, :description,
-               :unit_label, :price_rial, :compare_at_rial, :is_weighted, :is_active, :low_stock_threshold)"
+               :unit_label, :price_rial, :compare_at_rial, :is_weighted, :product_kind, :is_active, :low_stock_threshold)"
         );
         $stmt->execute([
             'tenant' => $tenant['id'],
@@ -154,6 +173,7 @@ function app_admin_product_create(PDO $db, array $tenant, array $session): never
             'price_rial' => $data['price_rial'],
             'compare_at_rial' => $data['compare_at_rial'],
             'is_weighted' => $data['is_weighted'],
+            'product_kind' => $data['product_kind'] ?? 'simple',
             'is_active' => $data['is_active'],
             'low_stock_threshold' => $data['low_stock_threshold'],
         ]);
