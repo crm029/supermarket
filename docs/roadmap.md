@@ -21,7 +21,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Tenant/platform permission catalog, role grants, deny-by-default product API checks and product-change audit events.
 - [ ] Role/permission management UI, platform authorization, and CSRF/policy enforcement on all future write routes.
 - [ ] Platform super-admin tenant provisioning and domain verification.
-- [ ] Store settings, branding and secure media library.
+- [x] Secure tenant-scoped image upload with MIME, size, dimension and storage-key validation.\n- [ ] Store settings, branding and media library browsing/cleanup.
 
 ## Phase 2 — catalog and commerce
 - [x] Basic tenant-scoped product list/create/update/deactivate API with permission checks.
@@ -33,7 +33,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 
 ## Phase 3 — immersive storefront
 - [ ] Merchant scene/media editor.
-- [x] Tenant-scoped read API for published photo-tour nodes, hotspots and product-to-shelf links.\n- [ ] Merchant scene editor and hotspot authoring workflow.
+- [x] Tenant-scoped read API for published photo-tour nodes, hotspots and product-to-shelf links.\n- [x] Merchant scene create/update/unpublish and hotspot authoring APIs.\n- [ ] Merchant scene editor and hotspot authoring workflow.
 - [ ] Guided category-to-aisle navigation.
 - [ ] Optional WebGL free-movement mode with keyboard/touch and low-end fallback.
 - [ ] Real-store media onboarding and responsive image delivery.
