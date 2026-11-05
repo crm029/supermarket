@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/notifications.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/wallet.php';
 require_once __DIR__ . '/stock_batches.php';
@@ -207,7 +208,7 @@ function app_payment_callback(PDO $db, array $tenant): never {
             app_payment_redirect_result('success', (int)$attempt['order_id']);
         }
 
-        $orderQuery = $db->prepare('SELECT id, user_id, status FROM orders WHERE tenant_id = ? AND id = ? FOR UPDATE');
+        $orderQuery = $db->prepare('SELECT id, user_id, order_number, status FROM orders WHERE tenant_id = ? AND id = ? FOR UPDATE');
         $orderQuery->execute([$tenant['id'], $attempt['order_id']]);
         $order = $orderQuery->fetch();
         if (!$order) throw new RuntimeException('Payment order not found.');
@@ -276,6 +277,13 @@ function app_payment_callback(PDO $db, array $tenant): never {
         $paid->execute([$tenant['id'],$order['id']]);
         if ($paid->rowCount() === 1) {
             app_wallet_process_referral_reward($db, (int)$tenant['id'], (int)$order['id'], (int)$order['user_id'], (int)$attempt['amount_rial']);
+            $paymentBody=$hasExpired
+                ? 'پرداخت سفارش '.$order['order_number'].' تأیید شد؛ به دلیل پایان زمان رزرو، فروشگاه باید موجودی را دوباره بررسی کند.'
+                : 'پرداخت سفارش '.$order['order_number'].' با موفقیت تأیید شد.';
+            app_notification_create($db,(int)$tenant['id'],(int)$order['user_id'],'payment-confirmed-'.$order['id'],'order',
+                'پرداخت سفارش تأیید شد',$paymentBody,'order',(int)$order['id']);
+            app_notification_notify_permission($db,(int)$tenant['id'],'orders.manage','payment-confirmed-'.$order['id'],'order',
+                'پرداخت سفارش دریافت شد',$paymentBody,'order',(int)$order['id']);
         }
         $db->commit();
         app_payment_redirect_result('success', (int)$order['id']);
