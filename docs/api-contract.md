@@ -53,7 +53,7 @@ Base path: `/api/v1`. JSON responses use UTF-8 and Persian user-facing messages.
 - OTP codes are stored only as keyed hashes, expire after five minutes, and allow at most five verification attempts.
 - Request and verification limits are tenant-scoped and bucketed by mobile/IP.
 - Session tokens are random opaque values; only SHA-256 hashes are stored. Cookies are HttpOnly and SameSite=Lax, and Secure in HTTPS production.
-- The included `SMS_PROVIDER=log` adapter is development-only. Production OTP delivery remains disabled until a real provider adapter and credentials are configured.
+- The Kavenegar Verify Lookup adapter is available when `SMS_PROVIDER=kavenegar`, the approved template and the private API key are configured. The included `SMS_PROVIDER=log` adapter is development-only and forbidden in production.
 
 ## Authentication implementation notes
 - OTP codes are stored only as keyed hashes, expire after five minutes, and allow at most five verification attempts.
@@ -70,7 +70,7 @@ Base path: `/api/v1`. JSON responses use UTF-8 and Persian user-facing messages.
 ## Public media
 - Public image URLs are built only from the configured `MEDIA_BASE_URL` and a tenant-owned media record. Storage keys are never returned to clients.
 - Production media URLs must use HTTPS. Unsafe path segments are rejected.
-- Media upload and editing are not implemented yet; assets must already exist in the tenant media table and storage.
+- Authenticated tenant-scoped media upload and scene/hotspot authoring are implemented. Configure storage outside the public PHP document root and serve only validated static image files.
 
 
 ## Commerce endpoints (implemented)
