@@ -608,7 +608,7 @@ async function loadCustomerOrders() {
   try {
     const rows=await apiGet("me/orders");
     const labels={pending_payment:"در انتظار پرداخت",paid:"پرداخت‌شده",accepted:"پذیرفته‌شده",picking:"در حال آماده‌سازی",packed:"بسته‌بندی‌شده",ready_pickup:"آماده تحویل",dispatched:"ارسال‌شده",delivered:"تحویل‌شده",cancelled:"لغوشده",refunded:"مستردشده"};
-    list.innerHTML=(rows||[]).map(o=>'<article class="customer-order"><div><strong>'+escapeHTML(o.order_number)+'</strong><small>'+escapeHTML(labels[o.status]||o.status)+' · '+money(Math.round(Number(o.total_rial)/10))+'</small></div><button data-order-detail="'+Number(o.id)+'">جزئیات</button>'+(o.status==="pending_payment"?'<button data-order-pay="'+Number(o.id)+'">پرداخت</button><button data-order-cancel="'+Number(o.id)+'">لغو</button>':"")+'</article>').join("")||'<p class="empty-cart">هنوز سفارشی ثبت نکرده‌اید.</p>';
+    list.innerHTML=(rows||[]).map(o=>'<article class="customer-order"><div><strong>'+escapeHTML(o.order_number)+'</strong><small>'+escapeHTML(labels[o.status]||o.status)+' · '+money(Math.round(Number(o.total_rial)/10))+'</small>'+(o.pickup_slot_starts_at_label?'<small>تحویل: '+escapeHTML(o.pickup_slot_title)+' · '+escapeHTML(o.pickup_slot_starts_at_label)+'</small>':"")+'</div><button data-order-detail="'+Number(o.id)+'">جزئیات</button>'+(o.status==="pending_payment"?'<button data-order-pay="'+Number(o.id)+'">پرداخت</button><button data-order-cancel="'+Number(o.id)+'">لغو</button>':"")+'</article>').join("")||'<p class="empty-cart">هنوز سفارشی ثبت نکرده‌اید.</p>';
   } catch(error) { list.textContent=error.message; }
 }
 document.getElementById("ordersButton").addEventListener("click",async()=>{
@@ -622,7 +622,8 @@ document.getElementById("customerOrdersList").addEventListener("click",async e=>
   if(detail){
     try{
       const order=await apiGet("me/orders/"+detail.dataset.orderDetail);
-      document.getElementById("customerOrderDetail").innerHTML='<div class="customer-order-detail"><strong>جزئیات سفارش '+escapeHTML(order.order_number)+'</strong>'+order.items.map(item=>'<p>'+escapeHTML(item.title)+' × '+new Intl.NumberFormat("fa-IR").format(Number(item.quantity))+' — '+money(Math.round(Number(item.line_total_rial)/10))+'</p>').join("")+'</div>';
+      const pickupInfo=order.pickup_slot_starts_at_label?'<p>زمان تحویل حضوری: '+escapeHTML(order.pickup_slot_title)+' · '+escapeHTML(order.pickup_slot_starts_at_label)+' تا '+escapeHTML(order.pickup_slot_ends_at_label)+'</p>':"";
+      document.getElementById("customerOrderDetail").innerHTML='<div class="customer-order-detail"><strong>جزئیات سفارش '+escapeHTML(order.order_number)+'</strong>'+pickupInfo+order.items.map(item=>'<p>'+escapeHTML(item.title)+' × '+new Intl.NumberFormat("fa-IR").format(Number(item.quantity))+' — '+money(Math.round(Number(item.line_total_rial)/10))+'</p>').join("")+'</div>';
     }catch(error){document.getElementById("customerOrderDetail").textContent=error.message;}
   }
   const pay=e.target.closest("[data-order-pay]");
