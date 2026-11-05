@@ -492,7 +492,7 @@ php bin/expire-reservations.php
 
 # Full-order wallet credit refund, including referral reward reversal.
 REFUND_ORDER_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "
-  SET @customer_id=(SELECT id FROM users WHERE tenant_id=1 AND mobile='09120000004' LIMIT 1);
+  SET @customer_id=(SELECT id FROM users WHERE tenant_id=1 AND mobile='09120000003' LIMIT 1);
   SET @manager_id=(SELECT id FROM users WHERE tenant_id=1 AND mobile='09120000001' LIMIT 1);
   INSERT INTO orders (tenant_id,user_id,order_number,status,fulfillment,subtotal_rial,discount_rial,delivery_fee_rial,total_rial)
     VALUES (1,@customer_id,'CI-REFUND-ORDER','paid','delivery',25000,0,0,25000);
@@ -522,7 +522,7 @@ REFUND_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column
 REFERRAL_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM referral_events WHERE tenant_id=1 AND qualifying_order_id=$REFUND_ORDER_ID")"
 REFERRAL_REVERSAL_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM wallet_entries WHERE tenant_id=1 AND source_id=$REFUND_ORDER_ID AND source_type='referral_reward_reversal'")"
 if [[ "$REFUND_STATUS" != "refunded" || "$REFUND_COUNT" != "1" || "$REFERRAL_STATUS" != "reversed" || "$REFERRAL_REVERSAL_COUNT" != "1" ]]; then echo "Wallet refund or referral reversal ledger was not finalized."; exit 1; fi
-NO_PAYMENT_ORDER_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "INSERT INTO orders (tenant_id,user_id,order_number,status,fulfillment,subtotal_rial,discount_rial,delivery_fee_rial,total_rial) SELECT 1,id,'CI-NO-PAYMENT-REFUND','paid','delivery',10000,0,0,10000 FROM users WHERE tenant_id=1 AND mobile='09120000004'; SELECT LAST_INSERT_ID();")"
+NO_PAYMENT_ORDER_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "INSERT INTO orders (tenant_id,user_id,order_number,status,fulfillment,subtotal_rial,discount_rial,delivery_fee_rial,total_rial) SELECT 1,id,'CI-NO-PAYMENT-REFUND','paid','delivery',10000,0,0,10000 FROM users WHERE tenant_id=1 AND mobile='09120000003'; SELECT LAST_INSERT_ID();")"
 request POST "/admin/orders/$NO_PAYMENT_ORDER_ID/refund-wallet" 409 '{"reason":"بازپرداخت بدون پرداخت تأییدشده"}' "$TOKEN" "$CSRF"
 request POST /admin/coupons 201 '{"code":"WELCOME10","title":"تخفیف خوش‌آمدگویی","discount_type":"percentage","discount_value":10,"max_discount_rial":15000,"minimum_order_rial":1,"usage_limit":1,"per_user_limit":1,"starts_at":"2020-01-01T00:00","ends_at":"2030-01-01T00:00","is_active":true}' "$TOKEN" "$CSRF"
 COUPON_ID="$(assert_json created-id)"
