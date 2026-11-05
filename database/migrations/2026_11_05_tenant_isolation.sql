@@ -114,20 +114,33 @@ ALTER TABLE referral_events
   ADD CONSTRAINT fk_referrals_order_same_tenant
     FOREIGN KEY (tenant_id, qualifying_order_id) REFERENCES orders (tenant_id, id);
 
+ALTER TABLE audit_logs
+  ADD CONSTRAINT fk_audit_actor_same_tenant
+  FOREIGN KEY (tenant_id, actor_user_id) REFERENCES users (tenant_id, id);
+
 -- Audit actor must belong to the tenant recorded on the audit row.
 -- A trigger is used because tenant_id is nullable for platform-level events.
--- Backfill user_roles. This is intentionally performed before adding the
--- tenant-aware user FK; existing role links are then checked by the triggers
--- on subsequent writes. Review tenant-specific legacy role assignments first.
+-- Keep global roles (scope 0) usable across tenants while making tenant-scoped
+-- role ownership enforceable with a composite foreign key.
+ALTER TABLE roles ADD COLUMN role_scope_id BIGINT UNSIGNED NOT NULL DEFAULT 0;
+UPDATE roles SET role_scope_id = COALESCE(tenant_id, 0);
+ALTER TABLE roles ADD UNIQUE KEY uq_roles_scope_id (role_scope_id, id);
+
+-- Backfill tenant and role scope before adding the composite constraints.
 ALTER TABLE user_roles ADD COLUMN tenant_id BIGINT UNSIGNED NULL AFTER user_id;
+ALTER TABLE user_roles ADD COLUMN role_scope_id BIGINT UNSIGNED NULL AFTER tenant_id;
 UPDATE user_roles ur
 JOIN users u ON u.id = ur.user_id
-SET ur.tenant_id = u.tenant_id;
+SET ur.tenant_id = u.tenant_id;\nUPDATE user_roles ur\nJOIN roles r ON r.id = ur.role_id\nSET ur.role_scope_id = COALESCE(r.tenant_id, 0);
 ALTER TABLE user_roles
   MODIFY tenant_id BIGINT UNSIGNED NOT NULL,
+  MODIFY role_scope_id BIGINT UNSIGNED NOT NULL,
   ADD KEY ix_user_roles_tenant_role (tenant_id, role_id),
+  ADD KEY ix_user_roles_role_scope (role_scope_id, role_id),
   ADD CONSTRAINT fk_user_roles_user_same_tenant
-    FOREIGN KEY (tenant_id, user_id) REFERENCES users (tenant_id, id);
+    FOREIGN KEY (tenant_id, user_id) REFERENCES users (tenant_id, id),
+  ADD CONSTRAINT fk_user_roles_role_scope
+    FOREIGN KEY (role_scope_id, role_id) REFERENCES roles (role_scope_id, id);
 
 
 
@@ -191,6 +204,7 @@ BEGIN
      (role_tenant IS NOT NULL AND role_tenant <> NEW.tenant_id) THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'User role assignment crosses tenant boundary';
   END IF;
+  SET NEW.role_scope_id = COALESCE(role_tenant, 0);
 END//
 
 CREATE TRIGGER trg_user_roles_scope_update
@@ -218,6 +232,19 @@ BEGIN
   ) THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Role update would cross tenant boundary';
   END IF;
+END//
+CREATE TRIGGER trg_roles_scope_insert
+BEFORE INSERT ON roles
+FOR EACH ROW
+BEGIN
+  SET NEW.role_scope_id = COALESCE(NEW.tenant_id, 0);
+END//
+
+CREATE TRIGGER trg_roles_scope_update
+BEFORE UPDATE ON roles
+FOR EACH ROW
+BEGIN
+  SET NEW.role_scope_id = COALESCE(NEW.tenant_id, 0);
 END//
 DELIMITER ;
 
