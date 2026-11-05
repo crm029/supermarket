@@ -1,7 +1,7 @@
 # Local setup (XAMPP)
 
 ## Current status
-The root `index.php` is a visual demo and can be opened without a database. The API requires PHP 8.1+ with PDO MySQL and MySQL/MariaDB. The catalog routes are read-only; customer OTP login is available for existing active users. Registration, checkout and payments are not implemented.
+The root `index.php` is a visual demo and can be opened without a database. The API requires PHP 8.1+ with PDO MySQL and MySQL/MariaDB. Public catalog routes are read-only; protected admin product management supports list, create, update and soft-deactivate. Customer OTP login is available for existing active users. Registration, checkout and payments are not implemented.
 
 ## Prepare database
 1. Create a database named `supermarket360` with utf8mb4.
