@@ -23,7 +23,7 @@ foreach (app_seo_category_list($seo) as $category) {
 }
 foreach (app_seo_product_list($seo) as $product) {
     $urls[] = [
-        'loc' => app_seo_url($seo,'product/'.(int)$product['id']),
+        'loc' => app_seo_url($seo,app_seo_product_path($product)),
         'lastmod' => app_seo_lastmod($product['updated_at'] ?? $product['created_at'] ?? null),
     ];
 }
