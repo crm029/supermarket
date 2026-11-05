@@ -77,7 +77,7 @@ function app_admin_product_payload(array $body, bool $partial = false): array {
 
 function app_admin_validate_product_category(PDO $db, int $tenantId, array $data): void {
     if (!array_key_exists('category_id', $data) || $data['category_id'] === null) return;
-    $stmt = $db->prepare('SELECT 1 FROM categories WHERE tenant_id = ? AND id = ? LIMIT 1');
+    $stmt = $db->prepare('SELECT 1 FROM categories WHERE tenant_id = ? AND id = ? AND is_active = 1 LIMIT 1');
     $stmt->execute([$tenantId, $data['category_id']]);
     if (!$stmt->fetchColumn()) {
         app_json(['error' => 'دسته‌بندی انتخاب‌شده متعلق به این فروشگاه نیست.'], 422);
@@ -404,6 +404,18 @@ function app_admin_category_update(PDO $db, array $tenant, array $session, int $
             $db->rollBack();
             app_json(['error' => 'دسته‌بندی پیدا نشد.'], 404);
         }
+        if (($data['is_active'] ?? 1) === 0) {
+            $usage = $db->prepare(
+                "SELECT
+                   (SELECT COUNT(*) FROM categories WHERE tenant_id = ? AND parent_id = ?) +
+                   (SELECT COUNT(*) FROM products WHERE tenant_id = ? AND category_id = ? AND is_active = 1)"
+            );
+            $usage->execute([$tenant['id'], $id, $tenant['id'], $id]);
+            if ((int)$usage->fetchColumn() > 0) {
+                $db->rollBack();
+                app_json(['error' => 'ابتدا کالاها یا زیر‌دسته‌های این دسته‌بندی را جابه‌جا یا غیرفعال کنید.'], 409);
+            }
+        }
         $stmt = $db->prepare('UPDATE categories SET ' . implode(', ', $sets) . ' WHERE tenant_id = :tenant AND id = :id');
         $stmt->execute($params);
         app_audit_log($db, (int)$tenant['id'], (int)$session['id'], 'catalog.category.updated', 'category', $id, [
@@ -435,7 +447,7 @@ function app_admin_category_deactivate(PDO $db, array $tenant, array $session, i
 
         $usage = $db->prepare(
             "SELECT
-               (SELECT COUNT(*) FROM categories WHERE tenant_id = ? AND parent_id = ? AND is_active = 1) +
+               (SELECT COUNT(*) FROM categories WHERE tenant_id = ? AND parent_id = ?) +
                (SELECT COUNT(*) FROM products WHERE tenant_id = ? AND category_id = ? AND is_active = 1)"
         );
         $usage->execute([$tenant['id'], $id, $tenant['id'], $id]);
