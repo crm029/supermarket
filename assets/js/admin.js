@@ -56,6 +56,7 @@ async function loadAll() {
     await loadReport();
     await loadSettings();
     await loadDeliveryZones();
+    await loadAdminPickupSlots();
     await loadStaff();
     document.getElementById("statProducts").textContent=new Intl.NumberFormat("fa-IR").format(products.filter(x=>Number(x.is_active)).length);
     document.getElementById("statCategories").textContent=new Intl.NumberFormat("fa-IR").format(categories.filter(x=>Number(x.is_active)).length);
@@ -140,6 +141,56 @@ document.getElementById("staffRows").addEventListener("click",async event=>{
   }
 });
 let deliveryZones = [];
+let adminPickupSlots=[];
+async function loadAdminPickupSlots(){
+  try{
+    const result=await request("admin/pickup-slots");
+    adminPickupSlots=result.data||[];
+    document.getElementById("pickupSlotRows").innerHTML=adminPickupSlots.map(slot=>{
+      return '<article><div><strong>'+escapeText(slot.title)+'</strong><small>'+escapeText(slot.starts_at_label||slot.starts_at)+' تا '+escapeText(slot.ends_at_label||slot.ends_at)+'</small><small>ظرفیت: '+Number(slot.capacity)+' · باقی‌مانده: '+Math.max(0,Number(slot.remaining_capacity??slot.capacity))+' · وضعیت: '+(slot.is_active?"فعال":"غیرفعال")+'</small></div><span class="admin-status '+(slot.is_active?"active":"inactive")+'">'+(slot.is_active?"فعال":"غیرفعال")+'</span>'+(slot.is_active?'<button class="admin-row-action danger" data-disable-pickup-slot="'+Number(slot.id)+'">غیرفعال‌سازی</button>':"")+'</article>';
+    }).join("")||'<p>هنوز بازه دریافت حضوری ثبت نشده است.</p>';
+  }catch(error){
+    document.getElementById("pickupSlotAdminMessage").textContent=error.message;
+    document.getElementById("pickupSlotAdminMessage").className="form-message error";
+  }
+}
+document.getElementById("reloadPickupSlots").addEventListener("click",loadAdminPickupSlots);
+document.getElementById("pickupSlotForm").addEventListener("submit",async event=>{
+  event.preventDefault();
+  const payload={
+    title:document.getElementById("pickupSlotTitle").value.trim(),
+    starts_at:document.getElementById("pickupSlotStart").value,
+    ends_at:document.getElementById("pickupSlotEnd").value,
+    capacity:Number(document.getElementById("pickupSlotCapacity").value)
+  };
+  if(!Number.isInteger(payload.capacity)||payload.capacity<1||payload.capacity>1000){
+    document.getElementById("pickupSlotAdminMessage").textContent="ظرفیت باید عددی بین ۱ تا ۱۰۰۰ باشد.";return;
+  }
+  try{
+    await request("admin/pickup-slots",{method:"POST",csrf:true,body:JSON.stringify(payload)});
+    event.target.reset();
+    document.getElementById("pickupSlotCapacity").value="10";
+    await loadAdminPickupSlots();
+    document.getElementById("pickupSlotAdminMessage").textContent="بازه دریافت ثبت شد.";
+    document.getElementById("pickupSlotAdminMessage").className="form-message success";
+  }catch(error){
+    document.getElementById("pickupSlotAdminMessage").textContent=error.message;
+    document.getElementById("pickupSlotAdminMessage").className="form-message error";
+  }
+});
+document.getElementById("pickupSlotRows").addEventListener("click",async event=>{
+  const button=event.target.closest("[data-disable-pickup-slot]");
+  if(!button||!confirm("این بازه دریافت غیرفعال شود؟"))return;
+  try{
+    await request("admin/pickup-slots/"+Number(button.dataset.disablePickupSlot),{method:"DELETE",csrf:true});
+    await loadAdminPickupSlots();
+    document.getElementById("pickupSlotAdminMessage").textContent="بازه دریافت غیرفعال شد.";
+    document.getElementById("pickupSlotAdminMessage").className="form-message success";
+  }catch(error){
+    document.getElementById("pickupSlotAdminMessage").textContent=error.message;
+    document.getElementById("pickupSlotAdminMessage").className="form-message error";
+  }
+});
 async function loadDeliveryZones() {
   try {
     const result=await request("admin/delivery-zones");
@@ -507,7 +558,8 @@ document.getElementById("orderRows").addEventListener("click",async e=>{
   if(detail){
     const order=orders.find(o=>Number(o.id)===Number(detail.dataset.adminOrderDetail));
     if(order){
-      const address=order.fulfillment==="delivery"?[order.delivery_recipient,order.delivery_mobile,order.province,order.city,order.delivery_address,order.postal_code].filter(Boolean).join(" · "):"تحویل حضوری";
+      const pickupTime=order.pickup_slot_starts_at_label?(order.pickup_slot_title+" · "+order.pickup_slot_starts_at_label+" تا "+order.pickup_slot_ends_at_label):"";
+      const address=order.fulfillment==="delivery"?[order.delivery_recipient,order.delivery_mobile,order.province,order.city,order.delivery_address,order.postal_code].filter(Boolean).join(" · "):("تحویل حضوری"+(pickupTime?" · "+pickupTime:""));
       const box=document.getElementById("adminOrderDetail");
       box.hidden=false;
       box.innerHTML='<h3>سفارش '+escapeText(order.order_number)+'</h3><p>مشتری: '+escapeText(order.customer_name)+' · '+escapeText(order.customer_mobile)+'</p><p>نشانی / روش دریافت: '+escapeText(address)+'</p><p>توضیحات: '+escapeText(order.customer_note||"—")+'</p>';

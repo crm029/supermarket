@@ -47,6 +47,15 @@ assert_json() {
       }
       exit(1);
     }
+    if ($check === "pickup-slots") {
+      if (($data["data"]["configured"] ?? null) !== true || count($data["data"]["slots"] ?? []) !== 1 ||
+          (int)($data["data"]["slots"][0]["remaining_capacity"] ?? 0) !== 1) exit(1);
+      exit(0);
+    }
+    if ($check === "pickup-slots-empty") {
+      if (($data["data"]["configured"] ?? null) !== true || count($data["data"]["slots"] ?? []) !== 0) exit(1);
+      exit(0);
+    }
     if ($check === "advanced-search") {
       $rows = $data["data"] ?? [];
       if (count($rows) !== 1 || ($rows[0]["sku"] ?? "") !== "API-SMOKE-001" ||
@@ -252,6 +261,19 @@ if [[ "$ORDER_FEE" != "3000" || "$ORDER_TOTAL" != "253000" || "$ORDER_ZONE" != "
 RESERVED="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT reserved FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID LIMIT 1")"
 if [[ "$RESERVED" != "2" ]]; then echo "Expected 2 reserved units, received $RESERVED"; exit 1; fi
 request POST "/me/orders/$ORDER_ID/cancel" 200 "" "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+request POST /admin/pickup-slots 201 '{"title":"نوبت صبح","starts_at":"2030-01-01T10:00","ends_at":"2030-01-01T11:00","capacity":1}' "$TOKEN" "$CSRF"
+PICKUP_SLOT_ID="$(assert_json created-id)"
+request POST /admin/pickup-slots 409 '{"title":"نوبت تکراری","starts_at":"2030-01-01T10:00","ends_at":"2030-01-01T11:00","capacity":1}' "$TOKEN" "$CSRF"
+request GET /pickup-slots 200
+assert_json pickup-slots
+request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}],"fulfillment":"pickup","pickup_slot_id":'$PICKUP_SLOT_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+PICKUP_ORDER_ID="$(assert_json order-created)"
+request POST /checkout 409 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}],"fulfillment":"pickup","pickup_slot_id":'$PICKUP_SLOT_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+request POST "/me/orders/$PICKUP_ORDER_ID/cancel" 200 "" "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+request DELETE "/admin/pickup-slots/$PICKUP_SLOT_ID" 200 "" "$TOKEN" "$CSRF"
+request GET /pickup-slots 200
+assert_json pickup-slots-empty
+request POST /checkout 422 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}],"fulfillment":"pickup"}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 request PATCH "/me/addresses/$ADDRESS_ID" 200 '{"city":"شیراز"}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 request POST /checkout 422 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}],"fulfillment":"delivery","address_id":'$ADDRESS_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 request PATCH "/me/addresses/$ADDRESS_ID" 200 '{"city":"کرج"}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
@@ -262,7 +284,9 @@ RESERVED="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-nam
 ORDER_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
 if [[ "$RESERVED" != "0" || "$ORDER_STATUS" != "cancelled" ]]; then echo "Customer cancellation did not release stock or update order"; exit 1; fi
 
-request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"fulfillment":"pickup"}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+request POST /admin/pickup-slots 201 '{"title":"نوبت آزمون انقضای رزرو","starts_at":"2030-01-02T10:00","ends_at":"2030-01-02T11:00","capacity":1}' "$TOKEN" "$CSRF"
+EXPIRY_PICKUP_SLOT_ID="$(assert_json created-id)"
+request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"fulfillment":"pickup","pickup_slot_id":'$EXPIRY_PICKUP_SLOT_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 EXPIRING_ORDER_ID="$(assert_json order-created)"
 mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "UPDATE stock_reservations SET expires_at=DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 MINUTE) WHERE tenant_id=1 AND order_id=$EXPIRING_ORDER_ID AND status='active'"
 php bin/expire-reservations.php

@@ -129,7 +129,11 @@ declare(strict_types=1);
   <h2>روش دریافت سفارش</h2>
   <div class="account-form">
     <label>روش دریافت
-      <select id="fulfillmentSelect"><option value="delivery">ارسال رایگان با پیک فروشگاه</option><option value="pickup">تحویل حضوری</option></select>
+      <select id="fulfillmentSelect"><option value="delivery">ارسال با پیک فروشگاه</option><option value="pickup">تحویل حضوری</option></select>
+    </label>
+    <label id="pickupSlotField" hidden>زمان تحویل حضوری
+      <select id="pickupSlotSelect"><option value="">انتخاب بازه زمانی</option></select>
+      <small id="pickupSlotNote" class="admin-hint"></small>
     </label>
     <label>نشانی ذخیره‌شده <select id="savedAddressSelect"><option value="new">ثبت نشانی جدید</option></select></label>
     <div id="savedAddressManager" class="saved-address-manager" aria-live="polite"></div>

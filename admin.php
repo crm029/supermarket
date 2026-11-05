@@ -27,6 +27,7 @@ declare(strict_types=1);
     <button class="admin-nav" data-panel="inventory">انبار و موجودی</button>
     <button class="admin-nav" data-panel="settings">تنظیمات و ظاهر فروشگاه</button>
     <button class="admin-nav" data-panel="delivery-zones">محدوده‌های ارسال</button>
+    <button class="admin-nav" data-panel="pickup-slots">زمان‌بندی تحویل حضوری</button>
     <button class="admin-nav" data-panel="staff">کارکنان و سطح دسترسی</button>
     <button class="admin-nav" data-panel="media-library">کتابخانه رسانه</button>
     <button class="admin-nav" data-panel="scenes">طراحی فروشگاه مجازی</button>
@@ -107,6 +108,22 @@ declare(strict_types=1);
       <div class="admin-heading"><div><h3>اعضای تیم</h3></div></div>
       <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>کارمند</th><th>موبایل</th><th>وضعیت</th><th>نقش‌ها و عملیات</th></tr></thead><tbody id="staffRows"><tr><td colspan="4">در حال بارگذاری...</td></tr></tbody></table></div>
       <p id="staffMessage" class="form-message" role="status"></p>
+    </section>
+    <section class="admin-panel" id="panel-pickup-slots">
+      <div class="admin-heading"><div><p class="eyebrow">ظرفیت و زمان دریافت</p><h2>زمان‌بندی تحویل حضوری</h2></div><button class="text-button" id="reloadPickupSlots" type="button">به‌روزرسانی</button></div>
+      <p class="admin-hint">زمان‌ها بر اساس منطقه زمانی فروشگاه ثبت می‌شوند. ظرفیت هر بازه هنگام ثبت سفارش به‌صورت تراکنشی کنترل می‌شود. اگر هیچ بازه‌ای تعریف نشود، تحویل حضوری بدون زمان‌بندی فعال می‌ماند.</p>
+      <form id="pickupSlotForm" class="admin-form">
+        <h3>ایجاد بازه دریافت</h3>
+        <div class="admin-form-grid">
+          <label>عنوان بازه<input id="pickupSlotTitle" maxlength="120" required placeholder="تحویل عصر"></label>
+          <label>شروع<input id="pickupSlotStart" type="datetime-local" required></label>
+          <label>پایان<input id="pickupSlotEnd" type="datetime-local" required></label>
+          <label>ظرفیت سفارش<input id="pickupSlotCapacity" type="number" min="1" max="1000" value="10" required></label>
+        </div>
+        <button class="primary-button" type="submit">ثبت بازه دریافت</button>
+        <p id="pickupSlotAdminMessage" class="form-message" role="status"></p>
+      </form>
+      <div id="pickupSlotRows" class="admin-row-list"><p>در حال بارگذاری...</p></div>
     </section>
     <section class="admin-panel" id="panel-delivery-zones">
       <div class="admin-heading"><div><p class="eyebrow">پوشش خدمات پیک</p><h2>محدوده‌های ارسال</h2></div><button class="text-button" id="reloadDeliveryZones" type="button">به‌روزرسانی</button></div>
