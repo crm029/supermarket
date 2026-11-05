@@ -213,15 +213,40 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
     $deliveryFeeRial = $fulfillment === 'delivery' ? max(0, (int)($checkoutSettings['delivery_fee_rial'] ?? 0)) : 0;
     $minimumOrderRial = max(0, (int)($checkoutSettings['minimum_order_rial'] ?? 0));
     $reservationMinutes = min(120, max(5, (int)($checkoutSettings['reservation_minutes'] ?? 20)));
+    $deliveryZoneId = null;
 
     $db->beginTransaction();
     try {
         if ($addressId !== null) {
-            $address = $db->prepare('SELECT id FROM customer_addresses WHERE tenant_id = ? AND user_id = ? AND id = ? AND is_active = 1 FOR UPDATE');
+            $address = $db->prepare('SELECT id,province,city,postal_code FROM customer_addresses WHERE tenant_id = ? AND user_id = ? AND id = ? AND is_active = 1 FOR UPDATE');
             $address->execute([$tenant['id'], $session['id'], $addressId]);
-            if (!$address->fetchColumn()) {
+            $addressRow = $address->fetch(PDO::FETCH_ASSOC);
+            if (!$addressRow) {
                 $db->rollBack();
                 app_json(['error' => 'نشانی انتخاب‌شده پیدا نشد.'], 404);
+            }
+            $zoneCount = $db->prepare('SELECT COUNT(*) FROM delivery_zones WHERE tenant_id=?');
+            $zoneCount->execute([$tenant['id']]);
+            if ((int)$zoneCount->fetchColumn() > 0) {
+                $province = trim((string)($addressRow['province'] ?? ''));
+                $city = trim((string)($addressRow['city'] ?? ''));
+                $postalCode = preg_replace('/\\s+/', '', (string)($addressRow['postal_code'] ?? ''));
+                $zone = $db->prepare(
+                    "SELECT id,delivery_fee_rial,minimum_order_rial
+                     FROM delivery_zones
+                     WHERE tenant_id=? AND is_active=1 AND province=? AND city=?
+                       AND (postal_prefix='' OR (?<>'' AND LEFT(?,CHAR_LENGTH(postal_prefix))=postal_prefix))
+                     ORDER BY CHAR_LENGTH(postal_prefix) DESC,sort_order,id LIMIT 1"
+                );
+                $zone->execute([$tenant['id'],$province,$city,$postalCode,$postalCode]);
+                $zoneRow = $zone->fetch(PDO::FETCH_ASSOC);
+                if (!$zoneRow) {
+                    $db->rollBack();
+                    app_json(['error' => 'این نشانی خارج از محدوده ارسال فروشگاه است.'], 422);
+                }
+                $deliveryZoneId = (int)$zoneRow['id'];
+                $deliveryFeeRial = (int)$zoneRow['delivery_fee_rial'];
+                $minimumOrderRial = max($minimumOrderRial,(int)$zoneRow['minimum_order_rial']);
             }
         }
 
@@ -244,11 +269,11 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
         $orderNumber = 'SM' . gmdate('ymdHis') . strtoupper(bin2hex(random_bytes(3)));
         $insertOrder = $db->prepare(
             "INSERT INTO orders
-             (tenant_id,user_id,address_id,order_number,status,fulfillment,subtotal_rial,discount_rial,delivery_fee_rial,total_rial,customer_note)
-             VALUES (?,?,?,?,'pending_payment',?,?,0,?,?,?)"
+             (tenant_id,user_id,address_id,delivery_zone_id,order_number,status,fulfillment,subtotal_rial,discount_rial,delivery_fee_rial,total_rial,customer_note)
+             VALUES (?,?,?,?,?,'pending_payment',?,?,0,?,?,?)"
         );
         $insertOrder->execute([
-            $tenant['id'], $session['id'], $addressId, $orderNumber, $fulfillment,
+            $tenant['id'], $session['id'], $addressId, $deliveryZoneId, $orderNumber, $fulfillment,
             $quote['subtotal_rial'], $deliveryFeeRial, $orderTotalRial, $note === '' ? null : $note,
         ]);
         $orderId = (int)$db->lastInsertId();
@@ -300,6 +325,7 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
             'id' => $orderId, 'order_number' => $orderNumber, 'status' => 'pending_payment',
             'fulfillment' => $fulfillment, 'items' => $quote['items'],
             'subtotal_rial' => $quote['subtotal_rial'], 'delivery_fee_rial' => $deliveryFeeRial,
+            'delivery_zone_id' => $deliveryZoneId,
             'total_rial' => $orderTotalRial, 'reservation_expires_in_seconds' => $reservationMinutes * 60,
             'payment_required' => true,
         ], 'message' => 'سفارش ثبت اولیه شد؛ برای نهایی‌شدن باید پرداخت تأیید شود.'], 201);

@@ -14,12 +14,13 @@ The root `index.php` provides a local storefront preview; live tenant catalogue,
 8. Apply `database/migrations/2026_11_05_customer_address_management.sql` to enable safe address retirement while preserving order history.
 9. Apply `database/migrations/2026_11_05_barcode_stock_thresholds.sql` to enforce tenant-local barcode uniqueness and add product low-stock thresholds. Resolve duplicate existing barcodes before applying.
 10. Apply `database/migrations/2026_11_05_media_cleanup_queue.sql` to enable safe queued removal of unused media files.
-11. For an existing database, review and repair inconsistent tenant references before applying migrations. Never run schema or demo seed imports over a live production database.
-12. Create one tenant and one verified domain matching the Host header, then set the tenant status to `active`. The demo seed configures `localhost`.
-13. Configure `DB_HOST`, `DB_DATABASE`, `DB_USERNAME` and `DB_PASSWORD` in the PHP server environment. Set a unique `APP_KEY` of at least 32 characters. Keep all secrets out of Git.
-14. For local OTP testing, set `APP_ENV=local` and `SMS_PROVIDER=log`. The one-time code is written only to the PHP error log. This development driver is forbidden in production.
-15. Optionally set `MEDIA_BASE_URL` to the HTTPS base URL of your public media storage. Without it, media metadata is returned but image URLs are `null`.
-16. Route `/api/v1/*` to `api/v1/index.php` using the web server rewrite configuration, or call the PHP entry point directly while developing.
+11. Apply `database/migrations/2026_11_05_delivery_zones.sql` to enable postal-code delivery zones and order-zone references.
+12. For an existing database, review and repair inconsistent tenant references before applying migrations. Never run schema or demo seed imports over a live production database.
+13. Create one tenant and one verified domain matching the Host header, then set the tenant status to `active`. The demo seed configures `localhost`.
+14. Configure `DB_HOST`, `DB_DATABASE`, `DB_USERNAME` and `DB_PASSWORD` in the PHP server environment. Set a unique `APP_KEY` of at least 32 characters. Keep all secrets out of Git.
+15. For local OTP testing, set `APP_ENV=local` and `SMS_PROVIDER=log`. The one-time code is written only to the PHP error log. This development driver is forbidden in production.
+16. Optionally set `MEDIA_BASE_URL` to the HTTPS base URL of your public media storage. Without it, media metadata is returned but image URLs are `null`.
+17. Route `/api/v1/*` to `api/v1/index.php` using the web server rewrite configuration, or call the PHP entry point directly while developing.
 
 ## Create a local test account
 The sample seed contains no customer accounts. In a disposable local database, create one active test user with phpMyAdmin:
@@ -143,3 +144,7 @@ Product barcodes are optional and tenant-unique. The seller can set a low-stock 
 
 ## Media cleanup worker
 Configure `MEDIA_STORAGE_PATH` as an absolute directory outside the public PHP document root. The API queues deletion only for unused tenant media and immediately attempts a path-validated removal. Schedule `php scripts/cleanup-media.php` periodically to retry pending jobs. The worker refuses symlinks, path traversal and storage keys outside the tenant/type upload directory.
+
+
+## Delivery zones
+The seller panel lets the merchant define delivery coverage by province, city and optional postal prefix, with a per-zone delivery fee and minimum order. The most specific matching postal prefix is selected. If no zones are configured, checkout falls back to the store-wide delivery policy; after zones exist, addresses outside active zones cannot be delivered to.

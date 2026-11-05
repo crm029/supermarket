@@ -115,6 +115,9 @@ jobs:
       - name: Apply media cleanup queue migration
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_05_media_cleanup_queue.sql
 
+      - name: Apply delivery zones migration
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_05_delivery_zones.sql
+
       - name: Test initial store owner bootstrap
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/bootstrap-store-owner.sql
 

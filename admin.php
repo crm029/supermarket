@@ -26,6 +26,7 @@ declare(strict_types=1);
     <button class="admin-nav" data-panel="orders">مدیریت سفارش‌ها</button>
     <button class="admin-nav" data-panel="inventory">انبار و موجودی</button>
     <button class="admin-nav" data-panel="settings">تنظیمات و ظاهر فروشگاه</button>
+    <button class="admin-nav" data-panel="delivery-zones">محدوده‌های ارسال</button>
     <button class="admin-nav" data-panel="staff">کارکنان و سطح دسترسی</button>
     <button class="admin-nav" data-panel="media-library">کتابخانه رسانه</button>
     <button class="admin-nav" data-panel="scenes">طراحی فروشگاه مجازی</button>
@@ -106,6 +107,27 @@ declare(strict_types=1);
       <div class="admin-heading"><div><h3>اعضای تیم</h3></div></div>
       <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>کارمند</th><th>موبایل</th><th>وضعیت</th><th>نقش‌ها و عملیات</th></tr></thead><tbody id="staffRows"><tr><td colspan="4">در حال بارگذاری...</td></tr></tbody></table></div>
       <p id="staffMessage" class="form-message" role="status"></p>
+    </section>
+    <section class="admin-panel" id="panel-delivery-zones">
+      <div class="admin-heading"><div><p class="eyebrow">پوشش خدمات پیک</p><h2>محدوده‌های ارسال</h2></div><button class="text-button" id="reloadDeliveryZones" type="button">به‌روزرسانی</button></div>
+      <p class="admin-hint">وقتی حداقل یک محدوده فعال داشته باشید، سفارش ارسالی فقط برای نشانی‌های منطبق با استان، شهر و پیش‌شماره کد پستی پذیرفته می‌شود. پیش‌شماره خالی یعنی تمام کدهای پستی آن شهر.</p>
+      <form id="deliveryZoneForm" class="admin-form">
+        <h3 id="deliveryZoneFormTitle">افزودن محدوده جدید</h3>
+        <input type="hidden" id="deliveryZoneId">
+        <div class="admin-form-grid">
+          <label>عنوان محدوده<input id="deliveryZoneTitle" maxlength="120" required placeholder="مرکز شهر"></label>
+          <label>استان<input id="deliveryZoneProvince" maxlength="100" required></label>
+          <label>شهر<input id="deliveryZoneCity" maxlength="100" required></label>
+          <label>پیش‌شماره کد پستی (اختیاری)<input id="deliveryZonePostalPrefix" maxlength="10" inputmode="numeric" placeholder="مثلاً ۱۲۳"></label>
+          <label>هزینه ارسال (تومان)<input id="deliveryZoneFee" type="number" min="0" max="1000000000" required></label>
+          <label>حداقل مبلغ سفارش (تومان)<input id="deliveryZoneMinimum" type="number" min="0" max="1000000000" required></label>
+          <label>ترتیب نمایش<input id="deliveryZoneSort" type="number" min="0" max="100000" value="0" required></label>
+          <label class="admin-check-label"><input id="deliveryZoneActive" type="checkbox" checked> محدوده فعال باشد</label>
+        </div>
+        <div class="admin-form-actions"><button class="primary-button" type="submit">ذخیره محدوده</button><button class="text-button" id="cancelDeliveryZoneEdit" type="button">پاک‌کردن فرم</button></div>
+        <p id="deliveryZoneMessage" class="form-message" role="status"></p>
+      </form>
+      <div id="deliveryZoneRows" class="admin-row-list"><p>در حال بارگذاری...</p></div>
     </section>
     <section class="admin-panel" id="panel-settings">
       <div class="admin-heading"><div><p class="eyebrow">هویت و تجربه مشتری</p><h2>تنظیمات فروشگاه</h2></div><button class="text-button" id="reloadSettings" type="button">بارگذاری مجدد</button></div>
