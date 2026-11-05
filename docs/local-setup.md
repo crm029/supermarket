@@ -89,3 +89,8 @@ The worker releases reserved quantities and cancels pending-payment orders once 
 Set ZARINPAL_MERCHANT_ID to the merchant ID issued for the store, ZARINPAL_SANDBOX=true for sandbox testing, and APP_BASE_URL to the exact public store origin. The callback URL is generated as /api/v1/payments/zarinpal/callback; its domain must match the domain registered for the merchant terminal. Production requires HTTPS. Enable PHP's cURL extension.
 
 Never commit a real merchant ID or other payment credentials. Test success, cancellation, duplicate callbacks, delayed callbacks after reservation expiry, and the exact registered callback domain before enabling live payments.
+
+
+## Production OTP delivery (Kavenegar)
+
+For production, set SMS_PROVIDER=kavenegar, KAVENEGAR_API_KEY to the private API key from the Kavenegar account, and KAVENEGAR_VERIFY_TEMPLATE to the approved verification-template name. The API key is used only server-side. Enable PHP cURL and verify the approved template sends the numeric OTP in its first token slot. Keep SMS_PROVIDER=log strictly for local development.
