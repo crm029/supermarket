@@ -70,7 +70,7 @@ Real merchant photography, production domains, SMS credentials and payment-gatew
 ## Customer checkout and seller dashboard
 
 - Storefront: index.php
-- Seller catalog dashboard: admin.php (requires an account with catalog read/manage permissions)
+- Seller dashboard: admin.php (catalog and order screens require the matching server-side permissions)
 - Payment result: payment-result.php
 - Customer registration uses mobile OTP; the development-only log provider is not a production SMS service.
 - Checkout validates the cart on the server, saves the customer's delivery address, creates a pending-payment order and reserves stock for 20 minutes.
