@@ -225,7 +225,7 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
                 $db->rollBack();
                 app_json(['error' => 'نشانی انتخاب‌شده پیدا نشد.'], 404);
             }
-            $zoneCount = $db->prepare('SELECT COUNT(*) FROM delivery_zones WHERE tenant_id=? AND is_active=1');
+            $zoneCount = $db->prepare('SELECT COUNT(*) FROM delivery_zones WHERE tenant_id=?');
             $zoneCount->execute([$tenant['id']]);
             if ((int)$zoneCount->fetchColumn() > 0) {
                 $province = trim((string)($addressRow['province'] ?? ''));
