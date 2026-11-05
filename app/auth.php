@@ -93,6 +93,7 @@ function app_auth_prune(PDO $db, int $tenantId): void {
 }
 
 function app_auth_register(PDO $db, array $tenant): never {
+    if (!app_auth_sms_ready()) app_json(['error' => 'ثبت‌نام تا زمان پیکربندی سرویس پیامک در دسترس نیست.'], 503);
     $body = app_auth_request_body();
     $name = trim((string)($body['full_name'] ?? ''));
     $mobile = app_auth_mobile((string)($body['mobile'] ?? ''));
@@ -157,7 +158,7 @@ function app_auth_request_otp(PDO $db, array $tenant): never {
     app_auth_hit_limit($db, (int)$tenant['id'], 'otp_request_phone', $phoneBucket, 3, 900);
     app_auth_hit_limit($db, (int)$tenant['id'], 'otp_request_ip', $ipBucket, 10, 900);
 
-    // The same response is returned for unknown, blocked and active accounts.
+    // The same response is returned for unknown and blocked accounts.
     $userQuery = $db->prepare(
         "SELECT id FROM users WHERE tenant_id = ? AND mobile = ? AND status IN ('active','pending') LIMIT 1"
     );
@@ -251,8 +252,8 @@ function app_auth_verify_otp(PDO $db, array $tenant): never {
         }
 
         $userQuery = $db->prepare(
-            "SELECT id, full_name, mobile, referral_code
-             FROM users WHERE tenant_id = ? AND mobile = ? AND status = 'active'
+            "SELECT id, full_name, mobile, referral_code, status, referred_by_user_id
+             FROM users WHERE tenant_id = ? AND mobile = ? AND status IN ('active','pending')
              LIMIT 1 FOR UPDATE"
         );
         $userQuery->execute([$tenant['id'], $mobile]);
