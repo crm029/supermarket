@@ -34,6 +34,7 @@ jobs:
           done
           php tests/auth-input.php
           php tests/admin-catalog-input.php
+          php tests/media-url.php
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
