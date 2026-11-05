@@ -71,3 +71,13 @@ Base path: `/api/v1`. JSON responses use UTF-8 and Persian user-facing messages.
 - Public image URLs are built only from the configured `MEDIA_BASE_URL` and a tenant-owned media record. Storage keys are never returned to clients.
 - Production media URLs must use HTTPS. Unsafe path segments are rejected.
 - Media upload and editing are not implemented yet; assets must already exist in the tenant media table and storage.
+
+
+## Commerce endpoints (implemented)
+- `POST /cart/quote` — accepts `items: [{product_id, quantity}]`; recalculates current prices and active-warehouse availability server-side. Client prices are ignored.
+- `GET /me/addresses` — authenticated customer's own address book.
+- `POST /me/addresses` — create a validated address; requires session and CSRF token.
+- `POST /checkout` — authenticated, CSRF-protected checkout. Accepts line items, `fulfillment` (`delivery` or `pickup`), optional delivery `address_id`, and `customer_note`. Prices are recalculated inside a transaction, stock is reserved across active warehouses, and a pending-payment order is created.
+- `GET /me/orders` — authenticated customer's latest 100 orders.
+
+Checkout intentionally does not mark an order paid. Reservations expire after 20 minutes; a verified payment provider and a reservation-expiry worker are required before production payment/order completion. Delivery is currently free by the original store brief; delivery zones and configurable fees remain future work.
