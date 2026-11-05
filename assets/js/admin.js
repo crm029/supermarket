@@ -108,7 +108,7 @@ async function loadPurchasing(){
 async function loadPurchaseOrderItems(orderId){
   try{
     const result=await request("admin/purchase-orders/"+Number(orderId));
-    selectedPurchaseOrder=result.data;
+    selectedPurchaseOrder=Number(orderId);
     const items=(result.data.items||[]).filter(i=>Number(i.remaining_quantity)>0);
     document.getElementById("receivePurchaseItem").innerHTML=items.map(i=>
       '<option value="'+Number(i.id)+'" data-remaining="'+Number(i.remaining_quantity)+'">'+escapeText(i.product_title)+' · مانده '+Number(i.remaining_quantity)+'</option>'
