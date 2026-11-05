@@ -25,6 +25,7 @@ declare(strict_types=1);
     <button class="admin-nav" data-panel="categories">دسته‌بندی‌ها</button>
     <button class="admin-nav" data-panel="orders">مدیریت سفارش‌ها</button>
     <button class="admin-nav" data-panel="inventory">انبار و موجودی</button>
+    <button class="admin-nav" data-panel="scenes">طراحی فروشگاه مجازی</button>
     <div class="admin-sidebar-note">دسترسی‌ها بر اساس نقش و مجوز حساب شما از سمت سرور کنترل می‌شوند.</div>
   </aside>
   <section class="admin-content">
@@ -80,6 +81,26 @@ declare(strict_types=1);
         <h3>انتقال بین انبارها</h3><div class="admin-form-grid"><label>از انبار<select id="transferFrom" required></select></label><label>به انبار<select id="transferTo" required></select></label><label>محصول<select id="transferProduct" required></select></label><label>تعداد انتقال<input id="transferQuantity" type="number" min="1" max="1000000" required></label></div><button class="primary-button" type="submit">ثبت انتقال</button>
       </form>
       <h3>موجودی فعلی</h3><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>محصول</th><th>انبار</th><th>موجودی</th><th>رزروشده</th><th>قابل فروش</th></tr></thead><tbody id="stockRows"><tr><td colspan="5">در حال بارگذاری...</td></tr></tbody></table></div>
+    </section>
+    <section class="admin-panel" id="panel-scenes">
+      <div class="admin-heading"><div><p class="eyebrow">تجربه خرید تعاملی</p><h2>طراحی فروشگاه مجازی</h2></div><button class="text-button" id="reloadScenes">به‌روزرسانی</button></div>
+      <form id="mediaUploadForm" class="admin-form">
+        <h3>بارگذاری تصویر راهرو یا قفسه</h3>
+        <div class="admin-form-grid"><label>فایل تصویر (JPG، PNG، WebP)<input id="mediaFile" type="file" accept="image/jpeg,image/png,image/webp" required></label><label>نوع تصویر<select id="mediaType"><option value="aisle">راهرو</option><option value="panorama">پانوراما ۳۶۰</option><option value="product">محصول</option><option value="category">دسته‌بندی</option><option value="hero">بنر اصلی</option></select></label></div>
+        <label>توضیح تصویر<input id="mediaAlt" maxlength="255" placeholder="مثلاً راهروی لبنیات"></label><button class="primary-button" type="submit">بارگذاری تصویر</button><p id="mediaUploadMessage" class="form-message"></p>
+      </form>
+      <form id="sceneForm" class="admin-form">
+        <h3>ساخت صحنه جدید</h3>
+        <div class="admin-form-grid"><label>عنوان راهرو<input id="sceneTitle" maxlength="140" required></label><label>نوع صحنه<select id="sceneType"><option value="aisle_photo">تصویر راهرو</option><option value="panorama">پانورامای ۳۶۰</option><option value="webgl_scene">صحنه سه‌بعدی</option></select></label><label>شناسه تصویر اصلی<input id="sceneMediaId" type="number" min="1" required></label><label>شناسه تصویر جایگزین (اختیاری)<input id="sceneFallbackId" type="number" min="1"></label><label>ترتیب نمایش<input id="sceneSort" type="number" min="0" value="0"></label><label class="admin-check-label"><input id="scenePublished" type="checkbox"> انتشار در فروشگاه</label></div>
+        <button class="primary-button" type="submit">ساخت صحنه</button>
+      </form>
+      <div id="sceneRows" class="admin-category-list"></div>
+      <form id="hotspotForm" class="admin-form">
+        <h3>افزودن نقطه تعاملی به صحنه</h3>
+        <div class="admin-form-grid"><label>صحنه<select id="hotspotScene" required></select></label><label>نوع عملکرد<select id="hotspotAction"><option value="product">بازکردن محصول</option><option value="category">رفتن به دسته‌بندی</option><option value="navigate">رفتن به راهرو</option></select></label><label>عنوان نقطه<input id="hotspotLabel" maxlength="120" required></label><label>موقعیت افقی X (۰ تا ۱)<input id="hotspotX" type="number" min="0" max="1" step="0.01" value="0.5" required></label><label>موقعیت عمودی Y (۰ تا ۱)<input id="hotspotY" type="number" min="0" max="1" step="0.01" value="0.5" required></label><label id="hotspotProductField">محصول<select id="hotspotProduct"></select></label><label id="hotspotCategoryField" hidden>دسته‌بندی<select id="hotspotCategory"></select></label><label id="hotspotTargetField" hidden>صحنه مقصد<select id="hotspotTarget"></select></label></div>
+        <button class="primary-button" type="submit">افزودن نقطه</button>
+      </form>
+      <div id="hotspotRows" class="admin-category-list"></div>
     </section>
     <p id="adminMessage" class="form-message" role="status"></p>
   </section>
