@@ -604,6 +604,100 @@ document.getElementById("newProductButton").addEventListener("click",()=>{
 document.getElementById("cancelProductForm").addEventListener("click",resetProductForm);
 document.getElementById("productSearch").addEventListener("input",renderProducts);
 document.getElementById("reloadProducts").addEventListener("click",loadAll);
+function resetVariantForm(){
+  document.getElementById("variantForm").reset();
+  document.getElementById("variantId").value="";
+  document.getElementById("variantUnit").value="عدد";
+  document.getElementById("variantLowStock").value="5";
+  document.getElementById("variantActive").checked=true;
+  document.getElementById("variantWeighted").checked=false;
+}
+async function loadAdminVariants(){
+  if(!activeVariantParent)return;
+  try{
+    const result=await request("admin/products/"+Number(activeVariantParent.id)+"/variants");
+    adminVariants=result.data||[];
+    document.getElementById("variantRows").innerHTML=adminVariants.map(v=>
+      '<article><div><strong>'+escapeText(v.variant_label)+'</strong><small>'+escapeText(v.sku)+' · '+money(Number(v.price_rial)/10)+' / '+escapeText(v.unit_label)+'</small><small>موجودی قابل فروش: '+Number(v.available_quantity)+'</small></div><span class="admin-status '+(v.is_active?"active":"inactive")+'">'+(v.is_active?"فعال":"غیرفعال")+'</span><button class="admin-row-action" data-edit-variant="'+Number(v.id)+'">ویرایش</button>'+(v.is_active?'<button class="admin-row-action danger" data-disable-variant="'+Number(v.id)+'">غیرفعال‌سازی</button>':"")+'</article>'
+    ).join("")||'<p>برای این محصول هنوز تنوعی تعریف نشده است.</p>';
+  }catch(error){
+    document.getElementById("variantMessage").textContent=error.message;
+    document.getElementById("variantMessage").className="form-message error";
+  }
+}
+function openVariantManager(parent){
+  activeVariantParent=parent;
+  document.getElementById("variantManagerTitle").textContent="تنوع‌های "+parent.title;
+  document.getElementById("variantManager").hidden=false;
+  resetVariantForm();loadAdminVariants();
+  document.getElementById("variantManager").scrollIntoView({behavior:"smooth"});
+}
+document.getElementById("closeVariantManager").addEventListener("click",()=>{
+  document.getElementById("variantManager").hidden=true;activeVariantParent=null;adminVariants=[];
+});
+document.getElementById("resetVariantForm").addEventListener("click",resetVariantForm);
+document.getElementById("variantForm").addEventListener("submit",async event=>{
+  event.preventDefault();if(!activeVariantParent)return;
+  const id=document.getElementById("variantId").value;
+  const price=Number(document.getElementById("variantPrice").value);
+  const compareRaw=document.getElementById("variantCompareAt").value.trim();
+  const threshold=Number(document.getElementById("variantLowStock").value);
+  if(!Number.isSafeInteger(price)||price<1||(compareRaw!==""&&(!Number.isSafeInteger(Number(compareRaw))||Number(compareRaw)<price))||!Number.isInteger(threshold)||threshold<0||threshold>1000000){
+    document.getElementById("variantMessage").textContent="قیمت و حد هشدار موجودی را بررسی کنید؛ قیمت قبل از تخفیف باید از قیمت فروش کمتر نباشد.";
+    document.getElementById("variantMessage").className="form-message error";return;
+  }
+  const payload={
+    variant_label:document.getElementById("variantLabel").value.trim(),
+    sku:document.getElementById("variantSku").value.trim(),
+    barcode:document.getElementById("variantBarcode").value.trim(),
+    price_rial:Math.round(price*10),
+    compare_at_rial:compareRaw===""?null:Math.round(Number(compareRaw)*10),
+    unit_label:document.getElementById("variantUnit").value.trim(),
+    low_stock_threshold:threshold,
+    is_weighted:document.getElementById("variantWeighted").checked,
+    is_active:document.getElementById("variantActive").checked
+  };
+  try{
+    await request("admin/products/"+Number(activeVariantParent.id)+"/variants"+(id?"/"+id:""),{
+      method:id?"PATCH":"POST",body:JSON.stringify(payload),csrf:true
+    });
+    resetVariantForm();await loadAdminVariants();await loadAll();
+    document.getElementById("variantMessage").textContent="تنوع محصول ذخیره شد.";
+    document.getElementById("variantMessage").className="form-message success";
+  }catch(error){
+    document.getElementById("variantMessage").textContent=error.message;
+    document.getElementById("variantMessage").className="form-message error";
+  }
+});
+document.getElementById("variantRows").addEventListener("click",async event=>{
+  const edit=event.target.closest("[data-edit-variant]");
+  const disable=event.target.closest("[data-disable-variant]");
+  if(edit){
+    const v=adminVariants.find(item=>Number(item.id)===Number(edit.dataset.editVariant));if(!v)return;
+    document.getElementById("variantId").value=v.id;
+    document.getElementById("variantLabel").value=v.variant_label;
+    document.getElementById("variantSku").value=v.sku;
+    document.getElementById("variantBarcode").value=v.barcode||"";
+    document.getElementById("variantPrice").value=Math.round(Number(v.price_rial)/10);
+    document.getElementById("variantCompareAt").value=v.compare_at_rial===null?"":Math.round(Number(v.compare_at_rial)/10);
+    document.getElementById("variantUnit").value=v.unit_label;
+    document.getElementById("variantLowStock").value=Number(v.low_stock_threshold);
+    document.getElementById("variantWeighted").checked=Boolean(v.is_weighted);
+    document.getElementById("variantActive").checked=Boolean(v.is_active);
+    document.getElementById("variantForm").scrollIntoView({behavior:"smooth"});
+  }
+  if(disable&&confirm("این تنوع از فروش خارج شود؟")){
+    try{
+      await request("admin/products/"+Number(activeVariantParent.id)+"/variants/"+Number(disable.dataset.disableVariant),{method:"DELETE",csrf:true});
+      await loadAdminVariants();await loadAll();
+      document.getElementById("variantMessage").textContent="تنوع غیرفعال شد.";
+      document.getElementById("variantMessage").className="form-message success";
+    }catch(error){
+      document.getElementById("variantMessage").textContent=error.message;
+      document.getElementById("variantMessage").className="form-message error";
+    }
+  }
+});
 document.getElementById("productRows").addEventListener("click",async e=>{
   const manage=e.target.closest("[data-manage-variants]");
   const edit=e.target.closest("[data-edit-product]");
