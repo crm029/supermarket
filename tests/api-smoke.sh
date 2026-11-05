@@ -207,6 +207,7 @@ request GET /admin/orders 200 "" "$TOKEN"
 request GET /admin/reports/overview 200 "" "$TOKEN"
 request GET /admin/warehouses 200 "" "$TOKEN"
 request GET /admin/stock 200 "" "$TOKEN"
+request GET /admin/stock/low 200 "" "$TOKEN"
 request GET /admin/scenes 200 "" "$TOKEN"
 request GET /admin/media 200 "" "$TOKEN"
 assert_json media-library
