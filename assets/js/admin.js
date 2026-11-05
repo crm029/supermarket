@@ -929,6 +929,25 @@ function renderOrders() {
     return '<tr><td><strong>'+escapeText(o.order_number)+'</strong><small>'+escapeText(o.created_at||"")+'</small></td><td>'+escapeText(o.customer_name)+'<small>'+escapeText(o.customer_mobile)+'</small></td><td>'+new Intl.NumberFormat("fa-IR").format(Number(o.item_count)||0)+'</td><td>'+money(Number(o.total_rial)/10)+'</td><td><span class="admin-status '+(o.status==="delivered"?"active":"inactive")+'">'+(labels[o.status]||escapeText(o.status))+'</span></td><td>'+action+'</td></tr>';
   }).join("")||'<tr><td colspan="6">هنوز سفارشی ثبت نشده است.</td></tr>';
 }
+function renderOrderAssignments(order,data) {
+  const panel=document.getElementById("orderAssignmentPanel");
+  if(!panel)return;
+  const staff=data.staff||{};
+  const assignments=data.assignments||[];
+  const renderOptions=(rows)=>'<option value="">انتخاب کارمند</option>'+(rows||[]).map(person=>'<option value="'+Number(person.id)+'">'+escapeText(person.full_name)+' · '+escapeText(person.mobile)+'</option>').join("");
+  const renderHistory=assignments.map(item=>{
+    const type=item.assignment_type==="picker"?"جمع‌آوری":"پیک";
+    const status={active:"فعال",completed:"تکمیل‌شده",cancelled:"لغوشده",replaced:"جایگزین‌شده"}[item.status]||item.status;
+    return '<li><strong>'+type+': '+escapeText(item.full_name)+'</strong> · '+status+' · '+escapeText(item.assigned_at||"")+
+      (item.status==="active"?'<button class="admin-row-action" data-complete-assignment="'+Number(item.id)+'">ثبت تکمیل وظیفه</button>':"")+'</li>';
+  }).join("")||"<li>هنوز نیرویی به این سفارش تخصیص داده نشده است.</li>";
+  const canAssign=!["pending_payment","cancelled","refunded","delivered"].includes(order.status);
+  const picker=canAssign&&["paid","accepted","picking"].includes(order.status)
+    ?'<label>مسئول جمع‌آوری<select id="orderPickerSelect">'+renderOptions(staff.picker)+'</select></label><button class="admin-row-action" data-assign-type="picker">تخصیص جمع‌آورنده</button>':"";
+  const courier=canAssign&&order.fulfillment==="delivery"&&["paid","accepted","picking","packed","dispatched"].includes(order.status)
+    ?'<label>پیک سفارش<select id="orderCourierSelect">'+renderOptions(staff.courier)+'</select></label><button class="admin-row-action" data-assign-type="courier">تخصیص پیک</button>':"";
+  panel.innerHTML='<h4>تخصیص نیرو و تحویل</h4><ul>'+renderHistory+'</ul><div class="admin-form-grid">'+picker+courier+'</div><p class="admin-hint">فقط کارکنان فعال دارای مجوز جمع‌آوری یا ارسال در همین فروشگاه نمایش داده می‌شوند.</p>';
+}
 function renderProducts() {
   const query=document.getElementById("productSearch").value.trim().toLocaleLowerCase();
   const rows=products.filter(p=>!query||String(p.title+" "+p.parent_title+" "+p.variant_label+" "+p.sku).toLocaleLowerCase().includes(query));
@@ -1198,6 +1217,32 @@ document.getElementById("orderStatusFilter").addEventListener("change",async e=>
   try{const suffix=e.target.value?"?status="+encodeURIComponent(e.target.value):"";const result=await request("admin/orders"+suffix);orders=result.data||[];renderOrders();}
   catch(error){message(error.message,"error");}
 });
+
+document.getElementById("adminOrderDetail").addEventListener("click",async e=>{
+  const box=document.getElementById("adminOrderDetail");
+  const orderId=Number(box.dataset.orderId);
+  const assign=e.target.closest("[data-assign-type]");
+  const complete=e.target.closest("[data-complete-assignment]");
+  try{
+    if(assign){
+      const type=assign.dataset.assignType;
+      const select=document.getElementById(type==="picker"?"orderPickerSelect":"orderCourierSelect");
+      const assigneeId=Number(select?.value||0);
+      if(!assigneeId){message("ابتدا کارمند موردنظر را انتخاب کنید.","error");return;}
+      await request("admin/orders/"+orderId+"/assignments",{method:"POST",body:JSON.stringify({assignment_type:type,assignee_user_id:assigneeId}),csrf:true});
+      const refreshed=await request("admin/orders/"+orderId+"/assignments");
+      const order=orders.find(o=>Number(o.id)===orderId);
+      if(order)renderOrderAssignments(order,refreshed.data||{});
+      message("مسئول سفارش تخصیص یافت.","success");
+    }else if(complete){
+      await request("admin/orders/"+orderId+"/assignments/"+Number(complete.dataset.completeAssignment)+"/complete",{method:"POST",body:"{}",csrf:true});
+      const refreshed=await request("admin/orders/"+orderId+"/assignments");
+      const order=orders.find(o=>Number(o.id)===orderId);
+      if(order)renderOrderAssignments(order,refreshed.data||{});
+      message("تکمیل وظیفه ثبت شد.","success");
+    }
+  }catch(error){message(error.message,"error");}
+});
 document.getElementById("orderRows").addEventListener("click",async e=>{
   const detail=e.target.closest("[data-admin-order-detail]");
   if(detail){
@@ -1208,7 +1253,14 @@ document.getElementById("orderRows").addEventListener("click",async e=>{
       const box=document.getElementById("adminOrderDetail");
       const couponInfo=Number(order.discount_rial)>0?'<p>کد تخفیف: '+escapeText(order.coupon_code||"—")+' · مبلغ تخفیف: '+money(Number(order.discount_rial)/10)+'</p>':"";
       box.hidden=false;
-      box.innerHTML='<h3>سفارش '+escapeText(order.order_number)+'</h3><p>مشتری: '+escapeText(order.customer_name)+' · '+escapeText(order.customer_mobile)+'</p><p>نشانی / روش دریافت: '+escapeText(address)+'</p>'+couponInfo+'<p>توضیحات: '+escapeText(order.customer_note||"—")+'</p>';
+      box.dataset.orderId=String(order.id);
+      box.innerHTML='<h3>سفارش '+escapeText(order.order_number)+'</h3><p>مشتری: '+escapeText(order.customer_name)+' · '+escapeText(order.customer_mobile)+'</p><p>نشانی / روش دریافت: '+escapeText(address)+'</p>'+couponInfo+'<p>توضیحات: '+escapeText(order.customer_note||"—")+'</p><section id="orderAssignmentPanel"><p>در حال دریافت مسئولیت‌های سفارش...</p></section>';
+      try{
+        const result=await request("admin/orders/"+Number(order.id)+"/assignments");
+        renderOrderAssignments(order,result.data||{});
+      }catch(error){
+        document.getElementById("orderAssignmentPanel").innerHTML='<p>'+escapeText(error.message)+'</p>';
+      }
     }
     return;
   }

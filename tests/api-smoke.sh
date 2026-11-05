@@ -349,6 +349,33 @@ if [[ "$ORDER_FEE" != "3000" || "$ORDER_TOTAL" != "253000" || "$ORDER_ZONE" != "
 RESERVED="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT reserved FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID LIMIT 1")"
 if [[ "$RESERVED" != "2" ]]; then echo "Expected 2 reserved units, received $RESERVED"; exit 1; fi
 request POST "/me/orders/$ORDER_ID/cancel" 200 "" "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+
+# Order picker/courier assignment workflow.
+request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"fulfillment":"delivery","address_id":'$ADDRESS_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+ASSIGNMENT_ORDER_ID="$(assert_json order-created)"
+mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "
+  UPDATE orders SET status='paid' WHERE tenant_id=1 AND id=$ASSIGNMENT_ORDER_ID;
+  INSERT INTO users (tenant_id,full_name,mobile,referral_code,status)
+    VALUES (1,'کارمند عملیات تست','09120000993','ASSIGNMENT003','active');
+  SET @worker_id=LAST_INSERT_ID();
+  INSERT INTO roles (tenant_id,role_key,title) VALUES (1,'ci_fulfillment_worker','نیروی عملیات CI');
+  SET @worker_role=LAST_INSERT_ID();
+  INSERT INTO user_roles (tenant_id,role_scope_id,user_id,role_id) VALUES (1,1,@worker_id,@worker_role);
+  INSERT INTO role_permissions (role_scope_id,role_id,permission_id)
+    SELECT 1,@worker_role,id FROM permissions
+    WHERE permission_key IN ('orders.pick','orders.deliver') AND scope='tenant';
+"
+WORKER_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM users WHERE tenant_id=1 AND mobile='09120000993' LIMIT 1")"
+request GET "/admin/orders/$ASSIGNMENT_ORDER_ID/assignments" 200 "" "$TOKEN"
+request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/assignments" 201 '{"assignment_type":"picker","assignee_user_id":'$WORKER_ID'}' "$TOKEN" "$CSRF"
+PICKER_ASSIGNMENT_ID="$(assert_json created-id)"
+request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/assignments" 201 '{"assignment_type":"courier","assignee_user_id":'$WORKER_ID'}' "$TOKEN" "$CSRF"
+COURIER_ASSIGNMENT_ID="$(assert_json created-id)"
+request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/assignments/$COURIER_ASSIGNMENT_ID/complete" 200 '{}' "$TOKEN" "$CSRF"
+request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/assignments" 422 '{"assignment_type":"courier","assignee_user_id":999999999}' "$TOKEN" "$CSRF"
+request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/assignments/$PICKER_ASSIGNMENT_ID/complete" 200 '{}' "$TOKEN" "$CSRF"
+mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "UPDATE orders SET status='pending_payment' WHERE tenant_id=1 AND id=$ASSIGNMENT_ORDER_ID; UPDATE stock_reservations SET expires_at=DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 MINUTE) WHERE tenant_id=1 AND order_id=$ASSIGNMENT_ORDER_ID AND status='active'"
+php bin/expire-reservations.php
 request POST /admin/coupons 201 '{"code":"WELCOME10","title":"تخفیف خوش‌آمدگویی","discount_type":"percentage","discount_value":10,"max_discount_rial":15000,"minimum_order_rial":1,"usage_limit":1,"per_user_limit":1,"starts_at":"2020-01-01T00:00","ends_at":"2030-01-01T00:00","is_active":true}' "$TOKEN" "$CSRF"
 COUPON_ID="$(assert_json created-id)"
 request POST /admin/coupons 409 '{"code":"WELCOME10","title":"کد تکراری","discount_type":"percentage","discount_value":10,"minimum_order_rial":1,"per_user_limit":1,"starts_at":"2020-01-01T00:00","ends_at":"2030-01-01T00:00","is_active":true}' "$TOKEN" "$CSRF"
