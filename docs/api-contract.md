@@ -11,9 +11,9 @@ Base path: `/api/v1`. JSON responses use UTF-8 and Persian user-facing messages.
 - `POST /cart/quote` — server-side price and availability recalculation.
 
 ## Customer
-- `POST /auth/request-otp` — request a rate-limited SMS code for an existing active account.
+- `POST /auth/register` — create a pending customer account; optional referral code; requires SMS delivery to be configured.\n- `POST /auth/request-otp` — request a rate-limited SMS code for an active or pending account.
 - `POST /auth/verify-otp` — verify code and issue a database-backed session cookie plus CSRF token.
-- `GET /me` — authenticated customer profile.
+- `GET /me` — authenticated customer profile.\n- `GET /auth/csrf` — rotate and return the current session's CSRF token.
 - `POST /auth/logout` — revoke the current session; requires `X-CSRF-Token`.
 - `GET /me/orders` — tenant-scoped order history.
 - `GET /me/addresses` — address book.
