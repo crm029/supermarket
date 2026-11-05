@@ -152,6 +152,8 @@ assert_json() {
           (float)($profile["latitude"] ?? 0) !== 35.6892 ||
           (float)($profile["longitude"] ?? 0) !== 51.389 ||
           ($profile["opening_hours"] ?? "") !== "Mo-Su 08:00-22:00" ||
+          ($profile["google_site_verification"] ?? "") !== "testverificationtoken123" ||
+          ($profile["ga4_measurement_id"] ?? "") !== "G-ABC1234567" ||
           (int)($checkout["delivery_fee_rial"] ?? -1) !== 1000 ||
           (int)($checkout["reservation_minutes"] ?? -1) !== 15) exit(1);
       exit(0);
@@ -267,7 +269,8 @@ request GET /admin/settings 403 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
 request GET /admin/settings 200 "" "$TOKEN"
 request PUT /admin/settings 419 '{"profile":{},"checkout":{}}' "$TOKEN"
 request PUT /admin/settings 422 '{"profile":{"name":"اطلاعات نامعتبر","primary_color":"#173D2D","accent_color":"#E6A23C","latitude":95,"longitude":51.389},"checkout":{"delivery_enabled":true,"pickup_enabled":true,"delivery_fee_rial":1000,"minimum_order_rial":1,"reservation_minutes":15}}' "$TOKEN" "$CSRF"
-request PUT /admin/settings 200 '{"profile":{"name":"فروشگاه آزمایشی","tagline":"تست تنظیمات","support_phone":"02112345678","street_address":"خیابان نمونه، پلاک ۱۰","city":"تهران","region":"تهران","postal_code":"1234567890","country_code":"IR","latitude":35.6892,"longitude":51.389,"opening_hours":"Mo-Su 08:00-22:00","primary_color":"#173D2D","accent_color":"#E6A23C"},"checkout":{"delivery_enabled":true,"pickup_enabled":true,"delivery_fee_rial":1000,"minimum_order_rial":1,"reservation_minutes":15}}' "$TOKEN" "$CSRF"
+request PUT /admin/settings 422 '{"profile":{"name":"شناسه نامعتبر","primary_color":"#173D2D","accent_color":"#E6A23C","ga4_measurement_id":"INVALID"},"checkout":{"delivery_enabled":true,"pickup_enabled":true,"delivery_fee_rial":1000,"minimum_order_rial":1,"reservation_minutes":15}}' "$TOKEN" "$CSRF"
+request PUT /admin/settings 200 '{"profile":{"name":"فروشگاه آزمایشی","tagline":"تست تنظیمات","support_phone":"02112345678","street_address":"خیابان نمونه، پلاک ۱۰","city":"تهران","region":"تهران","postal_code":"1234567890","country_code":"IR","latitude":35.6892,"longitude":51.389,"opening_hours":"Mo-Su 08:00-22:00","google_site_verification":"testverificationtoken123","ga4_measurement_id":"G-ABC1234567","primary_color":"#173D2D","accent_color":"#E6A23C"},"checkout":{"delivery_enabled":true,"pickup_enabled":true,"delivery_fee_rial":1000,"minimum_order_rial":1,"reservation_minutes":15}}' "$TOKEN" "$CSRF"
 request GET /admin/settings 200 "" "$TOKEN"
 assert_json store-settings
 request GET /store 200
@@ -380,9 +383,9 @@ request POST /checkout 422 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}]
 request PATCH "/me/addresses/$ADDRESS_ID" 200 '{"city":"شیراز"}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 request POST /checkout 422 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}],"fulfillment":"delivery","address_id":'$ADDRESS_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 request PATCH "/me/addresses/$ADDRESS_ID" 200 '{"city":"کرج"}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
-request PUT /admin/settings 200 '{"profile":{"name":"فروشگاه آزمایشی","tagline":"تست تنظیمات","support_phone":"02112345678","street_address":"خیابان نمونه، پلاک ۱۰","city":"تهران","region":"تهران","postal_code":"1234567890","country_code":"IR","latitude":35.6892,"longitude":51.389,"opening_hours":"Mo-Su 08:00-22:00","primary_color":"#173D2D","accent_color":"#E6A23C"},"checkout":{"delivery_enabled":false,"pickup_enabled":true,"delivery_fee_rial":1000,"minimum_order_rial":1,"reservation_minutes":15}}' "$TOKEN" "$CSRF"
+request PUT /admin/settings 200 '{"profile":{"name":"فروشگاه آزمایشی","tagline":"تست تنظیمات","support_phone":"02112345678","street_address":"خیابان نمونه، پلاک ۱۰","city":"تهران","region":"تهران","postal_code":"1234567890","country_code":"IR","latitude":35.6892,"longitude":51.389,"opening_hours":"Mo-Su 08:00-22:00","google_site_verification":"testverificationtoken123","ga4_measurement_id":"G-ABC1234567","primary_color":"#173D2D","accent_color":"#E6A23C"},"checkout":{"delivery_enabled":false,"pickup_enabled":true,"delivery_fee_rial":1000,"minimum_order_rial":1,"reservation_minutes":15}}' "$TOKEN" "$CSRF"
 request POST /checkout 409 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}],"fulfillment":"delivery","address_id":'$ADDRESS_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
-request PUT /admin/settings 200 '{"profile":{"name":"فروشگاه آزمایشی","tagline":"تست تنظیمات","support_phone":"02112345678","street_address":"خیابان نمونه، پلاک ۱۰","city":"تهران","region":"تهران","postal_code":"1234567890","country_code":"IR","latitude":35.6892,"longitude":51.389,"opening_hours":"Mo-Su 08:00-22:00","primary_color":"#173D2D","accent_color":"#E6A23C"},"checkout":{"delivery_enabled":true,"pickup_enabled":true,"delivery_fee_rial":1000,"minimum_order_rial":1,"reservation_minutes":15}}' "$TOKEN" "$CSRF"
+request PUT /admin/settings 200 '{"profile":{"name":"فروشگاه آزمایشی","tagline":"تست تنظیمات","support_phone":"02112345678","street_address":"خیابان نمونه، پلاک ۱۰","city":"تهران","region":"تهران","postal_code":"1234567890","country_code":"IR","latitude":35.6892,"longitude":51.389,"opening_hours":"Mo-Su 08:00-22:00","google_site_verification":"testverificationtoken123","ga4_measurement_id":"G-ABC1234567","primary_color":"#173D2D","accent_color":"#E6A23C"},"checkout":{"delivery_enabled":true,"pickup_enabled":true,"delivery_fee_rial":1000,"minimum_order_rial":1,"reservation_minutes":15}}' "$TOKEN" "$CSRF"
 RESERVED="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT reserved FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID LIMIT 1")"
 ORDER_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
 if [[ "$RESERVED" != "0" || "$ORDER_STATUS" != "cancelled" ]]; then echo "Customer cancellation did not release stock or update order"; exit 1; fi
