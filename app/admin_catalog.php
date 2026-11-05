@@ -110,11 +110,11 @@ function app_admin_product_list(PDO $db, array $tenant): never {
     $category = filter_input(INPUT_GET, 'category', FILTER_VALIDATE_INT);
     $page = max(1, min(1000, (int)($_GET['page'] ?? 1)));
     $limit = 50;
-    $where = ['tenant_id = :tenant'];
+    $where = ['p.tenant_id = :tenant'];
     $params = ['tenant' => $tenant['id']];
 
     if ($query !== '') {
-        $where[] = '(title LIKE :q_title OR sku LIKE :q_sku OR barcode LIKE :q_barcode)';
+        $where[] = '(p.title LIKE :q_title OR p.sku LIKE :q_sku OR p.barcode LIKE :q_barcode)';
         $search = '%' . mb_substr($query, 0, 80) . '%';
         $params['q_title'] = $search;
         $params['q_sku'] = $search;
@@ -126,7 +126,7 @@ function app_admin_product_list(PDO $db, array $tenant): never {
     }
 
     $sqlWhere = implode(' AND ', $where);
-    $count = $db->prepare("SELECT COUNT(*) FROM products WHERE {$sqlWhere}");
+    $count = $db->prepare("SELECT COUNT(*) FROM products p WHERE {$sqlWhere}");
     $count->execute($params);
     $stmt = $db->prepare(
         "SELECT p.id, p.sku, p.barcode, p.title, p.brand, p.description, p.unit_label,
