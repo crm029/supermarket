@@ -178,7 +178,7 @@ function app_auth_verify_otp(PDO $db, array $tenant): never {
             $wrong = $db->prepare(
                 "UPDATE auth_challenges
                  SET attempts = attempts + 1,
-                     consumed_at = IF(attempts + 1 >= 5, UTC_TIMESTAMP(), consumed_at)
+                     consumed_at = IF(attempts >= 5, UTC_TIMESTAMP(), consumed_at)
                  WHERE id = ?"
             );
             $wrong->execute([$challenge['id']]);
