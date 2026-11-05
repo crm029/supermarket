@@ -80,3 +80,12 @@ SELECT sl.tenant_id,sl.warehouse_id,sl.product_id,'API-SMOKE-BATCH',DATE_ADD(UTC
        sl.on_hand,sl.on_hand,sl.reserved,0
 FROM stock_levels sl
 WHERE sl.tenant_id=1 AND sl.product_id=@api_product_id AND sl.on_hand>0;
+
+-- Seed merchant-managed SEO copy for the server-rendered product/category pages.
+UPDATE products
+SET seo_title='عنوان سئو محصول تست',seo_description='توضیحات متا محصول تست'
+WHERE tenant_id=1 AND id=1;
+
+UPDATE categories
+SET description='توضیحات کامل دسته تست',seo_title='عنوان سئو دسته تست',seo_description='توضیحات متا دسته تست'
+WHERE tenant_id=1 AND slug='dairy';
