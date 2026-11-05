@@ -102,6 +102,12 @@ jobs:
       - name: Run permission scope tests
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/permissions.sql
 
+      - name: Apply order picker and courier assignment migration
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_06_order_assignments.sql
+
+      - name: Test tenant-safe order assignments
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/order-assignments.sql
+
       - name: Apply persistent customer cart migration
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_05_customer_carts.sql
 
