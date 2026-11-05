@@ -61,6 +61,16 @@ VALUES
   (1,@api_user_one,SHA2(REPEAT('S',43),256),SHA2(REPEAT('C',43),256),DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 DAY)),
   (2,@api_user_two,SHA2(REPEAT('T',43),256),SHA2(REPEAT('D',43),256),DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 DAY));
 
+-- Give the tenant-one API test manager a global platform role for platform API coverage.
+INSERT INTO roles (tenant_id,role_key,title)
+VALUES (NULL,'ci_platform_admin','مدیر پلتفرم CI');
+SET @api_platform_role_id=LAST_INSERT_ID();
+INSERT INTO role_permissions (role_scope_id,role_id,permission_id)
+SELECT 0,@api_platform_role_id,id FROM permissions
+WHERE scope='platform' AND permission_key IN ('platform.tenants.manage','platform.audit.read');
+INSERT INTO user_roles (tenant_id,role_scope_id,user_id,role_id)
+VALUES (1,0,@api_user_one,@api_platform_role_id);
+
 SELECT 'API smoke fixtures created' AS result;
 
 -- Customer account and stock for end-to-end commerce smoke coverage.
