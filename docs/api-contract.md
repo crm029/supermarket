@@ -127,3 +127,11 @@ Checkout intentionally does not mark an order paid. Reservations expire after 20
 - `GET /me/cart` — return the signed-in customer's tenant-scoped cart with current product names, prices and available stock.
 - `PUT /me/cart` — replace the customer's cart with up to 50 active tenant products and quantities from 1 to 99; requires session and CSRF token. An empty `items` array clears the cart.
 - Cart contents are not a price or stock reservation. Checkout always recalculates prices and reserves stock transactionally.
+
+
+## Customer address book
+- `GET /me/addresses` lists the authenticated customer's active addresses for the verified tenant.
+- `POST /me/addresses` creates an address.
+- `PATCH /me/addresses/{id}` updates an address owned by the authenticated customer; partial fields are accepted and the complete merged address is validated.
+- `DELETE /me/addresses/{id}` retires an address from the active list without breaking historical order references.
+- Address writes require the session CSRF token. Checkout accepts only an active address owned by the same customer and tenant.
