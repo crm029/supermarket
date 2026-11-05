@@ -28,7 +28,6 @@
         const details=row.details?JSON.stringify(row.details):"";
         return '<article class="platform-audit-row"><div><strong>'+escapeText(labels[row.action]||row.action)+'</strong><small>'+escapeText(row.actor_name||"مدیر پلتفرم")+' · '+escapeText(row.created_at||"")+'</small></div><p>'+escapeText(row.entity_type||"")+" #"+Number(row.entity_id||0)+'</p><small>'+escapeText(details)+'</small></article>';
       }).join("");
-      await loadAudit();
     }catch(error){box.innerHTML='<div class="platform-empty">'+escapeText(error.message)+'</div>';}
   }
   async function loadTenants(){
@@ -37,7 +36,7 @@
       const result=await api("platform/tenants");
       const tenants=result.data||[];
       $("platformTenantCount").textContent=new Intl.NumberFormat("fa-IR").format(tenants.length)+" فروشگاه";
-      if(!tenants.length){box.innerHTML='<div class="platform-empty">هنوز فروشگاهی ثبت نشده است.</div>';return;}
+      if(!tenants.length){box.innerHTML='<div class="platform-empty">هنوز فروشگاهی ثبت نشده است.</div>';await loadAudit();return;}
       box.innerHTML=tenants.map(t=>{
         const domain=(t.domains||[]).map(escapeText).join("، ")||"دامنه ثبت نشده";
         const stateClass=t.status==="pending"?"pending":(t.status==="suspended"?"suspended":"");
@@ -46,6 +45,7 @@
         const suspend=t.status==="active"?'<button class="danger" data-suspend-tenant="'+Number(t.id)+'">تعلیق فروشگاه</button>':"";
         return '<article class="platform-tenant"><div class="platform-tenant-head"><div><h3>'+escapeText(t.name)+' · '+escapeText(t.slug)+'</h3><p dir="ltr">'+domain+'</p><p>کاربران: '+new Intl.NumberFormat("fa-IR").format(Number(t.user_count)||0)+' · سفارش‌ها: '+new Intl.NumberFormat("fa-IR").format(Number(t.order_count)||0)+' · منطقه زمانی: '+escapeText(t.timezone)+'</p></div><span class="platform-status '+stateClass+'">'+statusLabel(t.status)+'</span></div>'+verify+suspend+'</article>';
       }).join("");
+      await loadAudit();
     }catch(error){box.innerHTML='<div class="platform-empty">'+escapeText(error.message)+'</div>';}
   }
   async function init(){
