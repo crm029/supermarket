@@ -83,6 +83,10 @@ async function loadPurchasing(){
     purchaseOrders=orderResult.data||[];
     const supplierOptions=suppliers.filter(s=>Number(s.is_active)).map(s=>'<option value="'+Number(s.id)+'">'+escapeText(s.name)+'</option>').join("");
     document.getElementById("purchaseSupplier").innerHTML='<option value="">انتخاب تأمین‌کننده</option>'+supplierOptions;
+    const purchaseProducts=products.filter(p=>Number(p.is_active)&&p.product_kind!=="variant_parent").map(p=>
+      '<option value="'+Number(p.id)+'">'+escapeText(p.product_kind==="variant"?(p.parent_title||p.title)+" · "+(p.variant_label||"تنوع"):p.title)+' · '+escapeText(p.sku)+'</option>'
+    ).join("");
+    document.getElementById("purchaseProduct").innerHTML='<option value="">انتخاب کالا</option>'+purchaseProducts;
     document.getElementById("supplierRows").innerHTML=suppliers.map(s=>
       '<article><div><strong>'+escapeText(s.name)+'</strong><small>'+escapeText(s.contact_person||"بدون رابط")+' · '+escapeText(s.phone||"بدون تلفن")+'</small><small>'+escapeText(s.email||"")+'</small></div><span class="admin-status '+(s.is_active?"active":"inactive")+'">'+(s.is_active?"فعال":"غیرفعال")+'</span></article>'
     ).join("")||'<p>هنوز تأمین‌کننده‌ای ثبت نشده است.</p>';
