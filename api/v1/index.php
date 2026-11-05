@@ -19,6 +19,7 @@ require_once dirname(__DIR__, 2) . '/app/staff.php';
 require_once dirname(__DIR__, 2) . '/app/delivery_zones.php';
 require_once dirname(__DIR__, 2) . '/app/pickup_slots.php';
 require_once dirname(__DIR__, 2) . '/app/coupons.php';
+require_once dirname(__DIR__, 2) . '/app/purchasing.php';
 
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
@@ -147,6 +148,68 @@ try {
         app_auth_require_csrf($session);
         app_auth_require_permission($db, $tenant, $session, 'inventory.manage');
         app_inventory_transfer($db, $tenant, $session);
+    }
+
+    if ($path === '/admin/suppliers') {
+        $session = app_auth_require($db, $tenant);
+        if ($method === 'GET') {
+            app_auth_require_permission($db, $tenant, $session, 'inventory.read');
+            app_admin_supplier_list($db, $tenant);
+        }
+        if ($method === 'POST') {
+            app_auth_require_csrf($session);
+            app_auth_require_permission($db, $tenant, $session, 'inventory.manage');
+            app_admin_supplier_create($db, $tenant, $session);
+        }
+        header('Allow: GET, POST');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if (preg_match('#^/admin/suppliers/([1-9][0-9]*)$#', $path, $supplierMatch)) {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'inventory.manage');
+        app_auth_require_csrf($session);
+        $supplierId = (int)$supplierMatch[1];
+        if ($method === 'PATCH') app_admin_supplier_update($db, $tenant, $session, $supplierId);
+        if ($method === 'DELETE') app_admin_supplier_disable($db, $tenant, $session, $supplierId);
+        header('Allow: PATCH, DELETE');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if ($path === '/admin/purchase-orders') {
+        $session = app_auth_require($db, $tenant);
+        if ($method === 'GET') {
+            app_auth_require_permission($db, $tenant, $session, 'inventory.read');
+            app_admin_purchase_order_list($db, $tenant);
+        }
+        if ($method === 'POST') {
+            app_auth_require_csrf($session);
+            app_auth_require_permission($db, $tenant, $session, 'inventory.manage');
+            app_admin_purchase_order_create($db, $tenant, $session);
+        }
+        header('Allow: GET, POST');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if (preg_match('#^/admin/purchase-orders/([1-9][0-9]*)$#', $path, $purchaseOrderMatch)) {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'inventory.read');
+        $purchaseOrderId = (int)$purchaseOrderMatch[1];
+        if ($method === 'GET') app_admin_purchase_order_detail($db, $tenant, $purchaseOrderId);
+        if ($method === 'DELETE') {
+            app_auth_require_csrf($session);
+            app_auth_require_permission($db, $tenant, $session, 'inventory.manage');
+            app_admin_purchase_order_cancel($db, $tenant, $session, $purchaseOrderId);
+        }
+        header('Allow: GET, DELETE');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if (preg_match('#^/admin/purchase-orders/([1-9][0-9]*)/receive$#', $path, $purchaseReceiveMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'inventory.manage');
+        app_admin_purchase_order_receive($db, $tenant, $session, (int)$purchaseReceiveMatch[1]);
     }
 
     if ($path === '/admin/reports/overview' && $method === 'GET') {
