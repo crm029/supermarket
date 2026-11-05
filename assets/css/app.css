@@ -15,3 +15,5 @@
 
 
 .customer-order{display:flex;align-items:center;gap:8px;padding:12px 0;border-bottom:1px solid var(--line);font-size:11px}.customer-order>div{margin-left:auto}.customer-order strong{display:block}.customer-order small{display:block;color:var(--muted);margin-top:4px}.customer-order button{border:0;border-radius:7px;padding:6px 9px;background:#edf2df;color:#294b2b;font:inherit;font-size:10px;cursor:pointer}.customer-order button[data-order-cancel]{background:#f7e9e4;color:#a0442f}.customer-order-detail{margin-top:18px;padding:14px;border-radius:10px;background:#f7f8f4}.customer-order-detail p{font-size:11px;color:var(--muted);line-height:1.8}
+
+#aisleScene.panorama-mode{background-repeat:no-repeat;cursor:grab;touch-action:pan-y}#aisleScene.panorama-mode:active{cursor:grabbing}
