@@ -95,7 +95,7 @@ $jsonLd = json_encode($schema,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON
 <body>
 <header class="topbar">
   <a class="brand" href="/index.php"><span class="brand-mark">۳۶۰</span><span><?= $e($storeName) ?></span></a>
-  <a class="cart-button" href="/index.php#store">ورود به فروشگاه</a>
+  <a class="cart-button" href="/index.php?category=<?= $e(rawurlencode((string)$category['slug'])) ?>#store">ورود به این قفسه</a>
 </header>
 <main>
   <header class="seo-category-head">
