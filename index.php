@@ -66,7 +66,7 @@ declare(strict_types=1);
         <button class="scene-arrow next" id="nextAisle" aria-label="راهروی بعدی">›</button>
         <div class="scene-floor"></div>
         <div id="freeMovementControls" class="free-movement-controls" hidden>
-          <div class="free-movement-hud"><strong id="freeMovementStatus">به راهروی فروشگاه خوش آمدی</strong><small>حرکت: W A S D یا کلیدهای جهت‌دار · لمس: دکمه‌های پایین</small></div>
+          <div class="free-movement-hud"><strong id="freeMovementStatus">به راهروی فروشگاه خوش آمدی</strong><small>حرکت: W A S D یا کلیدهای جهت‌دار · برای تغییر راهرو از مسیر عرضی ابتدا یا انتها عبور کن</small></div>
           <div class="free-movement-pad" aria-label="کنترل حرکت فروشگاه">
             <button type="button" data-move="forward" aria-label="حرکت به جلو">↑</button>
             <div><button type="button" data-move="left" aria-label="حرکت به چپ">←</button><button type="button" data-move="back" aria-label="حرکت به عقب">↓</button><button type="button" data-move="right" aria-label="حرکت به راست">→</button></div>
