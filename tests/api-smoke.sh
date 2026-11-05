@@ -264,7 +264,7 @@ request POST "/me/orders/$ORDER_ID/cancel" 200 "" "$CUSTOMER_TOKEN" "$CUSTOMER_C
 request POST /admin/coupons 201 '{"code":"WELCOME10","title":"تخفیف خوش‌آمدگویی","discount_type":"percentage","discount_value":10,"max_discount_rial":15000,"minimum_order_rial":1,"usage_limit":1,"per_user_limit":1,"starts_at":"2020-01-01T00:00","ends_at":"2030-01-01T00:00","is_active":true}' "$TOKEN" "$CSRF"
 COUPON_ID="$(assert_json created-id)"
 request POST /admin/coupons 409 '{"code":"WELCOME10","title":"کد تکراری","discount_type":"percentage","discount_value":10,"minimum_order_rial":1,"per_user_limit":1,"starts_at":"2020-01-01T00:00","ends_at":"2030-01-01T00:00","is_active":true}' "$TOKEN" "$CSRF"
-request GET /admin/coupons 200
+request GET /admin/coupons 200 "" "$TOKEN"
 request PATCH "/admin/coupons/$COUPON_ID" 200 '{"per_user_limit":1}' "$TOKEN" "$CSRF"
 request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}],"fulfillment":"delivery","address_id":'$ADDRESS_ID',"coupon_code":"WELCOME10"}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 COUPON_ORDER_ID="$(assert_json order-created)"
