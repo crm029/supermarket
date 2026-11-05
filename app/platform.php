@@ -162,11 +162,28 @@ function app_platform_tenant_suspend(PDO $db, array $actorTenant, array $session
     $reason=trim((string)($body['reason']??''));
     if($tenantId===(int)$actorTenant['id'])app_json(['error'=>'برای جلوگیری از قطع دسترسی، فروشگاه میزبان حساب فعلی را نمی‌توانید تعلیق کنید.'],409);
     if($reason===''||mb_strlen($reason)>500)app_json(['error'=>'دلیل تعلیق الزامی است.'],422);
-    $stmt=$db->prepare("UPDATE tenants SET status='suspended' WHERE id=? AND status='active'");
-    $stmt->execute([$tenantId]);
-    if($stmt->rowCount()!==1)app_json(['error'=>'فروشگاه فعال پیدا نشد.'],404);
-    app_audit_log($db,(int)$actorTenant['id'],(int)$session['id'],'platform.tenant.suspended','tenant',$tenantId,[
-        'reason'=>$reason
-    ]);
-    app_json(['data'=>['tenant_id'=>$tenantId,'status'=>'suspended'],'message'=>'فروشگاه تعلیق شد.']);
+    $db->beginTransaction();
+    try{
+        $lock=$db->prepare('SELECT status FROM tenants WHERE id=? FOR UPDATE');
+        $lock->execute([$tenantId]);
+        $status=$lock->fetchColumn();
+        if($status!=='active'){
+            $db->rollBack();
+            app_json(['error'=>'فروشگاه فعال پیدا نشد.'],404);
+        }
+        $stmt=$db->prepare("UPDATE tenants SET status='suspended' WHERE id=? AND status='active'");
+        $stmt->execute([$tenantId]);
+        if($stmt->rowCount()!==1){
+            $db->rollBack();
+            app_json(['error'=>'وضعیت فروشگاه تغییر کرده است؛ دوباره تلاش کنید.'],409);
+        }
+        app_audit_log($db,(int)$actorTenant['id'],(int)$session['id'],'platform.tenant.suspended','tenant',$tenantId,[
+            'reason'=>$reason
+        ]);
+        $db->commit();
+        app_json(['data'=>['tenant_id'=>$tenantId,'status'=>'suspended'],'message'=>'فروشگاه تعلیق شد.']);
+    }catch(Throwable $e){
+        if($db->inTransaction())$db->rollBack();
+        throw $e;
+    }
 }
