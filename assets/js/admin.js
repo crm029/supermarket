@@ -174,6 +174,7 @@ function money(value) {return new Intl.NumberFormat("fa-IR").format(Math.round(v
 function resetProductForm() {
   document.getElementById("productForm").reset();
   document.getElementById("productId").value="";
+  document.getElementById("productSku").readOnly=false;
   document.getElementById("productFormTitle").textContent="افزودن محصول";
   document.getElementById("productForm").hidden=true;
 }
