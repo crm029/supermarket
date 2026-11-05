@@ -68,16 +68,19 @@ function app_inventory_low_stock_list(PDO $db, array $tenant): never {
     $sql = "SELECT w.id AS warehouse_id,w.title AS warehouse_title,p.id AS product_id,p.sku,
                    CASE WHEN p.product_kind='variant' THEN CONCAT(parent.title,' · ',p.variant_label) ELSE p.title END AS product_title,
                    p.unit_label,COALESCE(sl.on_hand,0) AS on_hand,COALESCE(sl.reserved,0) AS reserved,
-                   GREATEST(COALESCE(sl.on_hand,0)-COALESCE(sl.reserved,0),0) AS available_quantity,
+                   CASE WHEN COALESCE(sl.on_hand,0)>COALESCE(sl.reserved,0)
+                        THEN COALESCE(sl.on_hand,0)-COALESCE(sl.reserved,0) ELSE 0 END AS available_quantity,
                    p.low_stock_threshold,
-                   GREATEST(p.low_stock_threshold-GREATEST(COALESCE(sl.on_hand,0)-COALESCE(sl.reserved,0),0),0) AS shortage_quantity
+                   p.low_stock_threshold-CASE WHEN COALESCE(sl.on_hand,0)>COALESCE(sl.reserved,0)
+                        THEN COALESCE(sl.on_hand,0)-COALESCE(sl.reserved,0) ELSE 0 END AS shortage_quantity
             FROM warehouses w
             JOIN products p ON p.tenant_id=w.tenant_id AND p.is_active=1 AND p.product_kind<>'variant_parent'
             LEFT JOIN products parent ON parent.tenant_id=p.tenant_id AND parent.id=p.parent_product_id
             LEFT JOIN stock_levels sl ON sl.tenant_id=w.tenant_id AND sl.warehouse_id=w.id AND sl.product_id=p.id
             WHERE w.tenant_id=? AND w.is_active=1 AND p.low_stock_threshold>0
               AND (p.product_kind<>'variant' OR (parent.id IS NOT NULL AND parent.is_active=1))
-              AND COALESCE(sl.on_hand,0)-COALESCE(sl.reserved,0)<=p.low_stock_threshold";
+              AND CASE WHEN COALESCE(sl.on_hand,0)>COALESCE(sl.reserved,0)
+                        THEN COALESCE(sl.on_hand,0)-COALESCE(sl.reserved,0) ELSE 0 END<=p.low_stock_threshold";
     $params = [(int)$tenant['id']];
     if ($warehouse !== null && $warehouse !== false && $warehouse > 0) {
         $sql .= " AND w.id=?";
