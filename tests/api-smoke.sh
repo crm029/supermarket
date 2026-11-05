@@ -216,6 +216,12 @@ assert_json() {
       echo $id;
       exit(0);
     }
+    if ($check === "platform-tenant-created") {
+      $id = (int)($data["data"]["tenant_id"] ?? 0);
+      if ($id < 1 || ($data["data"]["status"] ?? "") !== "pending") exit(1);
+      echo $id;
+      exit(0);
+    }
     if ($check === "worker-tasks") {
       $tasks = $data["data"] ?? [];
       $picker = false; $courier = false;
@@ -262,6 +268,27 @@ assert_json scene-hotspots
 request GET /admin/products 200 "" "$TOKEN"
 request GET /admin/categories 200 "" "$TOKEN"
 request GET /admin/orders 200 "" "$TOKEN"
+
+# Global platform tenant provisioning and lifecycle.
+request GET /platform/tenants 200 "" "$TOKEN"
+request GET /platform/tenants 403 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
+request POST /platform/tenants 419 '{"name":"نباید ساخته شود","slug":"csrf-store","host":"csrf.example.test","owner_name":"مالک تست","owner_mobile":"09120000995","timezone":"Asia/Tehran"}' "$TOKEN"
+request POST /platform/tenants 422 '{"name":"دامنه نامعتبر","slug":"invalid-host-store","host":"https://invalid.example.test/path","owner_name":"مالک تست","owner_mobile":"09120000995","timezone":"Asia/Tehran"}' "$TOKEN" "$CSRF"
+request POST /platform/tenants 201 '{"name":"فروشگاه تست پلتفرم","slug":"ci-platform-store","host":"ci-platform-store.example.test","owner_name":"مالک فروشگاه CI","owner_mobile":"09120000995","timezone":"Asia/Tehran"}' "$TOKEN" "$CSRF"
+NEW_TENANT_ID="$(assert_json platform-tenant-created)"
+NEW_OWNER_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM users WHERE tenant_id=$NEW_TENANT_ID AND mobile='09120000995' LIMIT 1")"
+NEW_WAREHOUSE_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM warehouses WHERE tenant_id=$NEW_TENANT_ID AND warehouse_type='main' AND is_active=1")"
+NEW_OWNER_ROLE_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM user_roles ur JOIN roles r ON r.id=ur.role_id AND r.role_scope_id=ur.role_scope_id WHERE ur.tenant_id=$NEW_TENANT_ID AND r.role_key='store_owner'")"
+if [[ "$NEW_OWNER_STATUS" != "pending" || "$NEW_WAREHOUSE_COUNT" != "1" || "$NEW_OWNER_ROLE_COUNT" != "1" ]]; then echo "Platform tenant bootstrap did not create pending owner, owner role and main warehouse."; exit 1; fi
+request POST "/platform/tenants/$NEW_TENANT_ID/verify-domain" 422 '{"ownership_confirmed":false,"verification_method":"dns_txt","verification_note":"مالکیت دامنه بررسی شد"}' "$TOKEN" "$CSRF"
+request POST "/platform/tenants/$NEW_TENANT_ID/verify-domain" 200 '{"ownership_confirmed":true,"verification_method":"dns_txt","verification_note":"CI validated the DNS TXT ownership record"}' "$TOKEN" "$CSRF"
+TENANT_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM tenants WHERE id=$NEW_TENANT_ID")"
+DOMAIN_VERIFIED="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM tenant_domains WHERE tenant_id=$NEW_TENANT_ID AND verified_at IS NOT NULL")"
+if [[ "$TENANT_STATUS" != "active" || "$DOMAIN_VERIFIED" != "1" ]]; then echo "Verified domain did not activate the tenant."; exit 1; fi
+request POST "/platform/tenants/$NEW_TENANT_ID/suspend" 200 '{"reason":"تعلیق آزمایشی برای تست گردش مدیریت پلتفرم"}' "$TOKEN" "$CSRF"
+request POST /platform/tenants/1/suspend 409 '{"reason":"نباید فروشگاه میزبان تعلیق شود"}' "$TOKEN" "$CSRF"
+TENANT_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM tenants WHERE id=$NEW_TENANT_ID")"
+if [[ "$TENANT_STATUS" != "suspended" ]]; then echo "Platform tenant suspension did not persist."; exit 1; fi
 request GET /admin/reports/overview 200 "" "$TOKEN"
 request GET /admin/reports/orders.csv 200 "" "$TOKEN"
 grep -Fq "شماره سفارش" "$OUT"
