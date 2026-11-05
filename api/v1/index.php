@@ -11,6 +11,7 @@ require_once dirname(__DIR__, 2) . '/app/payments.php';
 require_once dirname(__DIR__, 2) . '/app/admin_orders.php';
 require_once dirname(__DIR__, 2) . '/app/order_assignments.php';
 require_once dirname(__DIR__, 2) . '/app/staff_tasks.php';
+require_once dirname(__DIR__, 2) . '/app/platform.php';
 require_once dirname(__DIR__, 2) . '/app/inventory.php';
 require_once dirname(__DIR__, 2) . '/app/admin_scenes.php';
 require_once dirname(__DIR__, 2) . '/app/reports.php';
@@ -45,6 +46,32 @@ try {
     }
     $method = app_method();
     $db = app_db();
+
+    if ($path === '/platform/tenants') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_platform_permission($db, $tenant, $session, 'platform.tenants.manage');
+        if ($method === 'GET') app_platform_tenant_list($db);
+        if ($method === 'POST') {
+            app_auth_require_csrf($session);
+            app_platform_tenant_create($db, $tenant, $session);
+        }
+        header('Allow: GET, POST');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if (preg_match('#^/platform/tenants/([1-9][0-9]*)/verify-domain$#', $path, $platformVerifyMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_platform_permission($db, $tenant, $session, 'platform.tenants.manage');
+        app_platform_tenant_verify_domain($db, $tenant, $session, (int)$platformVerifyMatch[1]);
+    }
+
+    if (preg_match('#^/platform/tenants/([1-9][0-9]*)/suspend$#', $path, $platformSuspendMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_platform_permission($db, $tenant, $session, 'platform.tenants.manage');
+        app_platform_tenant_suspend($db, $tenant, $session, (int)$platformSuspendMatch[1]);
+    }
 
     if (preg_match('#^/admin/media/([1-9][0-9]*)$#', $path, $mediaMatch) && $method === 'DELETE') {
         $session = app_auth_require($db, $tenant);
