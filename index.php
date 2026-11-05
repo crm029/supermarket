@@ -19,6 +19,7 @@ declare(strict_types=1);
   <label class="search"><span>⌕</span><input id="searchInput" type="search" placeholder="دنبال چی می‌گردی؟ مثلاً شیر، برنج، چیپس..." aria-label="جست‌وجوی محصولات"></label>
   <nav class="top-actions" aria-label="دسترسی سریع">
     <button class="icon-button" id="accountButton" type="button">ورود / عضویت</button>
+    <button class="icon-button" id="ordersButton" type="button" hidden>سفارش‌های من</button>
     <button class="cart-button" id="cartButton" type="button">سبد خرید <b id="cartCount">۰</b></button>
   </nav>
 </header>
@@ -76,10 +77,57 @@ declare(strict_types=1);
     <article><span>03</span><h3>حساب و کیف پول</h3><p>سفارش‌ها، اعتبار و کد معرفت یک‌جا.</p></article>
   </section>
 </main>
-<footer><div class="brand"><span class="brand-mark">۳۶۰</span><span>مارکت‌پلاس</span></div><div class="footer-links"><a href="#about">درباره ما</a><a href="#contact">تماس با ما</a><a href="#policies">قوانین و مقررات</a></div><small>© نسخه نمایشی پلتفرم سوپرمارکت ۳۶۰</small></footer>
+<footer><div class="brand"><span class="brand-mark">۳۶۰</span><span>مارکت‌پلاس</span></div><div class="footer-links"><a href="#about">درباره ما</a><a href="#contact">تماس با ما</a><a href="admin.php">مدیریت فروشگاه</a><a href="#policies">قوانین و مقررات</a></div><small>© نسخه نمایشی پلتفرم سوپرمارکت ۳۶۰</small></footer>
 
 <dialog id="productDialog" class="product-dialog"><button class="dialog-close" data-close="productDialog" aria-label="بستن">×</button><div id="productDetail"></div></dialog>
 <dialog id="cartDialog" class="cart-dialog"><button class="dialog-close" data-close="cartDialog" aria-label="بستن">×</button><small class="eyebrow">انتخاب‌های خوشمزه‌ات</small><h2>سبد خرید</h2><div id="cartItems"></div><div class="cart-total"><span>جمع کل</span><strong id="cartTotal">۰ تومان</strong></div><button class="primary-button full" id="checkoutButton" type="button">ادامه و ثبت سفارش</button><p class="demo-note">این نسخه نمایشی است؛ پرداخت و ثبت سفارش در مراحل بعدی فعال می‌شود.</p></dialog>
+<dialog id="ordersDialog" class="cart-dialog">
+  <button class="dialog-close" data-close="ordersDialog" aria-label="بستن">×</button>
+  <small class="eyebrow">خریدهای قبلی</small><h2>سفارش‌های من</h2>
+  <div id="customerOrdersList"></div>
+  <div id="customerOrderDetail"></div>
+</dialog>
+<dialog id="accountDialog" class="product-dialog">
+  <button class="dialog-close" data-close="accountDialog" aria-label="بستن">×</button>
+  <p class="eyebrow">حساب کاربری سوپرمارکت ۳۶۰</p>
+  <h2>ورود یا ساخت حساب</h2>
+  <div class="account-form">
+    <label>نام و نام خانوادگی <input id="accountName" autocomplete="name" maxlength="160" placeholder="برای ثبت‌نام"></label>
+    <label>شماره موبایل <input id="accountMobile" inputmode="tel" autocomplete="tel" maxlength="14" placeholder="09xxxxxxxxx" required></label>
+    <label>کد معرف (اختیاری) <input id="accountReferral" maxlength="16" placeholder="کد معرف"></label>
+    <div class="account-actions">
+      <button class="primary-button" id="registerButton" type="button">ساخت حساب</button>
+      <button class="text-button" id="requestOtpButton" type="button">دریافت کد ورود</button>
+    </div>
+    <label>کد تأیید پیامک <input id="accountOtp" inputmode="numeric" maxlength="6" placeholder="کد ۶ رقمی"></label>
+    <button class="primary-button full" id="verifyOtpButton" type="button">تأیید و ورود</button>
+    <p id="accountMessage" class="form-message" role="status"></p>
+  </div>
+</dialog>
+
+<dialog id="checkoutDialog" class="product-dialog">
+  <button class="dialog-close" data-close="checkoutDialog" aria-label="بستن">×</button>
+  <p class="eyebrow">مرحله نهایی خرید</p>
+  <h2>روش دریافت سفارش</h2>
+  <div class="account-form">
+    <label>روش دریافت
+      <select id="fulfillmentSelect"><option value="delivery">ارسال رایگان با پیک فروشگاه</option><option value="pickup">تحویل حضوری</option></select>
+    </label>
+    <label>نشانی ذخیره‌شده <select id="savedAddressSelect"><option value="new">ثبت نشانی جدید</option></select></label>
+    <div id="deliveryAddressFields">
+      <label>عنوان نشانی <input id="addressTitle" value="خانه" maxlength="80"></label>
+      <label>تحویل‌گیرنده <input id="addressRecipient" autocomplete="name" maxlength="160"></label>
+      <label>موبایل تحویل‌گیرنده <input id="addressMobile" inputmode="tel" autocomplete="tel"></label>
+      <label>استان <input id="addressProvince" maxlength="100"></label>
+      <label>شهر <input id="addressCity" maxlength="100"></label>
+      <label>نشانی کامل <textarea id="addressText" rows="3" maxlength="2000"></textarea></label>
+      <label>کد پستی <input id="addressPostal" inputmode="numeric" maxlength="10"></label>
+    </div>
+    <label>توضیحات سفارش (اختیاری) <textarea id="orderNote" rows="2" maxlength="1000"></textarea></label>
+    <button class="primary-button full" id="placeOrderButton" type="button">ثبت سفارش</button>
+    <p id="checkoutMessage" class="form-message" role="status"></p>
+  </div>
+</dialog>
 <script src="assets/js/app.js" defer></script>
 </body>
 </html>

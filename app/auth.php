@@ -56,15 +56,54 @@ function app_auth_hit_limit(PDO $db, int $tenantId, string $action, string $buck
 
 function app_auth_sms_ready(): bool {
     $provider = strtolower(app_env('SMS_PROVIDER', app_auth_is_development() ? 'log' : 'disabled') ?? 'disabled');
-    return app_auth_is_development() && $provider === 'log';
+    if ($provider === 'log') return app_auth_is_development();
+    if ($provider === 'kavenegar') {
+        return trim((string)(app_env('KAVENEGAR_API_KEY') ?? '')) !== '' &&
+            trim((string)(app_env('KAVENEGAR_VERIFY_TEMPLATE') ?? '')) !== '';
+    }
+    return false;
 }
 
 function app_auth_send_otp(string $mobile, string $code, int $challengeId): void {
-    if (!app_auth_sms_ready()) {
-        throw new RuntimeException('SMS provider is not configured. Production OTP delivery is disabled.');
+    $provider = strtolower(app_env('SMS_PROVIDER', app_auth_is_development() ? 'log' : 'disabled') ?? 'disabled');
+    if ($provider === 'log' && app_auth_is_development()) {
+        $masked = substr($mobile, 0, 4) . '******' . substr($mobile, -2);
+        error_log('[supermarket360-dev-otp] challenge=' . $challengeId . ' mobile=' . $masked . ' code=' . $code);
+        return;
     }
-    $masked = substr($mobile, 0, 4) . '******' . substr($mobile, -2);
-    error_log('[supermarket360-dev-otp] challenge=' . $challengeId . ' mobile=' . $masked . ' code=' . $code);
+    if ($provider !== 'kavenegar' || !app_auth_sms_ready()) {
+        throw new RuntimeException('SMS provider is not configured.');
+    }
+    if (!function_exists('curl_init')) throw new RuntimeException('PHP cURL extension is required for SMS delivery.');
+    $apiKey = trim((string)app_env('KAVENEGAR_API_KEY'));
+    $template = trim((string)app_env('KAVENEGAR_VERIFY_TEMPLATE'));
+    $query = http_build_query([
+        'receptor' => $mobile,
+        'token' => $code,
+        'template' => $template,
+        'type' => 'sms',
+    ]);
+    $url = 'https://api.kavenegar.com/v1/' . rawurlencode($apiKey) . '/verify/lookup.json?' . $query;
+    $curl = curl_init($url);
+    curl_setopt_array($curl, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT => 12,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_SSL_VERIFYHOST => 2,
+        CURLOPT_HTTPHEADER => ['Accept: application/json'],
+    ]);
+    $response = curl_exec($curl);
+    $error = curl_error($curl);
+    $status = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    curl_close($curl);
+    if (!is_string($response) || $error !== '' || $status !== 200) {
+        throw new RuntimeException('SMS provider connection failed (HTTP ' . $status . ').');
+    }
+    $payload = json_decode($response, true);
+    if (!is_array($payload) || (int)($payload['return']['status'] ?? 0) !== 200) {
+        throw new RuntimeException('SMS provider rejected the verification message.');
+    }
 }
 
 function app_auth_request_body(): array {
@@ -92,6 +131,56 @@ function app_auth_prune(PDO $db, int $tenantId): void {
     $limits->execute([$tenantId]);
 }
 
+function app_auth_register(PDO $db, array $tenant): never {
+    if (!app_auth_sms_ready()) app_json(['error' => 'ثبت‌نام تا زمان پیکربندی سرویس پیامک در دسترس نیست.'], 503);
+    $body = app_auth_request_body();
+    $name = trim((string)($body['full_name'] ?? ''));
+    $mobile = app_auth_mobile((string)($body['mobile'] ?? ''));
+    $referralCode = strtoupper(trim((string)($body['referral_code'] ?? '')));
+    if ($name === '' || mb_strlen($name) > 160 || $mobile === null ||
+        ($referralCode !== '' && !preg_match('/^[A-Z0-9]{4,16}$/', $referralCode))) {
+        app_json(['error' => 'نام، شماره موبایل یا کد معرف معتبر نیست.'], 422);
+    }
+
+    $referrerId = null;
+    if ($referralCode !== '') {
+        $referrer = $db->prepare("SELECT id FROM users WHERE tenant_id = ? AND referral_code = ? AND status = 'active' LIMIT 1");
+        $referrer->execute([$tenant['id'], $referralCode]);
+        $referrerId = $referrer->fetchColumn();
+        if (!$referrerId) app_json(['error' => 'کد معرف معتبر نیست.'], 422);
+    }
+
+    $existing = $db->prepare('SELECT id, status FROM users WHERE tenant_id = ? AND mobile = ? LIMIT 1');
+    $existing->execute([$tenant['id'], $mobile]);
+    $row = $existing->fetch();
+    if ($row) {
+        if ($row['status'] === 'pending') {
+            app_json(['message' => 'ثبت‌نام شما قبلاً آغاز شده است؛ کد تأیید را درخواست کنید.'], 200);
+        }
+        app_json(['error' => 'با این شماره قبلاً حساب کاربری ایجاد شده است؛ وارد شوید.'], 409);
+    }
+
+    $code = strtoupper(substr(bin2hex(random_bytes(8)), 0, 10));
+    $insert = $db->prepare(
+        "INSERT INTO users (tenant_id, full_name, mobile, status, referral_code, referred_by_user_id)
+         VALUES (?, ?, ?, 'pending', ?, ?)"
+    );
+    try {
+        $insert->execute([$tenant['id'], $name, $mobile, $code, $referrerId]);
+    } catch (PDOException $e) {
+        if ($e->getCode() === '23000') app_json(['error' => 'ثبت‌نام با این شماره امکان‌پذیر نیست.'], 409);
+        throw $e;
+    }
+    app_json(['message' => 'حساب اولیه ساخته شد؛ برای فعال‌سازی کد تأیید را درخواست کنید.'], 201);
+}
+
+function app_auth_refresh_csrf(PDO $db, array $session): never {
+    $csrf = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
+    $stmt = $db->prepare('UPDATE auth_sessions SET csrf_hash = ? WHERE id = ? AND revoked_at IS NULL');
+    $stmt->execute([hash('sha256', $csrf), $session['session_id']]);
+    app_json(['data' => ['csrf_token' => $csrf]]);
+}
+
 function app_auth_request_otp(PDO $db, array $tenant): never {
     if (!app_auth_sms_ready()) {
         app_json(['error' => 'سرویس ارسال پیامک هنوز برای این فروشگاه پیکربندی نشده است.'], 503);
@@ -108,9 +197,9 @@ function app_auth_request_otp(PDO $db, array $tenant): never {
     app_auth_hit_limit($db, (int)$tenant['id'], 'otp_request_phone', $phoneBucket, 3, 900);
     app_auth_hit_limit($db, (int)$tenant['id'], 'otp_request_ip', $ipBucket, 10, 900);
 
-    // The same response is returned for unknown, blocked and active accounts.
+    // The same response is returned for unknown and blocked accounts.
     $userQuery = $db->prepare(
-        "SELECT id FROM users WHERE tenant_id = ? AND mobile = ? AND status = 'active' LIMIT 1"
+        "SELECT id FROM users WHERE tenant_id = ? AND mobile = ? AND status IN ('active','pending') LIMIT 1"
     );
     $userQuery->execute([$tenant['id'], $mobile]);
     if (!$userQuery->fetchColumn()) {
@@ -202,8 +291,8 @@ function app_auth_verify_otp(PDO $db, array $tenant): never {
         }
 
         $userQuery = $db->prepare(
-            "SELECT id, full_name, mobile, referral_code
-             FROM users WHERE tenant_id = ? AND mobile = ? AND status = 'active'
+            "SELECT id, full_name, mobile, referral_code, status, referred_by_user_id
+             FROM users WHERE tenant_id = ? AND mobile = ? AND status IN ('active','pending')
              LIMIT 1 FOR UPDATE"
         );
         $userQuery->execute([$tenant['id'], $mobile]);
@@ -217,6 +306,18 @@ function app_auth_verify_otp(PDO $db, array $tenant): never {
 
         $consume = $db->prepare('UPDATE auth_challenges SET consumed_at = UTC_TIMESTAMP() WHERE id = ?');
         $consume->execute([$challenge['id']]);
+
+        if ($user['status'] === 'pending') {
+            $activate = $db->prepare("UPDATE users SET status = 'active', mobile_verified_at = UTC_TIMESTAMP() WHERE tenant_id = ? AND id = ? AND status = 'pending'");
+            $activate->execute([$tenant['id'], $user['id']]);
+            if ($user['referred_by_user_id'] !== null) {
+                $referral = $db->prepare(
+                    "INSERT IGNORE INTO referral_events (tenant_id, referrer_user_id, referred_user_id, status)
+                     VALUES (?, ?, ?, 'pending')"
+                );
+                $referral->execute([$tenant['id'], $user['referred_by_user_id'], $user['id']]);
+            }
+        }
 
         $token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
         $csrf = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');

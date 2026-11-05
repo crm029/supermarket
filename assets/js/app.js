@@ -12,12 +12,12 @@ let categoryNames={all:"همه محصولات",dairy:"لبنیات و صبحان
 const money=n=>new Intl.NumberFormat("fa-IR").format(n)+" تومان";
 const escapeHTML=value=>String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
 const safeImageURL=value=>{try{const url=new URL(String(value),window.location.origin);return url.protocol==="https:"?url.href:"";}catch{return "";}};
-const cart=new Map();let activeCategory="all";let aisleIndex=0;let zoom=1;
+const cart=new Map();try{const saved=JSON.parse(localStorage.getItem("sm360_cart")||"[]");if(Array.isArray(saved))saved.forEach(([id,q])=>{if(Number.isInteger(Number(id))&&Number(id)>0&&Number.isInteger(Number(q))&&Number(q)>0&&Number(q)<=99)cart.set(Number(id),Number(q));});}catch(_){}let activeCategory="all";let aisleIndex=0;let zoom=1;
 const grid=document.getElementById("productGrid");
 function renderProducts(list=products){grid.innerHTML=list.map(p=>{const image=safeImageURL(p.image);return `<article class="product-card" data-id="${Number(p.id)}" tabindex="0"><div class="product-image">${image?`<img src="${escapeHTML(image)}" alt="${escapeHTML(p.name)}" loading="lazy" decoding="async" referrerpolicy="no-referrer">`:""}</div><h4>${escapeHTML(p.name)}</h4><p>${escapeHTML(p.unit)}</p><div class="product-bottom"><span class="price">${money(Number(p.price)||0)}</span><button class="add-button" data-add="${Number(p.id)}" aria-label="افزودن ${escapeHTML(p.name)}">+</button></div></article>`;}).join("");document.getElementById("productCount").textContent=new Intl.NumberFormat("fa-IR").format(list.length)+" محصول";}
 function selectCategory(category){activeCategory=category;document.querySelectorAll(".category").forEach(b=>b.classList.toggle("active",b.dataset.category===category));document.getElementById("aisleTitle").textContent=categoryNames[category];const list=category==="all"?products:products.filter(p=>p.category===category);renderProducts(list);aisleIndex=Object.keys(categoryNames).indexOf(category);document.getElementById("aisleScene").style.backgroundPosition=`${50+(aisleIndex%3-1)*8}% center`;}
 function addToCart(id){const p=products.find(x=>x.id===Number(id));if(!p)return;cart.set(p.id,(cart.get(p.id)||0)+1);updateCart();}
-function updateCart(){const count=[...cart.values()].reduce((a,b)=>a+b,0);document.getElementById("cartCount").textContent=new Intl.NumberFormat("fa-IR").format(count);}
+function updateCart(){const count=[...cart.values()].reduce((a,b)=>a+b,0);document.getElementById("cartCount").textContent=new Intl.NumberFormat("fa-IR").format(count);try{localStorage.setItem("sm360_cart",JSON.stringify([...cart]));}catch(_){}}
 async function openProduct(id){
   let p=products.find(x=>x.id===Number(id));
   if(!p)return;
@@ -36,7 +36,32 @@ async function openProduct(id){
   document.getElementById("detailAdd").onclick=()=>{addToCart(id);document.getElementById("productDialog").close();};
   document.getElementById("productDialog").showModal();
 }
-function showCart(){const box=document.getElementById("cartItems");if(!cart.size){box.innerHTML='<p class="empty-cart">سبدت هنوز خالیه. یه دور توی قفسه‌ها بزن!</p>';document.getElementById("cartTotal").textContent=money(0);}else{let total=0;box.innerHTML=[...cart].map(([id,q])=>{const p=products.find(x=>x.id===id);if(!p)return "";const lineTotal=(Number(p.price)||0)*q;total+=lineTotal;return `<div class="cart-line"><span>${escapeHTML(p.name)} × ${new Intl.NumberFormat("fa-IR").format(q)}</span><strong>${money(lineTotal)}</strong><button data-remove="${Number(id)}">حذف</button></div>`;}).join("");document.getElementById("cartTotal").textContent=money(total);}document.getElementById("cartDialog").showModal();}
+async function showCart(){
+  const box=document.getElementById("cartItems");
+  if(!cart.size){
+    box.innerHTML='<p class="empty-cart">سبدت هنوز خالیه. یه دور توی قفسه‌ها بزن!</p>';
+    document.getElementById("cartTotal").textContent=money(0);
+  }else{
+    const rows=[...cart].map(([id,quantity])=>({product_id:id,quantity}));
+    let quote=null;
+    try{
+      const response=await fetch(apiBase+"cart/quote",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify({items:rows})});
+      const payload=await response.json();
+      if(!response.ok)throw new Error(payload.error||"امکان بررسی سبد خرید نیست.");
+      quote=payload.data;
+    }catch(error){setFormMessage("checkoutMessage",error.message,"error");}
+    if(quote){
+      box.innerHTML=quote.items.map(item=>'<div class="cart-line"><span>'+escapeHTML(item.title)+' × '+new Intl.NumberFormat("fa-IR").format(item.quantity)+'</span><strong>'+money(Math.round(item.line_total_rial/10))+'</strong><button data-remove="'+Number(item.product_id)+'">حذف</button></div>').join("");
+      document.getElementById("cartTotal").textContent=money(Math.round(quote.total_rial/10));
+      document.querySelector(".demo-note").textContent="قیمت و موجودی توسط سرور بررسی شده‌اند؛ مبلغ هنگام ثبت سفارش دوباره محاسبه می‌شود.";
+    }else{
+      let total=0;
+      box.innerHTML=[...cart].map(([id,q])=>{const p=products.find(x=>x.id===id);if(!p)return "";const lineTotal=(Number(p.price)||0)*q;total+=lineTotal;return '<div class="cart-line"><span>'+escapeHTML(p.name)+' × '+new Intl.NumberFormat("fa-IR").format(q)+'</span><strong>'+money(lineTotal)+'</strong><button data-remove="'+Number(id)+'">حذف</button></div>';}).join("");
+      document.getElementById("cartTotal").textContent=money(total);
+    }
+  }
+  document.getElementById("cartDialog").showModal();
+}
 document.getElementById("categoryList").addEventListener("click",e=>{const b=e.target.closest("[data-category]");if(b)selectCategory(b.dataset.category);});
 grid.addEventListener("click",e=>{const add=e.target.closest("[data-add]");if(add){e.stopPropagation();addToCart(add.dataset.add);return;}const card=e.target.closest("[data-id]");if(card)openProduct(card.dataset.id);});
 grid.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.matches("[data-id]"))openProduct(e.target.dataset.id);});
@@ -51,16 +76,77 @@ document.getElementById("nextAisle").addEventListener("click",()=>{if(publicScen
 document.querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("[data-mode]").forEach(x=>x.classList.toggle("active",x===b));const hints={guided:"با انتخاب هر دسته، به قفسه مربوط هدایت می‌شی.",tour:"در نسخه بعدی، نقاط قابل کلیک برای جابه‌جایی بین تصاویر واقعی فعال می‌شن.",free:"حرکت آزاد سه‌بعدی در مرحله توسعه موتور تعاملی اضافه می‌شه."};document.getElementById("modeHint").textContent=hints[b.dataset.mode];}));
 document.getElementById("zoomIn").addEventListener("click",()=>{zoom=Math.min(1.2,zoom+.05);document.getElementById("aisleScene").style.backgroundSize=(zoom*100)+"% auto";});
 document.getElementById("zoomOut").addEventListener("click",()=>{zoom=Math.max(1,zoom-.05);document.getElementById("aisleScene").style.backgroundSize=(zoom*100)+"% auto";});
-document.getElementById("checkoutButton").addEventListener("click",()=>alert("این نسخه نمایشی است؛ فرایند ثبت سفارش در فاز بعدی پیاده‌سازی می‌شود."));
-document.getElementById("accountButton").addEventListener("click",()=>alert("ورود و ثبت‌نام در فاز حساب کاربری پیاده‌سازی می‌شود."));
+document.getElementById("checkoutButton").addEventListener("click",startCheckout);
+document.getElementById("accountButton").addEventListener("click",openAccountDialog);
 renderProducts();
 
 
 // Connect the storefront to the tenant-scoped public catalog API.
 // The built-in sample catalog remains a graceful local preview when no API is configured.
 const apiBase = new URL("api/v1/", document.baseURI).toString();
+let csrfToken = "";
+let currentUser = null;
+let pendingCheckout = false;
+let pendingPaymentOrderId = null;
+let savedAddresses = [];
 let publicScenes = [];
 let currentScene = 0;
+let panoramaOffset = 50;
+let panoramaPointer = null;
+
+async function apiPost(path, body, withCsrf = false) {
+  const headers = { Accept: "application/json", "Content-Type": "application/json" };
+  if (withCsrf && csrfToken) headers["X-CSRF-Token"] = csrfToken;
+  const response = await fetch(apiBase + path, { method: "POST", headers, credentials: "same-origin", body: JSON.stringify(body) });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "درخواست انجام نشد.");
+  return payload;
+}
+async function ensureAccount() {
+  try {
+    currentUser = await apiGet("me");
+    const csrf = await apiGet("auth/csrf");
+    csrfToken = csrf?.csrf_token || "";
+    document.getElementById("accountButton").textContent = currentUser?.full_name || "حساب کاربری";
+    document.getElementById("ordersButton").hidden = false;
+    return Boolean(currentUser && csrfToken);
+  } catch (_) { currentUser = null; csrfToken = ""; document.getElementById("ordersButton").hidden = true; return false; }
+}
+function setFormMessage(id, message, type = "") {
+  const node = document.getElementById(id);
+  node.textContent = message;
+  node.className = "form-message" + (type ? " " + type : "");
+}
+async function openAccountDialog() {
+  document.getElementById("accountDialog").showModal();
+  setFormMessage("accountMessage", "در حال بررسی وضعیت حساب...");
+  if (await ensureAccount()) setFormMessage("accountMessage", "وارد حساب کاربری هستید.", "success");
+  else setFormMessage("accountMessage", "برای ورود یا ساخت حساب، شماره موبایل را وارد کنید.");
+}
+async function requestOtp() {
+  const mobile = document.getElementById("accountMobile").value.trim();
+  if (!mobile) throw new Error("شماره موبایل را وارد کنید.");
+  await apiPost("auth/request-otp", { mobile });
+  setFormMessage("accountMessage", "اگر حساب فعالی با این شماره وجود داشته باشد، کد تأیید ارسال می‌شود. در حالت توسعه کد در گزارش سرور ثبت می‌شود.", "success");
+}
+async function startCheckout() {
+  if (!cart.size) return;
+  document.getElementById("cartDialog").close();
+  if (!(await ensureAccount())) {
+    pendingCheckout = true;
+    document.getElementById("accountDialog").showModal();
+    setFormMessage("accountMessage", "برای نهایی‌کردن خرید ابتدا وارد شوید یا حساب بسازید.");
+    return;
+  }
+  document.getElementById("addressRecipient").value = currentUser.full_name || "";
+  document.getElementById("addressMobile").value = currentUser.mobile || "";
+  try { savedAddresses = await apiGet("me/addresses") || []; } catch (_) { savedAddresses = []; }
+  const addressSelect=document.getElementById("savedAddressSelect");
+  addressSelect.innerHTML='<option value="new">ثبت نشانی جدید</option>'+savedAddresses.map(a=>'<option value="'+Number(a.id)+'">'+escapeHTML(a.title)+' — '+escapeHTML(a.city||"")+'، '+escapeHTML(a.address)+'</option>').join("");
+  if(savedAddresses.length){addressSelect.value=String(savedAddresses[0].id);document.getElementById("deliveryAddressFields").hidden=true;}
+  else{addressSelect.value="new";document.getElementById("deliveryAddressFields").hidden=false;}
+  document.getElementById("checkoutDialog").showModal();
+}
 
 async function apiGet(path) {
   const response = await fetch(apiBase + path, {
@@ -97,7 +183,9 @@ function renderScenes() {
   const url = safeImageURL(scene.media.url);
   if (!url) return;
   view.style.backgroundImage = "linear-gradient(180deg,#ffffff00 55%,#17241c88),url('" + url.replace(/'/g, "%27") + "')";
-  view.style.backgroundSize = "cover";
+  view.style.backgroundSize = scene.scene_type === "panorama" ? "200% 100%" : "cover";
+  view.style.backgroundPosition = scene.scene_type === "panorama" ? panoramaOffset + "% center" : "center";
+  view.classList.toggle("panorama-mode", scene.scene_type === "panorama");
   view.querySelectorAll(".scene-hotspot").forEach(node => node.remove());
   (scene.hotspots || []).forEach(hotspot => {
     const button = document.createElement("button");
@@ -165,3 +253,147 @@ async function loadLiveCatalog() {
 }
 
 loadLiveCatalog();
+
+// Customer registration, OTP login, server-validated checkout and order confirmation.
+document.getElementById("registerButton").addEventListener("click", async () => {
+  try {
+    await apiPost("auth/register", {
+      full_name: document.getElementById("accountName").value.trim(),
+      mobile: document.getElementById("accountMobile").value.trim(),
+      referral_code: document.getElementById("accountReferral").value.trim()
+    });
+    await requestOtp();
+  } catch (error) { setFormMessage("accountMessage", error.message, "error"); }
+});
+document.getElementById("requestOtpButton").addEventListener("click", async () => {
+  try { await requestOtp(); } catch (error) { setFormMessage("accountMessage", error.message, "error"); }
+});
+document.getElementById("verifyOtpButton").addEventListener("click", async () => {
+  try {
+    const result=await apiPost("auth/verify-otp",{
+      mobile:document.getElementById("accountMobile").value.trim(),
+      code:document.getElementById("accountOtp").value.trim()
+    });
+    csrfToken=result.data?.csrf_token||"";
+    currentUser=result.data?.user||null;
+    document.getElementById("accountButton").textContent=currentUser?.full_name||"حساب کاربری";
+    document.getElementById("ordersButton").hidden=false;
+    setFormMessage("accountMessage","ورود با موفقیت انجام شد.","success");
+    if(pendingCheckout){pendingCheckout=false;document.getElementById("accountDialog").close();startCheckout();}
+  } catch(error){setFormMessage("accountMessage",error.message,"error");}
+});
+document.getElementById("fulfillmentSelect").addEventListener("change",e=>{
+  const useDelivery=e.target.value==="delivery";
+  document.getElementById("savedAddressSelect").parentElement.hidden=!useDelivery;
+  document.getElementById("deliveryAddressFields").hidden=!useDelivery||document.getElementById("savedAddressSelect").value!=="new";
+});
+document.getElementById("savedAddressSelect").addEventListener("change",e=>{
+  document.getElementById("deliveryAddressFields").hidden=e.target.value!=="new"||document.getElementById("fulfillmentSelect").value==="pickup";
+});
+document.getElementById("placeOrderButton").addEventListener("click",async()=>{
+  const button=document.getElementById("placeOrderButton");
+  button.disabled=true;
+  try{
+    if(pendingPaymentOrderId){
+      setFormMessage("checkoutMessage","در حال اتصال به درگاه پرداخت...");
+      const payment=await apiPost("payments/zarinpal/request",{order_id:pendingPaymentOrderId},true);
+      if(payment.data?.redirect_url){window.location.assign(payment.data.redirect_url);return;}
+      if(payment.data?.already_paid){window.location.assign("payment-result.php?status=success");return;}
+      throw new Error("درگاه پرداخت هنوز آماده نیست.");
+    }
+    setFormMessage("checkoutMessage","در حال اعتبارسنجی قیمت و موجودی...");
+    let addressId=null;
+    const fulfillment=document.getElementById("fulfillmentSelect").value;
+    if(fulfillment==="delivery"){
+      const selectedAddress=document.getElementById("savedAddressSelect").value;
+      if(selectedAddress!=="new"){
+        addressId=Number(selectedAddress);
+      }else{
+      const address=await apiPost("me/addresses",{
+        title:document.getElementById("addressTitle").value.trim(),
+        recipient:document.getElementById("addressRecipient").value.trim(),
+        mobile:document.getElementById("addressMobile").value.trim(),
+        province:document.getElementById("addressProvince").value.trim(),
+        city:document.getElementById("addressCity").value.trim(),
+        address:document.getElementById("addressText").value.trim(),
+        postal_code:document.getElementById("addressPostal").value.trim()
+      },true);
+      addressId=address.data.id;
+      }
+    }
+    const order=await apiPost("checkout",{
+      items:[...cart].map(([product_id,quantity])=>({product_id,quantity})),
+      fulfillment,address_id:addressId,
+      customer_note:document.getElementById("orderNote").value.trim()
+    },true);
+    pendingPaymentOrderId=Number(order.data.id);
+    cart.clear();updateCart();
+    document.getElementById("cartItems").innerHTML='<p class="empty-cart">سفارش با موفقیت ثبت شد.</p>';
+    document.getElementById("cartTotal").textContent=money(0);
+    setFormMessage("checkoutMessage","سفارش "+order.data.order_number+" ثبت شد؛ در حال انتقال به درگاه پرداخت...","success");
+    const payment=await apiPost("payments/zarinpal/request",{order_id:pendingPaymentOrderId},true);
+    if(payment.data?.redirect_url){window.location.assign(payment.data.redirect_url);return;}
+    throw new Error("درگاه پرداخت هنوز پیکربندی نشده است. سفارش ثبت شده و می‌توانید بعداً پرداخت را دوباره امتحان کنید.");
+  }catch(error){
+    setFormMessage("checkoutMessage",error.message,"error");
+    if(pendingPaymentOrderId)button.textContent="تلاش دوباره برای پرداخت";
+  }finally{button.disabled=false;}
+});
+updateCart();
+
+// Customer order history and owner-only order detail/cancellation.
+async function loadCustomerOrders() {
+  const list=document.getElementById("customerOrdersList");
+  const detail=document.getElementById("customerOrderDetail");
+  detail.innerHTML="";
+  try {
+    const rows=await apiGet("me/orders");
+    const labels={pending_payment:"در انتظار پرداخت",paid:"پرداخت‌شده",accepted:"پذیرفته‌شده",picking:"در حال آماده‌سازی",packed:"بسته‌بندی‌شده",ready_pickup:"آماده تحویل",dispatched:"ارسال‌شده",delivered:"تحویل‌شده",cancelled:"لغوشده",refunded:"مستردشده"};
+    list.innerHTML=(rows||[]).map(o=>'<article class="customer-order"><div><strong>'+escapeHTML(o.order_number)+'</strong><small>'+escapeHTML(labels[o.status]||o.status)+' · '+money(Math.round(Number(o.total_rial)/10))+'</small></div><button data-order-detail="'+Number(o.id)+'">جزئیات</button>'+(o.status==="pending_payment"?'<button data-order-pay="'+Number(o.id)+'">پرداخت</button><button data-order-cancel="'+Number(o.id)+'">لغو</button>':"")+'</article>').join("")||'<p class="empty-cart">هنوز سفارشی ثبت نکرده‌اید.</p>';
+  } catch(error) { list.textContent=error.message; }
+}
+document.getElementById("ordersButton").addEventListener("click",async()=>{
+  if(!(await ensureAccount())){openAccountDialog();return;}
+  await loadCustomerOrders();
+  document.getElementById("ordersDialog").showModal();
+});
+document.getElementById("customerOrdersList").addEventListener("click",async e=>{
+  const detail=e.target.closest("[data-order-detail]");
+  const cancel=e.target.closest("[data-order-cancel]");
+  if(detail){
+    try{
+      const order=await apiGet("me/orders/"+detail.dataset.orderDetail);
+      document.getElementById("customerOrderDetail").innerHTML='<div class="customer-order-detail"><strong>جزئیات سفارش '+escapeHTML(order.order_number)+'</strong>'+order.items.map(item=>'<p>'+escapeHTML(item.title)+' × '+new Intl.NumberFormat("fa-IR").format(Number(item.quantity))+' — '+money(Math.round(Number(item.line_total_rial)/10))+'</p>').join("")+'</div>';
+    }catch(error){document.getElementById("customerOrderDetail").textContent=error.message;}
+  }
+  const pay=e.target.closest("[data-order-pay]");
+  if(pay){
+    try{
+      const payment=await apiPost("payments/zarinpal/request",{order_id:Number(pay.dataset.orderPay)},true);
+      if(payment.data?.redirect_url)window.location.assign(payment.data.redirect_url);
+      else document.getElementById("customerOrderDetail").textContent="درگاه پرداخت هنوز پیکربندی نشده است.";
+    }catch(error){document.getElementById("customerOrderDetail").textContent=error.message;}
+  }
+  if(cancel&&confirm("این سفارش لغو شود؟")){
+    try{await apiPost("me/orders/"+cancel.dataset.orderCancel+"/cancel",{},true);await loadCustomerOrders();}
+    catch(error){document.getElementById("customerOrderDetail").textContent=error.message;}
+  }
+});
+
+// Drag-to-pan support for uploaded equirectangular panorama scenes.
+const panoramaView=document.getElementById("aisleScene");
+panoramaView.addEventListener("pointerdown",event=>{
+  if(publicScenes[currentScene]?.scene_type!=="panorama")return;
+  panoramaPointer={id:event.pointerId,startX:event.clientX,startOffset:panoramaOffset};
+  panoramaView.setPointerCapture(event.pointerId);
+});
+panoramaView.addEventListener("pointermove",event=>{
+  if(!panoramaPointer||panoramaPointer.id!==event.pointerId)return;
+  const delta=(event.clientX-panoramaPointer.startX)/Math.max(1,panoramaView.clientWidth)*100;
+  panoramaOffset=(panoramaPointer.startOffset-delta)%100;
+  if(panoramaOffset<0)panoramaOffset+=100;
+  panoramaView.style.backgroundPosition=panoramaOffset+"% center";
+});
+const stopPanoramaDrag=()=>{panoramaPointer=null;};
+panoramaView.addEventListener("pointerup",stopPanoramaDrag);
+panoramaView.addEventListener("pointercancel",stopPanoramaDrag);

@@ -6,6 +6,12 @@ require_once dirname(__DIR__, 2) . '/app/auth.php';
 require_once dirname(__DIR__, 2) . '/app/policies.php';
 require_once dirname(__DIR__, 2) . '/app/admin_catalog.php';
 require_once dirname(__DIR__, 2) . '/app/media.php';
+require_once dirname(__DIR__, 2) . '/app/commerce.php';
+require_once dirname(__DIR__, 2) . '/app/payments.php';
+require_once dirname(__DIR__, 2) . '/app/admin_orders.php';
+require_once dirname(__DIR__, 2) . '/app/inventory.php';
+require_once dirname(__DIR__, 2) . '/app/admin_scenes.php';
+require_once dirname(__DIR__, 2) . '/app/reports.php';
 
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
@@ -27,6 +33,132 @@ try {
     }
     $method = app_method();
     $db = app_db();
+
+    if ($path === '/admin/media' && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'media.manage');
+        app_media_upload($db, $tenant, $session);
+    }
+
+    if ($path === '/admin/scenes') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'media.manage');
+        if ($method === 'GET') app_admin_scene_list($db, $tenant);
+        if ($method === 'POST') {
+            app_auth_require_csrf($session);
+            app_admin_scene_create($db, $tenant, $session);
+        }
+        header('Allow: GET, POST');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if (preg_match('#^/admin/scenes/([1-9][0-9]*)$#', $path, $sceneMatch)) {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'media.manage');
+        if ($method === 'PATCH') {
+            app_auth_require_csrf($session);
+            app_admin_scene_update($db, $tenant, $session, (int)$sceneMatch[1]);
+        }
+        if ($method === 'DELETE') {
+            app_auth_require_csrf($session);
+            app_admin_scene_unpublish($db, $tenant, $session, (int)$sceneMatch[1]);
+        }
+        header('Allow: PATCH, DELETE');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if (preg_match('#^/admin/scenes/([1-9][0-9]*)/hotspots$#', $path, $hotspotListMatch) && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'media.manage');
+        app_admin_hotspot_list($db, $tenant, (int)$hotspotListMatch[1]);
+    }
+
+    if (preg_match('#^/admin/scenes/([1-9][0-9]*)/hotspots$#', $path, $hotspotSceneMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'media.manage');
+        app_admin_hotspot_create($db, $tenant, $session, (int)$hotspotSceneMatch[1]);
+    }
+
+    if (preg_match('#^/admin/hotspots/([1-9][0-9]*)$#', $path, $hotspotMatch) && $method === 'DELETE') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'media.manage');
+        app_admin_hotspot_delete($db, $tenant, $session, (int)$hotspotMatch[1]);
+    }
+
+    if ($path === '/admin/warehouses') {
+        $session = app_auth_require($db, $tenant);
+        if ($method === 'GET') {
+            app_auth_require_permission($db, $tenant, $session, 'inventory.read');
+            app_inventory_warehouse_list($db, $tenant);
+        }
+        if ($method === 'POST') {
+            app_auth_require_csrf($session);
+            app_auth_require_permission($db, $tenant, $session, 'inventory.manage');
+            app_inventory_warehouse_create($db, $tenant, $session);
+        }
+        header('Allow: GET, POST');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if ($path === '/admin/stock' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'inventory.read');
+        app_inventory_stock_list($db, $tenant);
+    }
+
+    if ($path === '/admin/stock/receipts' && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'inventory.manage');
+        app_inventory_receipt($db, $tenant, $session);
+    }
+
+    if ($path === '/admin/stock/adjustments' && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'inventory.manage');
+        app_inventory_adjustment($db, $tenant, $session);
+    }
+
+    if ($path === '/admin/stock/transfers' && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'inventory.manage');
+        app_inventory_transfer($db, $tenant, $session);
+    }
+
+    if ($path === '/admin/reports/overview' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'reports.read');
+        app_admin_report_overview($db, $tenant);
+    }
+
+    if ($path === '/admin/orders' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'orders.read');
+        app_admin_orders_list($db, $tenant);
+    }
+
+    if (preg_match('#^/admin/orders/([1-9][0-9]*)/transition$#', $path, $orderTransitionMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'orders.manage');
+        app_admin_order_transition($db, $tenant, $session, (int)$orderTransitionMatch[1]);
+    }
+
+    if (preg_match('#^/me/orders/([1-9][0-9]*)$#', $path, $customerOrderMatch) && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_customer_order_detail($db, $tenant, $session, (int)$customerOrderMatch[1]);
+    }
+
+    if (preg_match('#^/me/orders/([1-9][0-9]*)/cancel$#', $path, $customerCancelMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_customer_cancel_order($db, $tenant, $session, (int)$customerCancelMatch[1]);
+    }
 
     if ($path === '/admin/categories') {
         if ($method === 'GET') {
@@ -92,6 +224,51 @@ try {
         }
         header('Allow: PATCH, DELETE');
         app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if ($path === '/cart/quote' && $method === 'POST') {
+        app_commerce_public_quote($db, $tenant);
+    }
+
+    if ($path === '/me/addresses') {
+        $session = app_auth_require($db, $tenant);
+        if ($method === 'GET') app_commerce_list_addresses($db, $tenant, $session);
+        if ($method === 'POST') {
+            app_auth_require_csrf($session);
+            app_commerce_create_address($db, $tenant, $session);
+        }
+        header('Allow: GET, POST');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if ($path === '/payments/zarinpal/request' && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_payment_start($db, $tenant, $session);
+    }
+
+    if ($path === '/payments/zarinpal/callback' && $method === 'GET') {
+        app_payment_callback($db, $tenant);
+    }
+
+    if ($path === '/checkout' && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_commerce_create_order($db, $tenant, $session);
+    }
+
+    if ($path === '/me/orders' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_commerce_order_history($db, $tenant, $session);
+    }
+
+    if ($path === '/auth/register' && $method === 'POST') {
+        app_auth_register($db, $tenant);
+    }
+
+    if ($path === '/auth/csrf' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_refresh_csrf($db, $session);
     }
 
     if ($path === '/auth/request-otp' && $method === 'POST') {

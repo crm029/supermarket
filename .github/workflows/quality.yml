@@ -35,6 +35,8 @@ jobs:
           php tests/auth-input.php
           php tests/admin-catalog-input.php
           php tests/media-url.php
+          php tests/commerce-input.php
+          php tests/payment-config.php
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -42,7 +44,9 @@ jobs:
           node-version: "22"
 
       - name: Check storefront JavaScript syntax
-        run: node --check assets/js/app.js
+        run: |
+          node --check assets/js/app.js
+          node --check assets/js/admin.js
 
       - name: Check patch whitespace
         run: git diff --check
@@ -94,6 +98,9 @@ jobs:
 
       - name: Run permission scope tests
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/permissions.sql
+
+      - name: Test initial store owner bootstrap
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/bootstrap-store-owner.sql
 
       - name: Set up PHP for HTTP API tests
         uses: shivammathur/setup-php@v2

@@ -48,3 +48,13 @@ VALUES
   (2,@api_user_two,SHA2(REPEAT('T',43),256),SHA2(REPEAT('D',43),256),DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 DAY));
 
 SELECT 'API smoke fixtures created' AS result;
+
+-- Customer account and stock for end-to-end commerce smoke coverage.
+INSERT INTO users (tenant_id,full_name,mobile,status,referral_code)
+VALUES (1,'مشتری تست API','09120000003','active','APICUSTOMER1');
+SET @api_customer_id = LAST_INSERT_ID();
+INSERT INTO auth_sessions (tenant_id,user_id,token_hash,csrf_hash,expires_at)
+VALUES (1,@api_customer_id,SHA2(REPEAT('U',43),256),SHA2(REPEAT('W',43),256),DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 DAY));
+INSERT INTO stock_levels (tenant_id,warehouse_id,product_id,on_hand,reserved)
+SELECT 1,w.id,@api_product_id,10,0 FROM warehouses w
+WHERE w.tenant_id=1 AND w.is_active=1 ORDER BY w.id LIMIT 1;

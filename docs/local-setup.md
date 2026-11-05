@@ -71,3 +71,36 @@ The API resolves the tenant by the verified request host. A tenant identifier su
 
 ## Not production-ready yet
 Before real customers or money are involved, implement a production SMS adapter, registration and account recovery, role-based authorization policies, CSRF on all write routes, transactional checkout, stock reservation, payment-provider verification, broader automated tests, HTTPS, backups and monitoring. Never expose database errors to clients.
+
+
+## Reservation expiry worker
+
+Unpaid checkout reservations expire after 20 minutes. Configure the host's cron or Windows Task Scheduler to run this command every minute:
+
+```sh
+php /path/to/supermarket/bin/expire-reservations.php
+```
+
+The worker releases reserved quantities and cancels pending-payment orders once all their active reservations have expired. It is safe to run repeatedly; it processes at most 100 orders with expired reservations per invocation. Configure the same database environment variables used by the API. Monitor its stderr/exit code; do not expose this script through the web server.
+
+
+## ZarinPal setup
+
+Set ZARINPAL_MERCHANT_ID to the merchant ID issued for the store, ZARINPAL_SANDBOX=true for sandbox testing, and APP_BASE_URL to the exact public store origin. The callback URL is generated as /api/v1/payments/zarinpal/callback; its domain must match the domain registered for the merchant terminal. Production requires HTTPS. Enable PHP's cURL extension.
+
+Never commit a real merchant ID or other payment credentials. Test success, cancellation, duplicate callbacks, delayed callbacks after reservation expiry, and the exact registered callback domain before enabling live payments.
+
+
+## Production OTP delivery (Kavenegar)
+
+For production, set SMS_PROVIDER=kavenegar, KAVENEGAR_API_KEY to the private API key from the Kavenegar account, and KAVENEGAR_VERIFY_TEMPLATE to the approved verification-template name. The API key is used only server-side. Enable PHP cURL and verify the approved template sends the numeric OTP in its first token slot. Keep SMS_PROVIDER=log strictly for local development.
+
+
+## Media storage
+
+Configure MEDIA_STORAGE_PATH as an absolute writable directory outside the public PHP document root, and MEDIA_BASE_URL as the HTTPS public base URL mapped to that directory (for example, a CDN or web-server alias). The upload endpoint accepts JPEG, PNG and WebP images up to 5 MB and 6000×6000 pixels. Do not make the storage directory executable; serve only static image content. On Windows/XAMPP use an absolute drive path for MEDIA_STORAGE_PATH.
+
+
+## Initial store owner
+
+After applying schema.sql and every migration, edit database/bootstrap-store-owner.sql with the tenant ID, owner's name and Iranian mobile number, then run it once. It creates the tenant's owner role, grants tenant-scoped permissions, creates a main warehouse and initializes store settings. The owner remains pending until mobile OTP verification. Do not use the example phone number unchanged.

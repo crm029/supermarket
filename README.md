@@ -65,3 +65,20 @@ Not implemented yet:
 - `docs/roadmap.md` — delivery status.
 
 Real merchant photography, production domains, SMS credentials and payment-gateway credentials are supplied only for an actual merchant deployment.
+
+
+## Customer checkout and seller dashboard
+
+- Storefront: index.php
+- Seller dashboard: admin.php (catalog, orders and inventory screens require the matching server-side permissions)
+- Payment result: payment-result.php
+- Customer registration uses mobile OTP; the development-only log provider is not a production SMS service.
+- Checkout validates the cart on the server, saves the customer's delivery address, creates a pending-payment order and reserves stock for 20 minutes.
+- Configure the ZarinPal merchant ID and exact public callback origin before testing payment. See docs/local-setup.md.
+- Schedule bin/expire-reservations.php every minute to release stock for unpaid orders.
+
+
+For first-time tenant setup, apply database/bootstrap-store-owner.sql after all migrations (edit its tenant and owner variables first). See docs/local-setup.md.
+
+
+Production deployment and external-service acceptance checklist: docs/production-readiness.md. Live launch still requires the store's real hosting, domain, SMS and payment credentials, and store-specific photography.

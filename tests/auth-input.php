@@ -26,6 +26,24 @@ foreach (['123456789', '0912345678', '08123456789', '+441234567890', '09abc45678
     }
 }
 
+putenv('SMS_PROVIDER=kavenegar');
+putenv('KAVENEGAR_API_KEY');
+putenv('KAVENEGAR_VERIFY_TEMPLATE');
+if (app_auth_sms_ready()) {
+    throw new RuntimeException('Kavenegar must remain disabled without credentials.');
+}
+putenv('KAVENEGAR_API_KEY=test-private-api-key');
+putenv('KAVENEGAR_VERIFY_TEMPLATE=supermarket_verify');
+if (!app_auth_sms_ready()) {
+    throw new RuntimeException('Kavenegar should be ready when both server credentials are configured.');
+}
+putenv('APP_ENV=production');
+putenv('SMS_PROVIDER=log');
+if (app_auth_sms_ready()) {
+    throw new RuntimeException('Development log SMS provider must never be enabled in production.');
+}
+putenv('APP_ENV=testing');
+
 if (strlen(app_auth_secret()) < 32) {
     throw new RuntimeException('Authentication secret validation failed.');
 }

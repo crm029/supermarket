@@ -10,45 +10,63 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Add verified-host tenant resolver and read-only store/category/product API, including product detail and published scene/hotspot reads.
 - [x] Add local sample tenant seed and PHP syntax-check workflow.
 - [x] Run PHP syntax checks in GitHub Actions and resolve any failures.
-- [ ] Validate schema against the selected MySQL/MariaDB versions.
+- [x] Validate schema and tenant isolation against MySQL 8 CI.
+- [ ] Validate MariaDB compatibility.
 - [ ] Verify XAMPP installation on a real local machine.
 
 ## Phase 1 — secure production foundation
 - [x] Add tenant-aware composite foreign keys, scoped/global role protections and cross-tenant negative tests (MySQL 8 CI verified).
 - [x] OTP login challenge storage, expiry, attempt lockout and phone/IP rate limiting.
 - [x] Opaque database-backed sessions, HttpOnly cookies and CSRF-protected logout.
-- [ ] Production SMS provider adapter, customer registration and password reset.
+- [x] Customer registration with pending status, OTP activation and optional referral attribution.
+- [x] Kavenegar Verify Lookup production OTP adapter with server-side credentials and delivery response validation.
+- [ ] Merchant Kavenegar account/template credentials, password reset and delivery reports.
 - [x] Tenant/platform permission catalog, role grants, deny-by-default product API checks and product-change audit events.
-- [ ] Role/permission management UI, platform authorization, and CSRF/policy enforcement on all future write routes.
+- [ ] Role/permission management UI and platform super-admin authorization.
 - [ ] Platform super-admin tenant provisioning and domain verification.
-- [ ] Store settings, branding and secure media library.
+- [x] Secure tenant-scoped image upload with MIME, size, dimension and storage-key validation.
+- [ ] Store settings UI, branding controls and media library browsing/cleanup.
 
 ## Phase 2 — catalog and commerce
 - [x] Basic tenant-scoped product list/create/update/deactivate API with permission checks.
 - [x] Basic tenant-scoped category list/create/update/deactivate API with parent-cycle and media ownership checks.
 - [ ] Product variants, barcode uniqueness, promotions and advanced search.
-- [ ] Persistent cart and server-side quote validation.
-- [ ] Address book, delivery zones, pickup scheduling and fees.
-- [ ] Transactional checkout, order state machine and customer order tracking.
+- [x] Server-side cart quote validation against live prices and available stock.
+- [ ] Persistent browser cart across devices and sessions.
+- [x] Customer address book API (list/create, tenant and owner scoped).
+- [ ] Address editing/deletion, delivery zones, pickup scheduling and configurable fees.
+- [x] Transactional pending-order creation with cross-warehouse stock reservations and customer order history API.
+- [x] CLI worker to release expired stock reservations and cancel unpaid orders.
+- [x] ZarinPal server-side verification, order state transitions and customer order detail/cancellation.
+- [ ] Live provider acceptance, refund/reconciliation and courier tracking.
 
 ## Phase 3 — immersive storefront
-- [ ] Merchant scene/media editor.
-- [x] Tenant-scoped read API for published photo-tour nodes, hotspots and product-to-shelf links.\n- [ ] Merchant scene editor and hotspot authoring workflow.
-- [ ] Guided category-to-aisle navigation.
+- [x] Merchant scene/media editor API and admin UI.
+- [x] Tenant-scoped read API for published photo-tour nodes, hotspots and product-to-shelf links.
+- [x] Merchant scene create/update/unpublish and hotspot authoring APIs.
+- [x] Merchant scene editor and hotspot authoring workflow with image upload and click-to-place hotspots.
+- [x] Category/product/navigation hotspots connect scenes to the live catalogue.
 - [ ] Optional WebGL free-movement mode with keyboard/touch and low-end fallback.
 - [ ] Real-store media onboarding and responsive image delivery.
 
 ## Phase 4 — store operations
-- [ ] Multi-warehouse stock receipt, transfer, adjustment and return services.
-- [ ] Transactional reservations, expiry/release and paid-order stock commit.
-- [ ] Cashier review, picking, packing, pickup and courier dispatch.
-- [ ] Operational dashboards, stock alerts and sales reports.
+- [x] Multi-warehouse stock receipt, transfer and adjustment services with tenant checks, reserved-stock protection and audit trail.
+- [ ] Supplier purchase orders, stock returns, expiry/batch tracking and low-stock alerts.
+- [x] Transactional reservations, expiry/release and paid-order stock commit.
+- [x] Customer cancellation for pending-payment orders with transactional stock release.
+- [x] Tenant-scoped order queue and guarded fulfilment transitions (accept, picking, packing, pickup/dispatch, delivery).
+- [ ] Cashier assignment, picker workflow, courier tracking and operational dashboards.
+- [x] Seller dashboard with 30-day paid revenue, seven-day sales trend and low-stock count.
+- [ ] Configurable stock thresholds, notifications and report exports.
 
 ## Phase 5 — customer growth and integrations
-- [ ] Zarinpal adapter, verified callbacks, idempotency and reconciliation.
-- [ ] 0098.ir SMS adapter, OTP templates and delivery reports.
+- [x] ZarinPal v4 request/verify adapter, payment-attempt persistence, callback verification, stock commit and duplicate-callback protection.
+- [ ] Live merchant credentials, sandbox acceptance, settlement reconciliation and refund handling.
+- [x] Kavenegar Verify Lookup OTP adapter with configurable template.
+- [ ] Live SMS account/template credentials, delivery reports and alternate-provider adapter.
 - [ ] Append-only wallet posting and customer transaction history.
-- [ ] Referral attribution, qualifying-order rules and anti-abuse controls.
+- [x] Referral attribution on OTP-verified registration.
+- [ ] Qualifying-order reward rules, append-only wallet and anti-abuse controls.
 
 ## Phase 6 — SaaS launch
 - [ ] Plans, subscription billing, platform support and finance audit.

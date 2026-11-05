@@ -11,9 +11,9 @@ Base path: `/api/v1`. JSON responses use UTF-8 and Persian user-facing messages.
 - `POST /cart/quote` — server-side price and availability recalculation.
 
 ## Customer
-- `POST /auth/request-otp` — request a rate-limited SMS code for an existing active account.
+- `POST /auth/register` — create a pending customer account; optional referral code; requires SMS delivery to be configured.\n- `POST /auth/request-otp` — request a rate-limited SMS code for an active or pending account.
 - `POST /auth/verify-otp` — verify code and issue a database-backed session cookie plus CSRF token.
-- `GET /me` — authenticated customer profile.
+- `GET /me` — authenticated customer profile.\n- `GET /auth/csrf` — rotate and return the current session's CSRF token.
 - `POST /auth/logout` — revoke the current session; requires `X-CSRF-Token`.
 - `GET /me/orders` — tenant-scoped order history.
 - `GET /me/addresses` — address book.
@@ -71,3 +71,47 @@ Base path: `/api/v1`. JSON responses use UTF-8 and Persian user-facing messages.
 - Public image URLs are built only from the configured `MEDIA_BASE_URL` and a tenant-owned media record. Storage keys are never returned to clients.
 - Production media URLs must use HTTPS. Unsafe path segments are rejected.
 - Media upload and editing are not implemented yet; assets must already exist in the tenant media table and storage.
+
+
+## Commerce endpoints (implemented)
+- `POST /cart/quote` — accepts `items: [{product_id, quantity}]`; recalculates current prices and active-warehouse availability server-side. Client prices are ignored.
+- `GET /me/addresses` — authenticated customer's own address book.
+- `POST /me/addresses` — create a validated address; requires session and CSRF token.
+- `POST /checkout` — authenticated, CSRF-protected checkout. Accepts line items, `fulfillment` (`delivery` or `pickup`), optional delivery `address_id`, and `customer_note`. Prices are recalculated inside a transaction, stock is reserved across active warehouses, and a pending-payment order is created.
+- `GET /me/orders` — authenticated customer's latest 100 orders.
+
+Checkout intentionally does not mark an order paid. Reservations expire after 20 minutes; run `bin/expire-reservations.php` from cron/Task Scheduler every minute. A verified payment provider is still required before production payment/order completion. Delivery is currently free by the original store brief; delivery zones and configurable fees remain future work.
+
+
+## ZarinPal payment adapter
+- POST /payments/zarinpal/request — authenticated and CSRF-protected; creates a payment request for an owned pending-payment order, returns a gateway redirect URL, and reuses an existing active redirect where possible.
+- GET /payments/zarinpal/callback — provider callback; server-side verification is required before an order is marked paid. The amount sent to the provider is the stored Rial total, never a browser-supplied amount.
+- Configure ZARINPAL_MERCHANT_ID, ZARINPAL_SANDBOX, and APP_BASE_URL. The callback origin must be registered with the payment provider; production requires HTTPS. PHP cURL must be enabled.
+- Payment verification consumes active stock reservations and records stock movements. If payment arrives after reservations have expired, the payment is recorded and an audit event flags the order for manual fulfilment review.
+
+
+## Order operations
+- GET /admin/orders — tenant-scoped order queue; requires orders.read.
+- POST /admin/orders/{id}/transition — permission-checked fulfilment workflow; requires orders.manage and CSRF.
+- GET /me/orders/{id} — full order detail for its owning customer only.
+- POST /me/orders/{id}/cancel — cancel a pending-payment order and release active stock reservations; requires CSRF.
+
+
+## Inventory endpoints
+- GET /admin/warehouses — list active and inactive tenant warehouses; requires inventory.read.
+- POST /admin/warehouses — create a warehouse; requires inventory.manage and CSRF.
+- GET /admin/stock — tenant-scoped stock levels and available quantities; requires inventory.read.
+- POST /admin/stock/receipts — add stock and write a receipt movement; requires inventory.manage and CSRF.
+- POST /admin/stock/adjustments — signed stock correction with mandatory reason and reserved-stock protection.
+- POST /admin/stock/transfers — atomic transfer between two active warehouses; available stock only.
+
+
+## Media and scene authoring
+- POST /admin/media — authenticated, CSRF-protected image upload; requires media.manage.
+- GET /admin/scenes, POST /admin/scenes, PATCH /admin/scenes/{id}, DELETE /admin/scenes/{id} — tenant-scoped scene management; DELETE unpublishes rather than deleting.
+- POST /admin/scenes/{id}/hotspots — create a product, category or navigation hotspot with normalized x/y coordinates.
+- DELETE /admin/hotspots/{id} — remove a hotspot.
+
+
+## Reporting
+- GET /admin/reports/overview — tenant-scoped 30-day revenue/order totals, pending-payment count, low-stock count and seven-day sales series; requires reports.read.
