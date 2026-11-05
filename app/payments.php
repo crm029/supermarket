@@ -213,55 +213,14 @@ function app_payment_callback(PDO $db, array $tenant): never {
         $order = $orderQuery->fetch();
         if (!$order) throw new RuntimeException('Payment order not found.');
 
-        $reservations = $db->prepare(
-            "SELECT id, warehouse_id, product_id, quantity
-             FROM stock_reservations
-             WHERE tenant_id = ? AND order_id = ? AND status = 'active' AND expires_at > UTC_TIMESTAMP()
-             ORDER BY id FOR UPDATE"
+        $reservationResult=app_stock_commit_order_reservations(
+            $db,(int)$tenant['id'],(int)$order['id'],(int)$order['user_id'],
+            'پرداخت تأییدشده','آزادسازی رزرو ناقص'
         );
-        $reservations->execute([$tenant['id'], $order['id']]);
-        $active = $reservations->fetchAll();
-        $expiredCountQuery = $db->prepare("SELECT COUNT(*) FROM stock_reservations WHERE tenant_id = ? AND order_id = ? AND (status = 'expired' OR (status = 'active' AND expires_at <= UTC_TIMESTAMP()))");
-        $expiredCountQuery->execute([$tenant['id'], $order['id']]);
-        $hasExpired = (int)$expiredCountQuery->fetchColumn() > 0;
-        if ($active !== [] && !$hasExpired) {
-            $consume = $db->prepare(
-                'UPDATE stock_levels SET on_hand = on_hand - ?, reserved = reserved - ?
-                 WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ? AND on_hand >= ? AND reserved >= ?'
-            );
-            $movement = $db->prepare(
-                "INSERT INTO stock_movements
-                 (tenant_id,warehouse_id,product_id,actor_user_id,movement_type,quantity,reference_type,reference_id,reason)
-                 VALUES (?,?,?,?,'sale',?,'order',?,'پرداخت تأییدشده')"
-            );
-            $commitReservation = $db->prepare("UPDATE stock_reservations SET status = 'committed' WHERE id = ? AND status = 'active'");
-            foreach ($active as $row) {
-                $qty = (int)$row['quantity'];
-                $consume->execute([$qty,$qty,$tenant['id'],$row['warehouse_id'],$row['product_id'],$qty,$qty]);
-                if ($consume->rowCount() !== 1) throw new RuntimeException('Reserved stock could not be committed.');
-                app_stock_batch_commit_reservation($db,(int)$tenant['id'],(int)$row['id']);
-                $movement->execute([$tenant['id'],$row['warehouse_id'],$row['product_id'],$order['user_id'],-$qty,$order['id']]);
-                $commitReservation->execute([$row['id']]);
-            }
-        } else {
-            // If expiry processing handled only part of an order, release remaining reservations and require manual fulfilment.
-            if ($active !== []) {
-                $releaseStock = $db->prepare(
-                    'UPDATE stock_levels SET reserved = reserved - ? WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ? AND reserved >= ?'
-                );
-                $releaseReservation = $db->prepare("UPDATE stock_reservations SET status = 'released' WHERE id = ? AND status = 'active'");
-                $releaseMovement = $db->prepare("INSERT INTO stock_movements (tenant_id,warehouse_id,product_id,actor_user_id,movement_type,quantity,reference_type,reference_id,reason) VALUES (?,?,?,?,'release',?,'order',?,'آزادسازی رزرو ناقص')");
-                foreach ($active as $row) {
-                    $qty = (int)$row['quantity'];
-                    $releaseStock->execute([$qty,$tenant['id'],$row['warehouse_id'],$row['product_id'],$qty]);
-                    if ($releaseStock->rowCount() !== 1) throw new RuntimeException('Unable to release remaining stock reservation.');
-                    app_stock_batch_release_reservation($db,(int)$tenant['id'],(int)$row['id'],'released');
-                    $releaseReservation->execute([$row['id']]);
-                    $releaseMovement->execute([$tenant['id'],$row['warehouse_id'],$row['product_id'],$order['user_id'],-$qty,$order['id']]);
-                }
-            }
+        $hasExpired=(bool)$reservationResult['has_expired'];
+        if(!$reservationResult['committed']){
             // Payment may arrive after an expiry worker ran. Record it as paid and flag it for manual fulfilment review.
-            $audit = $db->prepare(
+            $audit=$db->prepare(
                 "INSERT INTO audit_logs (tenant_id,actor_user_id,action,entity_type,entity_id,details)
                  VALUES (?,?,'payment.paid_without_active_reservation','order',?,JSON_OBJECT('authority',?))"
             );
