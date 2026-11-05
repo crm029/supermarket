@@ -59,3 +59,16 @@
 .media-library-meta{display:grid;gap:4px;min-width:0}
 .media-library-meta strong{font-size:13px;overflow-wrap:anywhere}
 .media-library-meta small{font-size:11px;color:var(--muted);line-height:1.7}
+
+
+/* Storefront advanced catalog filters */
+.catalog-filters{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:9px;align-items:end;margin:0 0 18px;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--paper)}
+.catalog-filters label{display:grid;gap:5px;font-size:11px;color:var(--muted)}
+.catalog-filters input:not([type=checkbox]),.catalog-filters select{width:100%;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);font:inherit}
+.catalog-filters .catalog-stock-filter{display:flex;align-items:center;gap:8px;min-height:40px}
+.catalog-stock-filter input{accent-color:var(--forest)}
+.catalog-filters button{min-height:39px}
+.add-button:disabled{opacity:.35;cursor:not-allowed}
+.product-stock-badge{display:inline-block;margin-top:4px;font-size:10px;color:#a33}
+@media(max-width:760px){.catalog-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:420px){.catalog-filters{grid-template-columns:1fr 1fr}.catalog-filters button{width:100%}}
