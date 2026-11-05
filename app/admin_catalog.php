@@ -55,7 +55,7 @@ function app_admin_product_payload(array $body, bool $partial = false): array {
         }
     }
 
-    foreach (['barcode' => 80, 'brand' => 120, 'unit_label' => 80, 'description' => 10000, 'seo_title' => 180, 'seo_description' => 320] as $field => $max) {
+    foreach (['barcode' => 80, 'brand' => 120, 'unit_label' => 80, 'description' => 10000, 'seo_title' => 180, 'seo_description' => 160] as $field => $max) {
         if (!$partial || array_key_exists($field, $body)) {
             $value = trim((string)($body[$field] ?? ''));
             if (mb_strlen($value) > $max) {
@@ -436,7 +436,7 @@ function app_admin_category_payload(array $body, bool $partial = false): array {
         $data['slug'] = $slug;
     }
 
-    foreach (['description' => 2000, 'seo_title' => 180, 'seo_description' => 320] as $field => $max) {
+    foreach (['description' => 2000, 'seo_title' => 180, 'seo_description' => 160] as $field => $max) {
         if (!$partial || array_key_exists($field,$body)) {
             $value = trim((string)($body[$field] ?? ''));
             if (mb_strlen($value) > $max) app_json(['error'=>'طول یکی از توضیحات دسته‌بندی بیش از حد مجاز است.'],422);
