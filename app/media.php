@@ -85,8 +85,9 @@ function app_media_upload(PDO $db, array $tenant, array $session): never {
     if (mb_strlen($alt) > 255) app_json(['error' => 'متن جایگزین تصویر بیش از حد طولانی است.'], 422);
 
     $storageRoot = trim((string)(app_env('MEDIA_STORAGE_PATH') ?? ''));
-    $absolutePath = str_starts_with($storageRoot, DIRECTORY_SEPARATOR) ||
-        (DIRECTORY_SEPARATOR === '\\\\' && preg_match('/^[A-Za-z]:[\\\\\\/]/', $storageRoot) === 1);
+    $isWindowsDrive = preg_match('/^[A-Za-z]:/', $storageRoot) === 1 &&
+        in_array(substr($storageRoot, 2, 1), ['/', '\\'], true);
+    $absolutePath = str_starts_with($storageRoot, DIRECTORY_SEPARATOR) || $isWindowsDrive;
     if ($storageRoot === '' || !$absolutePath) {
         app_json(['error' => 'مسیر ذخیره‌سازی رسانه در سرور پیکربندی نشده است.'], 503);
     }
