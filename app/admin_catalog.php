@@ -297,7 +297,7 @@ function app_admin_validate_category_links(PDO $db, int $tenantId, array $data, 
             app_json(['error' => 'یک دسته‌بندی نمی‌تواند والد خودش باشد.'], 422);
         }
         $parent = $db->prepare(
-            'SELECT id FROM categories WHERE tenant_id = ? AND id = ? AND is_active = 1 LIMIT 1'
+            'SELECT id FROM categories WHERE tenant_id = ? AND id = ? AND is_active = 1 LIMIT 1 FOR UPDATE'
         );
         $parent->execute([$tenantId, $parentId]);
         if (!$parent->fetchColumn()) {
