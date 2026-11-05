@@ -246,11 +246,13 @@ function app_payment_callback(PDO $db, array $tenant): never {
                     'UPDATE stock_levels SET reserved = reserved - ? WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ? AND reserved >= ?'
                 );
                 $releaseReservation = $db->prepare("UPDATE stock_reservations SET status = 'released' WHERE id = ? AND status = 'active'");
+                $releaseMovement = $db->prepare("INSERT INTO stock_movements (tenant_id,warehouse_id,product_id,actor_user_id,movement_type,quantity,reference_type,reference_id,reason) VALUES (?,?,?,?,'release',?,'order',?,'آزادسازی رزرو ناقص')");"UPDATE stock_reservations SET status = 'released' WHERE id = ? AND status = 'active'");
                 foreach ($active as $row) {
                     $qty = (int)$row['quantity'];
                     $releaseStock->execute([$qty,$tenant['id'],$row['warehouse_id'],$row['product_id'],$qty]);
                     if ($releaseStock->rowCount() !== 1) throw new RuntimeException('Unable to release remaining stock reservation.');
                     $releaseReservation->execute([$row['id']]);
+                    $releaseMovement->execute([$tenant['id'],$row['warehouse_id'],$row['product_id'],$order['user_id'],-$qty,$order['id']]);
                 }
             }
             // Payment may arrive after an expiry worker ran. Record it as paid and flag it for manual fulfilment review.
