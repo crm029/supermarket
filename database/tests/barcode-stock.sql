@@ -25,7 +25,18 @@ DELIMITER ;
 CALL assert_duplicate_barcode_rejected();
 DROP PROCEDURE assert_duplicate_barcode_rejected;
 
-SELECT low_stock_threshold INTO @threshold_test FROM products WHERE id=@barcode_test_one;
-SELECT CASE WHEN @threshold_test=3 THEN 'threshold-ok' ELSE (SELECT 'threshold-failed') END AS threshold_result;
+DELIMITER //
+CREATE PROCEDURE assert_stock_threshold_saved()
+BEGIN
+  DECLARE threshold_value BIGINT UNSIGNED DEFAULT 0;
+  SELECT low_stock_threshold INTO threshold_value FROM products WHERE id=@barcode_test_one;
+  IF threshold_value <> 3 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Product low stock threshold was not saved';
+  END IF;
+END//
+DELIMITER ;
+
+CALL assert_stock_threshold_saved();
+DROP PROCEDURE assert_stock_threshold_saved;
 
 DELETE FROM products WHERE id IN (@barcode_test_one,@barcode_test_two);
