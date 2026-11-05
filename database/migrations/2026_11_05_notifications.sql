@@ -9,6 +9,7 @@ CREATE TABLE notifications (
   entity_id BIGINT UNSIGNED NULL,
   read_at TIMESTAMP NULL DEFAULT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_notification_event (tenant_id,recipient_user_id,notification_type,entity_type,entity_id),
   KEY ix_notifications_inbox (tenant_id,recipient_user_id,read_at,created_at,id),
   KEY ix_notifications_entity (tenant_id,entity_type,entity_id),
   CONSTRAINT fk_notifications_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id),
