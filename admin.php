@@ -28,6 +28,7 @@ declare(strict_types=1);
     <button class="admin-nav" data-panel="settings">تنظیمات و ظاهر فروشگاه</button>
     <button class="admin-nav" data-panel="delivery-zones">محدوده‌های ارسال</button>
     <button class="admin-nav" data-panel="pickup-slots">زمان‌بندی تحویل حضوری</button>
+    <button class="admin-nav" data-panel="coupons">کدهای تخفیف</button>
     <button class="admin-nav" data-panel="staff">کارکنان و سطح دسترسی</button>
     <button class="admin-nav" data-panel="media-library">کتابخانه رسانه</button>
     <button class="admin-nav" data-panel="scenes">طراحی فروشگاه مجازی</button>
@@ -108,6 +109,30 @@ declare(strict_types=1);
       <div class="admin-heading"><div><h3>اعضای تیم</h3></div></div>
       <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>کارمند</th><th>موبایل</th><th>وضعیت</th><th>نقش‌ها و عملیات</th></tr></thead><tbody id="staffRows"><tr><td colspan="4">در حال بارگذاری...</td></tr></tbody></table></div>
       <p id="staffMessage" class="form-message" role="status"></p>
+    </section>
+    <section class="admin-panel" id="panel-coupons">
+      <div class="admin-heading"><div><p class="eyebrow">باشگاه مشتریان و فروش</p><h2>کدهای تخفیف</h2></div><button class="text-button" id="reloadCoupons" type="button">به‌روزرسانی</button></div>
+      <p class="admin-hint">کدها می‌توانند درصدی یا مبلغ ثابت باشند. سقف استفاده کلی، سهمیه هر مشتری، حداقل مبلغ سبد و بازه زمانی قابل تنظیم است. تخفیف فقط پس از اعتبارسنجی سمت سرور روی سفارش اعمال می‌شود.</p>
+      <form id="couponForm" class="admin-form">
+        <h3 id="couponFormTitle">ایجاد کد تخفیف</h3>
+        <input type="hidden" id="couponId">
+        <div class="admin-form-grid">
+          <label>کد تخفیف<input id="couponCode" maxlength="40" required placeholder="WELCOME15" dir="ltr" autocapitalize="characters"></label>
+          <label>عنوان داخلی<input id="couponTitle" maxlength="120" required placeholder="تخفیف خوش‌آمدگویی"></label>
+          <label>نوع تخفیف<select id="couponType"><option value="percentage">درصدی</option><option value="fixed">مبلغ ثابت</option></select></label>
+          <label id="couponValueLabel">درصد تخفیف<input id="couponValue" type="number" min="1" max="100" step="1" required></label>
+          <label>سقف تخفیف (تومان، اختیاری)<input id="couponMaxDiscount" type="number" min="0" step="1" placeholder="بدون سقف"></label>
+          <label>حداقل مبلغ سبد (تومان)<input id="couponMinimum" type="number" min="0" step="1" value="0" required></label>
+          <label>حداکثر استفاده کل (خالی = نامحدود)<input id="couponUsageLimit" type="number" min="1" step="1"></label>
+          <label>سهمیه هر مشتری<input id="couponPerUserLimit" type="number" min="1" max="1000" value="1" required></label>
+          <label>شروع اعتبار<input id="couponStart" type="datetime-local" required></label>
+          <label>پایان اعتبار<input id="couponEnd" type="datetime-local" required></label>
+          <label class="admin-check-label"><input id="couponActive" type="checkbox" checked> کد فعال باشد</label>
+        </div>
+        <div class="admin-form-actions"><button class="primary-button" type="submit">ذخیره کد تخفیف</button><button class="text-button" id="cancelCouponEdit" type="button">پاک‌کردن فرم</button></div>
+        <p id="couponMessage" class="form-message" role="status"></p>
+      </form>
+      <div id="couponRows" class="admin-row-list"><p>در حال بارگذاری...</p></div>
     </section>
     <section class="admin-panel" id="panel-pickup-slots">
       <div class="admin-heading"><div><p class="eyebrow">ظرفیت و زمان دریافت</p><h2>زمان‌بندی تحویل حضوری</h2></div><button class="text-button" id="reloadPickupSlots" type="button">به‌روزرسانی</button></div>
