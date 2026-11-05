@@ -209,7 +209,7 @@ function app_admin_product_update(PDO $db, array $tenant, array $session, int $i
         app_json(['message' => 'تغییرات کالا ذخیره شد.']);
     } catch (PDOException $e) {
         if ($db->inTransaction()) $db->rollBack();
-        if ($e->getCode() === '23000') {
+        if ($e->getCode() === '23000' && (int)($e->errorInfo[1] ?? 0) === 1062) {
             app_json(['error' => 'کد کالا با کالای دیگری تداخل دارد.'], 409);
         }
         throw $e;
