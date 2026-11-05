@@ -42,7 +42,9 @@ assert_json() {
       foreach (($data["data"] ?? []) as $row) {
         if (($row["sku"] ?? "") === "API-CREATED-001") {
           $expectedTitle = $check === "product-seo-fields" ? "عنوان سئو API" : "عنوان سئوی ویرایش‌شده";
+          $expectedSlug = $check === "product-seo-fields" ? "api-created-product" : "api-updated-product";
           if (($row["seo_title"] ?? "") !== $expectedTitle ||
+              ($row["seo_slug"] ?? "") !== $expectedSlug ||
               ($row["seo_description"] ?? "") !== "توضیحات متای API") exit(1);
           exit(0);
         }
@@ -271,9 +273,10 @@ NEW_PRODUCT_ID="$(assert_json created-id)"
 request GET "/admin/products" 200 "" "$TOKEN"
 assert_json product-seo-fields
 
-request PATCH "/admin/products/$NEW_PRODUCT_ID" 200 '{"title":"کالای ویرایش‌شده","seo_title":"عنوان سئوی ویرایش‌شده"}' "$TOKEN" "$CSRF"
+request PATCH "/admin/products/$NEW_PRODUCT_ID" 200 '{"title":"کالای ویرایش‌شده","seo_title":"عنوان سئوی ویرایش‌شده","seo_slug":"api-updated-product"}' "$TOKEN" "$CSRF"
 request GET "/admin/products" 200 "" "$TOKEN"
 assert_json product-seo-update
+request POST /admin/products 409 '{"sku":"API-DUPLICATE-SEO-SLUG","title":"نامک تکراری","price_rial":1000,"seo_slug":"api-updated-product"}' "$TOKEN" "$CSRF"
 request DELETE "/admin/products/$NEW_PRODUCT_ID" 200 "" "$TOKEN" "$CSRF"
 request POST /admin/products 201 '{"sku":"API-VARIANT-GROUP","title":"شیر پرچرب","price_rial":0,"category_id":'$CATEGORY_ID',"unit_label":"گزینه‌ها","product_kind":"variant_parent","is_weighted":false,"is_active":true}' "$TOKEN" "$CSRF"
 VARIANT_PARENT_ID="$(assert_json created-id)"
