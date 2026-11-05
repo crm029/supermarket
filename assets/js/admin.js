@@ -564,8 +564,8 @@ function renderProducts() {
     const isVariant=p.product_kind==="variant";
     const isParent=p.product_kind==="variant_parent";
     const title=isVariant?(p.parent_title||p.title)+" · "+(p.variant_label||"تنوع"):p.title;
-    const price=isParent&&Number(p.price_rial)>0?"از "+money(Number(p.price_rial)/10):money(Number(p.price_rial)/10);
-    const actions=isParent?'<button class="admin-row-action" data-manage-variants="'+Number(p.id)+'">مدیریت تنوع‌ها</button><button class="admin-row-action" data-edit-product="'+Number(p.id)+'">ویرایش</button>':
+    const price=isParent?(Number(p.price_rial)>0?"از "+money(Number(p.price_rial)/10):"تنوع تعریف نشده"):money(Number(p.price_rial)/10);
+    const actions=isParent?'<button class="admin-row-action" data-manage-variants="'+Number(p.id)+'">مدیریت تنوع‌ها</button><button class="admin-row-action" data-edit-product="'+Number(p.id)+'">ویرایش</button>'+(Number(p.is_active)?'<button class="admin-row-action danger" data-disable-product="'+Number(p.id)+'">غیرفعال‌سازی</button>':""):
       (isVariant?'<span class="admin-status">تنوع</span>':'<button class="admin-row-action" data-edit-product="'+Number(p.id)+'">ویرایش</button>')+
       (Number(p.is_active)?'<button class="admin-row-action danger" data-disable-product="'+Number(p.id)+'">غیرفعال‌سازی</button>':"");
     return '<tr><td><strong>'+escapeText(title)+'</strong><small>'+escapeText(p.brand||"")+'</small></td><td>'+escapeText(p.sku)+'<small>'+escapeText(p.barcode||"بدون بارکد")+'</small></td><td>'+price+'</td><td><span class="admin-status '+(Number(p.is_active)?"active":"inactive")+'">'+(Number(p.is_active)?"فعال":"غیرفعال")+'</span></td><td>'+actions+'</td></tr>';
