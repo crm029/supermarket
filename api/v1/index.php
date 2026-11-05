@@ -13,6 +13,7 @@ require_once dirname(__DIR__, 2) . '/app/order_assignments.php';
 require_once dirname(__DIR__, 2) . '/app/staff_tasks.php';
 require_once dirname(__DIR__, 2) . '/app/platform.php';
 require_once dirname(__DIR__, 2) . '/app/notifications.php';
+require_once dirname(__DIR__, 2) . '/app/order_refunds.php';
 require_once dirname(__DIR__, 2) . '/app/inventory.php';
 require_once dirname(__DIR__, 2) . '/app/admin_scenes.php';
 require_once dirname(__DIR__, 2) . '/app/reports.php';
@@ -331,6 +332,13 @@ try {
         app_auth_require_csrf($session);
         app_auth_require_permission($db, $tenant, $session, 'orders.manage');
         app_admin_order_transition($db, $tenant, $session, (int)$orderTransitionMatch[1]);
+    }
+
+    if (preg_match('#^/admin/orders/([1-9][0-9]*)/refund-wallet$#', $path, $orderRefundMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'orders.refund');
+        app_admin_order_refund_wallet($db, $tenant, $session, (int)$orderRefundMatch[1]);
     }
 
     if (preg_match('#^/admin/orders/([1-9][0-9]*)/assignments$#', $path, $orderAssignmentMatch)) {

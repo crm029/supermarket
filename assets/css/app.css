@@ -103,3 +103,6 @@
 .variant-manager{margin-top:18px;border:1px solid var(--line,#ddd);border-radius:14px;padding:16px}
 .variant-select-label{display:flex;flex-direction:column;gap:8px;margin:14px 0;font-size:13px;font-weight:700}
 .variant-select-label select{width:100%;min-height:44px;border:1px solid #d6d9d4;border-radius:10px;padding:8px 12px;background:#fff;color:#1d2b24;font:inherit}
+
+.refund-warning{margin:16px 0;padding:14px 16px;border:1px solid #e5c7a5;border-radius:12px;background:#fff8ef}
+.refund-warning p{margin:0 0 10px;color:#79552a;line-height:1.8;font-size:13px}

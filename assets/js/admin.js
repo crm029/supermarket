@@ -1223,8 +1223,21 @@ document.getElementById("adminOrderDetail").addEventListener("click",async e=>{
   const orderId=Number(box.dataset.orderId);
   const assign=e.target.closest("[data-assign-type]");
   const complete=e.target.closest("[data-complete-assignment]");
+  const refund=e.target.closest("[data-refund-order]");
   try{
-    if(assign){
+    if(refund){
+      const reason=window.prompt("دلیل بازپرداخت کامل به کیف پول را وارد کنید (حداقل ۱۲ نویسه):");
+      if(!reason)return;
+      if(reason.trim().length<12){message("دلیل بازپرداخت باید حداقل ۱۲ نویسه باشد.","error");return;}
+      const result=await request("admin/orders/"+orderId+"/refund-wallet",{method:"POST",body:JSON.stringify({reason:reason.trim()}),csrf:true});
+      message(result.message+" مبلغ: "+money(Number(result.data?.amount_rial||0)/10),"success");
+      await loadOrders();
+      const updated=orders.find(o=>Number(o.id)===orderId);
+      if(updated){
+        const box=document.getElementById("adminOrderDetail");
+        box.innerHTML='<h3>سفارش '+escapeText(updated.order_number)+'</h3><p>وضعیت جدید: '+escapeText(updated.status)+'</p><p>بازپرداخت کامل به کیف پول ثبت شد.</p>';
+      }
+    }else if(assign){
       const type=assign.dataset.assignType;
       const select=document.getElementById(type==="picker"?"orderPickerSelect":"orderCourierSelect");
       const assigneeId=Number(select?.value||0);
@@ -1254,7 +1267,9 @@ document.getElementById("orderRows").addEventListener("click",async e=>{
       const couponInfo=Number(order.discount_rial)>0?'<p>کد تخفیف: '+escapeText(order.coupon_code||"—")+' · مبلغ تخفیف: '+money(Number(order.discount_rial)/10)+'</p>':"";
       box.hidden=false;
       box.dataset.orderId=String(order.id);
-      box.innerHTML='<h3>سفارش '+escapeText(order.order_number)+'</h3><p>مشتری: '+escapeText(order.customer_name)+' · '+escapeText(order.customer_mobile)+'</p><p>نشانی / روش دریافت: '+escapeText(address)+'</p>'+couponInfo+'<p>توضیحات: '+escapeText(order.customer_note||"—")+'</p><section id="orderAssignmentPanel"><p>در حال دریافت مسئولیت‌های سفارش...</p></section>';
+      const refundable=["paid","accepted","picking","packed","ready_pickup","dispatched","delivered"].includes(order.status);
+      const refundControl=refundable?'<div class="refund-warning"><p>بازپرداخت فقط به اعتبار کیف پول انجام می‌شود؛ تراکنش بانکی به‌صورت خودکار برگشت نمی‌خورد و موجودی کالا نیز خودکار به انبار برنمی‌گردد.</p><button class="admin-row-action" data-refund-order="'+Number(order.id)+'">بازپرداخت کامل به کیف پول</button></div>':"";
+      box.innerHTML='<h3>سفارش '+escapeText(order.order_number)+'</h3><p>مشتری: '+escapeText(order.customer_name)+' · '+escapeText(order.customer_mobile)+'</p><p>نشانی / روش دریافت: '+escapeText(address)+'</p>'+couponInfo+'<p>توضیحات: '+escapeText(order.customer_note||"—")+'</p>'+refundControl+'<section id="orderAssignmentPanel"><p>در حال دریافت مسئولیت‌های سفارش...</p></section>';
       try{
         const result=await request("admin/orders/"+Number(order.id)+"/assignments");
         renderOrderAssignments(order,result.data||{});

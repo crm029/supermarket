@@ -82,6 +82,7 @@ Real merchant photography, production domains, SMS credentials and payment-gatew
 - Schedule bin/expire-reservations.php every minute to release stock for unpaid orders.
 - Apply database/migrations/2026_11_06_notifications.sql after tenant isolation to enable the in-app inbox. Order creation, payment verification, status changes, assignments, task completion and customer cancellations create idempotent notifications.
 - Customers and staff can open notifications.php to view their own messages and mark them read.
+- The seller can issue a full-order refund as wallet credit using the orders.refund permission; this is not a bank/gateway refund and returned goods are not automatically restocked.
 
 
 For first-time tenant setup, apply database/bootstrap-store-owner.sql after all migrations (edit its tenant and owner variables first). See docs/local-setup.md.

@@ -254,6 +254,20 @@ assert_json() {
       foreach($rows as $row) if(($row["title"]??"")==="وظیفه سفارش تکمیل شد") exit(0);
       exit(1);
     }
+    if ($check === "refund-created") {
+      if(($data["data"]["refund_method"]??"")!=="wallet_credit"||(int)($data["data"]["amount_rial"]??0)!==25000)exit(1);
+      exit(0);
+    }
+    if ($check === "wallet-refund-entry") {
+      foreach(($data["data"]["entries"]??[]) as $entry){
+        if(($entry["source_type"]??"")==="order_refund"&&(int)($entry["amount_rial"]??0)===25000)exit(0);
+      }
+      exit(1);
+    }
+    if ($check === "refund-notification") {
+      foreach(($data["data"]??[]) as $row) if(($row["title"]??"")==="اعتبار بازپرداخت به کیف پول اضافه شد")exit(0);
+      exit(1);
+    }
     if ($check === "unread-empty") {
       if((int)($data["unread_count"]??-1)!==0)exit(1);
       exit(0);
@@ -475,6 +489,41 @@ request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/assignments/$COURIER_ASSIGNMENT
 request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/assignments" 422 '{"assignment_type":"courier","assignee_user_id":999999999}' "$TOKEN" "$CSRF"
 mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "UPDATE orders SET status='pending_payment' WHERE tenant_id=1 AND id=$ASSIGNMENT_ORDER_ID; UPDATE stock_reservations SET expires_at=DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 MINUTE) WHERE tenant_id=1 AND order_id=$ASSIGNMENT_ORDER_ID AND status='active'"
 php bin/expire-reservations.php
+
+# Full-order wallet credit refund, including referral reward reversal.
+REFUND_ORDER_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "
+  SET @customer_id=(SELECT id FROM users WHERE tenant_id=1 AND mobile='09120000003' LIMIT 1);
+  SET @manager_id=(SELECT id FROM users WHERE tenant_id=1 AND mobile='09120000001' LIMIT 1);
+  INSERT INTO orders (tenant_id,user_id,order_number,status,fulfillment,subtotal_rial,discount_rial,delivery_fee_rial,total_rial)
+    VALUES (1,@customer_id,'CI-REFUND-ORDER','paid','delivery',25000,0,0,25000);
+  SET @refund_order_id=LAST_INSERT_ID();
+  INSERT INTO payment_attempts (tenant_id,order_id,provider,authority,idempotency_key,amount_rial,status,verified_at)
+    VALUES (1,@refund_order_id,'ci',CONCAT('CI-REFUND-',@refund_order_id),CONCAT('ci-refund-',@refund_order_id),25000,'verified',UTC_TIMESTAMP());
+  INSERT IGNORE INTO wallet_accounts (tenant_id,user_id) VALUES (1,@manager_id);
+  SET @referrer_wallet=(SELECT id FROM wallet_accounts WHERE tenant_id=1 AND user_id=@manager_id LIMIT 1);
+  INSERT IGNORE INTO wallet_entries (tenant_id,wallet_id,entry_type,amount_rial,source_type,source_id,idempotency_key,note)
+    VALUES (1,@referrer_wallet,'credit',5000,'referral_reward',@refund_order_id,CONCAT('referral-order-',@refund_order_id),'CI referral reward');
+  INSERT INTO referral_events (tenant_id,referrer_user_id,referred_user_id,qualifying_order_id,reward_rial,status)
+    VALUES (1,@manager_id,@customer_id,@refund_order_id,5000,'rewarded')
+    ON DUPLICATE KEY UPDATE referrer_user_id=VALUES(referrer_user_id),qualifying_order_id=VALUES(qualifying_order_id),reward_rial=VALUES(reward_rial),status='rewarded';
+  SELECT @refund_order_id;
+")"
+request POST "/admin/orders/$REFUND_ORDER_ID/refund-wallet" 422 '{"reason":"کوتاه"}' "$TOKEN" "$CSRF"
+request POST "/admin/orders/$REFUND_ORDER_ID/refund-wallet" 201 '{"reason":"بازپرداخت کامل طبق درخواست مشتری و بررسی مدیر"}' "$TOKEN" "$CSRF"
+assert_json refund-created
+request POST "/admin/orders/$REFUND_ORDER_ID/refund-wallet" 409 '{"reason":"تلاش برای بازپرداخت تکراری سفارش"}' "$TOKEN" "$CSRF"
+request POST "/admin/orders/$REFUND_ORDER_ID/refund-wallet" 403 '{"reason":"مشتری اجازه بازپرداخت ندارد"}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+request GET /me/wallet 200 "" "$CUSTOMER_TOKEN"
+assert_json wallet-refund-entry
+request GET /me/notifications 200 "" "$CUSTOMER_TOKEN"
+assert_json refund-notification
+REFUND_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM orders WHERE tenant_id=1 AND id=$REFUND_ORDER_ID")"
+REFUND_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM order_refunds WHERE tenant_id=1 AND order_id=$REFUND_ORDER_ID")"
+REFERRAL_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM referral_events WHERE tenant_id=1 AND qualifying_order_id=$REFUND_ORDER_ID")"
+REFERRAL_REVERSAL_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM wallet_entries WHERE tenant_id=1 AND source_id=$REFUND_ORDER_ID AND source_type='referral_reward_reversal'")"
+if [[ "$REFUND_STATUS" != "refunded" || "$REFUND_COUNT" != "1" || "$REFERRAL_STATUS" != "reversed" || "$REFERRAL_REVERSAL_COUNT" != "1" ]]; then echo "Wallet refund or referral reversal ledger was not finalized."; exit 1; fi
+NO_PAYMENT_ORDER_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "INSERT INTO orders (tenant_id,user_id,order_number,status,fulfillment,subtotal_rial,discount_rial,delivery_fee_rial,total_rial) SELECT 1,id,'CI-NO-PAYMENT-REFUND','paid','delivery',10000,0,0,10000 FROM users WHERE tenant_id=1 AND mobile='09120000003'; SELECT LAST_INSERT_ID();")"
+request POST "/admin/orders/$NO_PAYMENT_ORDER_ID/refund-wallet" 409 '{"reason":"بازپرداخت بدون پرداخت تأییدشده"}' "$TOKEN" "$CSRF"
 request POST /admin/coupons 201 '{"code":"WELCOME10","title":"تخفیف خوش‌آمدگویی","discount_type":"percentage","discount_value":10,"max_discount_rial":15000,"minimum_order_rial":1,"usage_limit":1,"per_user_limit":1,"starts_at":"2020-01-01T00:00","ends_at":"2030-01-01T00:00","is_active":true}' "$TOKEN" "$CSRF"
 COUPON_ID="$(assert_json created-id)"
 request POST /admin/coupons 409 '{"code":"WELCOME10","title":"کد تکراری","discount_type":"percentage","discount_value":10,"minimum_order_rial":1,"per_user_limit":1,"starts_at":"2020-01-01T00:00","ends_at":"2030-01-01T00:00","is_active":true}' "$TOKEN" "$CSRF"

@@ -14,7 +14,7 @@ VALUES (1, @tenant_one_user, @manager_role);
 INSERT INTO role_permissions (role_scope_id, role_id, permission_id)
 SELECT 1, @manager_role, id
 FROM permissions
-WHERE permission_key IN ('catalog.products.read', 'catalog.products.manage', 'catalog.categories.read', 'catalog.categories.manage', 'orders.read', 'orders.manage', 'orders.assign', 'inventory.read', 'inventory.manage', 'media.manage', 'reports.read', 'store.settings.manage', 'staff.manage') AND scope = 'tenant';
+WHERE permission_key IN ('catalog.products.read', 'catalog.products.manage', 'catalog.categories.read', 'catalog.categories.manage', 'orders.read', 'orders.manage', 'orders.assign', 'orders.refund', 'inventory.read', 'inventory.manage', 'media.manage', 'reports.read', 'store.settings.manage', 'staff.manage') AND scope = 'tenant';
 
 DELIMITER //
 CREATE PROCEDURE assert_platform_permission_rejected()
