@@ -38,6 +38,12 @@ foreach (['pdo_mysql', 'mbstring', 'curl', 'fileinfo'] as $extension) {
         : $fail('PHP extension: ' . $extension, 'Install and enable this extension.');
 }
 
+if (function_exists('dns_get_record')) {
+    $pass('DNS TXT lookup', 'PHP DNS record lookup is available for tenant-domain verification.');
+} else {
+    $fail('DNS TXT lookup', 'Enable the PHP DNS functions required to verify tenant TXT records.');
+}
+
 $appKey = (string)(app_env('APP_KEY') ?? '');
 if (strlen($appKey) < 32) {
     $fail('APP_KEY', 'Set a unique secret containing at least 32 characters.');
@@ -77,7 +83,8 @@ try {
         'tenants', 'tenant_domains', 'users', 'permissions', 'roles',
         'role_permissions', 'auth_sessions', 'auth_challenges',
         'products', 'categories', 'stock_levels', 'stock_reservations',
-        'orders', 'payment_attempts', 'media_assets', 'wallet_entries',
+        'orders', 'order_assignments', 'order_refunds', 'notifications',
+        'payment_attempts', 'media_assets', 'wallet_accounts', 'wallet_entries', 'referral_events',
     ];
     $tableQuery = $db->prepare(
         'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?'
@@ -91,6 +98,21 @@ try {
         $fail('Database schema', 'Missing required tables: ' . implode(', ', $missing) . '. Apply the documented schema and migrations.');
     } else {
         $pass('Database schema', count($requiredTables) . ' required core tables are present.');
+    }
+
+    $requiredDomainColumns = ['verification_token_hash', 'verification_expires_at', 'verification_attempts'];
+    $columnQuery = $db->prepare(
+        'SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?'
+    );
+    $missingDomainColumns = [];
+    foreach ($requiredDomainColumns as $column) {
+        $columnQuery->execute(['tenant_domains', $column]);
+        if ((int)$columnQuery->fetchColumn() !== 1) $missingDomainColumns[] = $column;
+    }
+    if ($missingDomainColumns !== []) {
+        $fail('Domain verification schema', 'Missing tenant_domains columns: ' . implode(', ', $missingDomainColumns) . '. Apply the DNS challenge migration.');
+    } else {
+        $pass('Domain verification schema', 'DNS TXT challenge fields are present.');
     }
 
     $activeDomainCount = (int)$db->query(
