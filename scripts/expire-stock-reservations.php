@@ -17,6 +17,7 @@ if ((int)$lock !== 1) {
 }
 
 $processed = 0;
+$exitCode = 0;
 try {
     $db->beginTransaction();
     $stmt = $db->query(
@@ -61,3 +62,4 @@ try {
 } finally {
     $db->query("SELECT RELEASE_LOCK('supermarket360:expire-stock-reservations')");
 }
+exit($exitCode);
