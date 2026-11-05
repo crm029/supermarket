@@ -675,6 +675,11 @@ async function loadLiveCatalog() {
       renderProducts(products);
       selectCategory("all");
       refreshFreeMovementWorld();
+      const queryParams = new URLSearchParams(window.location.search);
+      const requestedCategory = queryParams.get("category");
+      if (requestedCategory && categoryNames[requestedCategory]) selectCategory(requestedCategory);
+      const requestedProductId = Number(queryParams.get("product"));
+      if (requestedProductId > 0 && products.some(item => Number(item.id) === requestedProductId)) openProduct(requestedProductId);
     }
     const scenes = await apiGet("scenes");
     if (Array.isArray(scenes) && scenes.length) {
