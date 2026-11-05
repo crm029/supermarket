@@ -38,6 +38,13 @@ try {
     $method = app_method();
     $db = app_db();
 
+    if (preg_match('#^/admin/media/([1-9][0-9]*)$#', $path, $mediaMatch) && $method === 'DELETE') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'media.manage');
+        app_admin_media_delete($db, $tenant, $session, (int)$mediaMatch[1]);
+    }
+
     if ($path === '/admin/media') {
         $session = app_auth_require($db, $tenant);
         app_auth_require_permission($db, $tenant, $session, 'media.manage');
