@@ -169,6 +169,9 @@ function stopFreeMovement(){
   controls.hidden=true;view.classList.remove("free-movement-active","free-movement-fallback");view.querySelectorAll(".scene-hotspot").forEach(node=>node.hidden=false);
   if(freeWorld){window.removeEventListener("resize",freeWorld.resizeHandler);freeWorld.renderer.dispose();freeWorld.renderer.domElement.remove();freeWorld.scene.traverse(object=>{if(object.geometry)object.geometry.dispose();if(object.material){const materials=Array.isArray(object.material)?object.material:[object.material];materials.forEach(material=>{if(material.map)material.map.dispose();material.dispose();});}});freeWorld=null;}
 }
+function refreshFreeMovementWorld(){
+  if(movementMode==="free"&&freeWorld){stopFreeMovement();startFreeMovement();}
+}
 document.addEventListener("keydown",event=>{
   if(movementMode!=="free"||document.querySelector("dialog[open]")||event.target.matches("input,textarea,select,[contenteditable=true]"))return;
   const key=event.key.toLowerCase();if(["w","a","s","d","arrowup","arrowdown","arrowleft","arrowright"].includes(key)){freeMovementKeys.add(key);event.preventDefault();}
@@ -611,6 +614,7 @@ async function applyCatalogFilters() {
     const rows=await apiGet("products?"+params.join("&")+"&per_page=48");
     products=mapProductRows(Array.isArray(rows)?rows:[]);
     selectCategory("all");
+    refreshFreeMovementWorld();
   }catch(error){
     document.getElementById("productCount").textContent=error.message;
   }
@@ -670,6 +674,7 @@ async function loadLiveCatalog() {
       products = mapProductRows(rows);
       renderProducts(products);
       selectCategory("all");
+      refreshFreeMovementWorld();
     }
     const scenes = await apiGet("scenes");
     if (Array.isArray(scenes) && scenes.length) {
