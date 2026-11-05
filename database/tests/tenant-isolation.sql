@@ -19,6 +19,8 @@ SET @tenant_two_user = LAST_INSERT_ID();
 INSERT INTO roles (tenant_id,role_key,title)
 VALUES (2,'tenant_manager','مدیر فروشگاه دوم');
 SET @tenant_two_role = LAST_INSERT_ID();
+INSERT INTO user_roles (tenant_id,user_id,role_id)
+VALUES (2,@tenant_two_user,@tenant_two_role);
 
 DELIMITER //
 CREATE PROCEDURE assert_cross_tenant_product_rejected()
@@ -47,6 +49,19 @@ BEGIN
   END IF;
 END//
 
+
+CREATE PROCEDURE assert_role_scope_change_rejected()
+BEGIN
+  DECLARE rejected BOOLEAN DEFAULT FALSE;
+  BEGIN
+    DECLARE CONTINUE HANDLER FOR SQLSTATE '45000' SET rejected = TRUE;
+    UPDATE roles SET tenant_id = 1 WHERE id = @tenant_two_role;
+  END;
+  IF rejected = FALSE THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Role tenant change invalidated an existing assignment';
+  END IF;
+END//
+
 CREATE PROCEDURE assert_cross_tenant_audit_actor_rejected()
 BEGIN
   DECLARE rejected BOOLEAN DEFAULT FALSE;
@@ -65,10 +80,12 @@ DELIMITER ;
 
 CALL assert_cross_tenant_product_rejected();
 CALL assert_cross_tenant_role_rejected();
+CALL assert_role_scope_change_rejected();
 CALL assert_cross_tenant_audit_actor_rejected();
 
 DROP PROCEDURE assert_cross_tenant_product_rejected;
 DROP PROCEDURE assert_cross_tenant_role_rejected;
+DROP PROCEDURE assert_role_scope_change_rejected;
 DROP PROCEDURE assert_cross_tenant_audit_actor_rejected;
 
 SELECT 'tenant isolation integration checks passed' AS result;
