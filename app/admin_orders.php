@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/policies.php';
+require_once __DIR__ . '/stock_batches.php';
 
 function app_admin_orders_list(PDO $db, array $tenant): never {
     $status = trim((string)($_GET['status'] ?? ''));
@@ -145,6 +146,7 @@ function app_customer_cancel_order(PDO $db, array $tenant, array $session, int $
             $qty = (int)$row['quantity'];
             $releaseStock->execute([$qty,$tenant['id'],$row['warehouse_id'],$row['product_id'],$qty]);
             if ($releaseStock->rowCount() !== 1) throw new RuntimeException('Unable to release order stock reservation.');
+            app_stock_batch_release_reservation($db,(int)$tenant['id'],(int)$row['id'],'released');
             $release->execute([$row['id']]);
             $movement->execute([$tenant['id'],$row['warehouse_id'],$row['product_id'],$session['id'],-$qty,$orderId]);
         }

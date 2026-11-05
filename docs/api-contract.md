@@ -210,3 +210,23 @@ Checkout intentionally does not mark an order paid. Reservations expire after 20
 - The seller panel provides a return form populated only from eligible receipt lines, plus return history.
 - Return records and stock movements are append-only through the application API; no edit/delete route is exposed.
 
+
+
+## Batch inventory and expiry visibility
+
+- `GET /api/v1/admin/stock-batches?state=all&days=30` — inventory.read; lists up to 500 tenant-scoped lots, including batch code, warehouse, product, received/on-hand/reserved quantities, expiry date, and expiry state. Supported states: `all`, `expired`, `expiring`, `valid`, and `unknown`. Optional filters: `warehouse_id`, `product_id`; `days` is clamped to 1–180.
+- `GET /api/v1/admin/stock-expiry?days=30` — inventory.read; summarizes expired and soon-to-expire lot quantities and counts, plus lots with unknown expiry dates.
+- Purchase-order receiving accepts optional `batch_number` and `expiry_date` (`YYYY-MM-DD`) on each item. If omitted, the system assigns a receipt-derived batch number and leaves expiry unknown. Every newly received purchase-order line is recorded as a stock batch linked to its receipt item.
+
+**Operational boundary:** Checkout now allocates eligible lots in FEFO order and excludes expired lots; payment, cancellation, and the expiry worker reconcile the exact lot allocations. Manual stock operations are synchronized with the lot ledger. Existing stock is backfilled as `LEGACY-*` lots with unknown expiry; staff should not infer an expiry date for those lots. The reservation expiry worker must be scheduled in production.
+
+
+### Batch ledger behavior and reservation expiry
+
+- Checkout reserves stock from eligible lots in FEFO order (earliest expiry first; lots with unknown expiry are last). Lots whose expiry date is before the current UTC date are excluded.
+- Each aggregate order reservation is linked to exact rows in `stock_reservation_batches`. Successful payment consumes those lot allocations; customer cancellation and reservation expiry release them.
+- The scheduled CLI worker is `php scripts/expire-stock-reservations.php`. Run it once per minute (or more frequently) from the host scheduler. It uses a MySQL advisory lock, processes at most 500 expired reservations per run, and updates aggregate and lot-level reserved quantities in one transaction.
+- Manual receipts and positive adjustments create lots with unknown expiry. Negative adjustments and warehouse transfers consume available lots in FEFO order; transfers preserve batch number, expiry date, and unit cost. Supplier returns consume the matching original receipt lot only.
+- Existing active reservations are mapped to the synthetic legacy lot during migration so payment, cancellation, and expiry continue to reconcile after deployment.
+
+**Deployment note:** schedule the expiry worker after deploying this migration and application release. If the worker is not scheduled, expired payment reservations will continue to occupy stock until another process releases them.

@@ -21,6 +21,7 @@ require_once dirname(__DIR__, 2) . '/app/pickup_slots.php';
 require_once dirname(__DIR__, 2) . '/app/coupons.php';
 require_once dirname(__DIR__, 2) . '/app/purchasing.php';
 require_once dirname(__DIR__, 2) . '/app/supplier_returns.php';
+require_once dirname(__DIR__, 2) . '/app/stock_batches.php';
 
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
@@ -149,6 +150,18 @@ try {
         app_auth_require_csrf($session);
         app_auth_require_permission($db, $tenant, $session, 'inventory.manage');
         app_inventory_transfer($db, $tenant, $session);
+    }
+
+    if ($path === '/admin/stock-batches' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'inventory.read');
+        app_admin_stock_batch_list($db, $tenant);
+    }
+
+    if ($path === '/admin/stock-expiry' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'inventory.read');
+        app_admin_stock_expiry_summary($db, $tenant);
     }
 
     if ($path === '/admin/supplier-returns/eligible-lines' && $method === 'GET') {

@@ -64,3 +64,11 @@ VALUES (1,@api_customer_id,SHA2(REPEAT('U',43),256),SHA2(REPEAT('W',43),256),DAT
 INSERT INTO stock_levels (tenant_id,warehouse_id,product_id,on_hand,reserved)
 SELECT 1,w.id,@api_product_id,10,0 FROM warehouses w
 WHERE w.tenant_id=1 AND w.is_active=1 ORDER BY w.id LIMIT 1;
+
+-- The batch migration runs before these disposable API fixtures are inserted.
+INSERT INTO stock_batches
+  (tenant_id,warehouse_id,product_id,batch_number,expiry_date,received_quantity,on_hand,reserved,unit_cost_rial)
+SELECT sl.tenant_id,sl.warehouse_id,sl.product_id,'API-SMOKE-BATCH',DATE_ADD(UTC_DATE(),INTERVAL 180 DAY),
+       sl.on_hand,sl.on_hand,sl.reserved,0
+FROM stock_levels sl
+WHERE sl.tenant_id=1 AND sl.product_id=@api_product_id AND sl.on_hand>0;

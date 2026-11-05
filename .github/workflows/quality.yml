@@ -133,6 +133,12 @@ jobs:
       - name: Apply supplier returns migration
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_05_supplier_returns.sql
 
+      - name: Apply stock batches migration
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_05_stock_batches.sql
+
+      - name: Test stock batch reservation integrity
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/stock-batches.sql
+
 
 
       - name: Test initial store owner bootstrap

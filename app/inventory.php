@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/policies.php';
+require_once __DIR__ . '/stock_batches.php';
 
 function app_inventory_positive_int(mixed $value, string $label, int $max = 1000000): int {
     $number = filter_var($value, FILTER_VALIDATE_INT);
@@ -91,6 +92,7 @@ function app_inventory_receipt(PDO $db, array $tenant, array $session): never {
              ON DUPLICATE KEY UPDATE on_hand=on_hand+VALUES(on_hand)'
         );
         $stmt->execute([$tenant['id'],$warehouseId,$productId,$quantity]);
+        app_stock_batch_add($db,(int)$tenant['id'],$warehouseId,$productId,$quantity,'MANUAL-'.gmdate('YmdHis').'-'.strtoupper(bin2hex(random_bytes(3))),null);
         $movement=$db->prepare(
             "INSERT INTO stock_movements
              (tenant_id,warehouse_id,product_id,actor_user_id,movement_type,quantity,reference_type,reason)
@@ -126,6 +128,11 @@ function app_inventory_adjustment(PDO $db, array $tenant, array $session): never
         }
         $update=$db->prepare('UPDATE stock_levels SET on_hand=on_hand+? WHERE tenant_id=? AND warehouse_id=? AND product_id=?');
         $update->execute([$quantity,$tenant['id'],$warehouseId,$productId]);
+        if($quantity>0){
+            app_stock_batch_add($db,(int)$tenant['id'],$warehouseId,$productId,$quantity,'ADJ-'.gmdate('YmdHis').'-'.strtoupper(bin2hex(random_bytes(3))),null);
+        }else{
+            app_stock_batch_consume($db,(int)$tenant['id'],$warehouseId,$productId,abs($quantity));
+        }
         $movement=$db->prepare(
             "INSERT INTO stock_movements
              (tenant_id,warehouse_id,product_id,actor_user_id,movement_type,quantity,reference_type,reason)
@@ -165,6 +172,7 @@ function app_inventory_transfer(PDO $db, array $tenant, array $session): never {
              ON DUPLICATE KEY UPDATE on_hand=on_hand+VALUES(on_hand)'
         );
         $add->execute([$tenant['id'],$to,$product,$qty]);
+        app_stock_batch_transfer($db,(int)$tenant['id'],$from,$to,$product,$qty);
         $movement=$db->prepare(
             "INSERT INTO stock_movements
              (tenant_id,warehouse_id,product_id,actor_user_id,movement_type,quantity,reference_type,reason)

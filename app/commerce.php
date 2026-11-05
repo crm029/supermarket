@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/stock_batches.php';
 
 function app_commerce_body(): array {
     return app_auth_request_body();
@@ -363,19 +364,33 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
             ]);
             $remaining = (int)$item['quantity'];
             $stockRows = $db->prepare(
-                'SELECT sl.warehouse_id, sl.on_hand, sl.reserved
-                 FROM stock_levels sl JOIN warehouses w ON w.id = sl.warehouse_id AND w.tenant_id = sl.tenant_id
+                'SELECT sl.warehouse_id, sl.on_hand, sl.reserved,
+                        (SELECT COALESCE(SUM(GREATEST(b.on_hand-b.reserved,0)),0)
+                         FROM stock_batches b
+                         WHERE b.tenant_id=sl.tenant_id AND b.warehouse_id=sl.warehouse_id
+                           AND b.product_id=sl.product_id
+                           AND (b.expiry_date IS NULL OR b.expiry_date>=UTC_DATE())) AS batch_available
+                 FROM stock_levels sl
+                 JOIN warehouses w ON w.id = sl.warehouse_id AND w.tenant_id = sl.tenant_id
                  WHERE sl.tenant_id = ? AND sl.product_id = ? AND w.is_active = 1 AND sl.on_hand > sl.reserved
-                 ORDER BY sl.on_hand - sl.reserved DESC, sl.warehouse_id FOR UPDATE'
+                 HAVING batch_available>0
+                 ORDER BY batch_available DESC, sl.warehouse_id FOR UPDATE'
             );
             $stockRows->execute([$tenant['id'], $item['product_id']]);
             foreach ($stockRows->fetchAll() as $stock) {
                 if ($remaining === 0) break;
-                $available = (int)$stock['on_hand'] - (int)$stock['reserved'];
+                $available = min((int)$stock['on_hand'] - (int)$stock['reserved'],(int)$stock['batch_available']);
                 $take = min($remaining, $available);
                 $updateStock->execute([$take, $tenant['id'], $stock['warehouse_id'], $item['product_id'], $take]);
                 if ($updateStock->rowCount() !== 1) throw new RuntimeException('Stock changed during reservation.');
                 $reserve->execute([$tenant['id'], $orderId, $stock['warehouse_id'], $item['product_id'], $take, $reservationMinutes]);
+                $reservationId=(int)$db->lastInsertId();
+                try {
+                    app_stock_batch_reserve($db,(int)$tenant['id'],$reservationId,(int)$stock['warehouse_id'],(int)$item['product_id'],$take);
+                } catch (RuntimeException $batchError) {
+                    $db->rollBack();
+                    app_json(['error'=>'موجودی قابل فروشِ دارای تاریخ انقضای معتبر کافی نیست.'],409);
+                }
                 $reservationMovement->execute([$tenant['id'],$stock['warehouse_id'],$item['product_id'],$session['id'],$take,$orderId]);
                 $remaining -= $take;
             }
