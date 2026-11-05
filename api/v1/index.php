@@ -14,6 +14,7 @@ require_once dirname(__DIR__, 2) . '/app/admin_scenes.php';
 require_once dirname(__DIR__, 2) . '/app/reports.php';
 require_once dirname(__DIR__, 2) . '/app/wallet.php';
 require_once dirname(__DIR__, 2) . '/app/customer_cart.php';
+require_once dirname(__DIR__, 2) . '/app/store_settings.php';
 
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
@@ -327,25 +328,35 @@ try {
         ]]);
     }
 
+    if ($path === '/admin/settings') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'store.settings.manage');
+        if ($method === 'GET') app_admin_store_settings_read($db, $tenant);
+        if ($method === 'PUT') {
+            app_auth_require_csrf($session);
+            app_admin_store_settings_update($db, $tenant, $session);
+        }
+        header('Allow: GET, PUT');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
     if ($method !== 'GET') {
         header('Allow: GET, POST, PATCH, DELETE');
         app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
     }
 
     if ($path === '/store' || $path === '/') {
-        $stmt = $db->prepare("SELECT setting_key, setting_value FROM store_settings WHERE tenant_id = ?");
-        $stmt->execute([$tenant['id']]);
-        $settings = [];
-        foreach ($stmt->fetchAll() as $row) {
-            $settings[$row['setting_key']] = json_decode($row['setting_value'], true);
-        }
+        $settings = app_store_settings_read($db, $tenant);
         app_json(['data' => [
-            'name' => $tenant['name'],
+            'name' => $settings['profile']['name'],
             'slug' => $tenant['slug'],
             'timezone' => $tenant['timezone'],
             'currency' => $tenant['currency'],
             'settings' => $settings,
-            'fulfillment' => ['delivery' => true, 'pickup' => true],
+            'fulfillment' => [
+                'delivery' => $settings['checkout']['delivery_enabled'],
+                'pickup' => $settings['checkout']['pickup_enabled'],
+            ],
         ]]);
     }
 
