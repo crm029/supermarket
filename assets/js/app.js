@@ -422,3 +422,6 @@ panoramaView.addEventListener("pointermove",event=>{
 const stopPanoramaDrag=()=>{panoramaPointer=null;};
 panoramaView.addEventListener("pointerup",stopPanoramaDrag);
 panoramaView.addEventListener("pointercancel",stopPanoramaDrag);
+
+// Restore the signed-in customer controls when returning to the storefront.
+ensureAccount();
