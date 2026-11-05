@@ -72,6 +72,7 @@ function app_admin_order_refund_wallet(PDO $db, array $tenant, array $session, i
              VALUES (?,?,?,?,?,'wallet_credit',?,?)"
         );
         $refund->execute([$tenant['id'],$orderId,$customerId,$session['id'],$walletId,$amount,$reason]);
+        $refundId=(int)$db->lastInsertId();
 
         $update=$db->prepare(
             "UPDATE orders SET status='refunded'
@@ -127,7 +128,7 @@ function app_admin_order_refund_wallet(PDO $db, array $tenant, array $session, i
         $balance=app_wallet_balance($db,(int)$tenant['id'],$walletId);
         $db->commit();
         app_json(['data'=>[
-            'order_id'=>$orderId,'refund_id'=>(int)$db->lastInsertId(),
+            'order_id'=>$orderId,'refund_id'=>$refundId,
             'amount_rial'=>$amount,'wallet_balance_rial'=>$balance,
             'refund_method'=>'wallet_credit','referral_reward_reversed_rial'=>$reversedReward
         ],'message'=>'مبلغ کامل سفارش به اعتبار کیف پول مشتری اضافه شد.'],201);
