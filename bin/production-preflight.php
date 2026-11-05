@@ -133,13 +133,17 @@ if ($mediaPath === '' || !str_starts_with($mediaPath, DIRECTORY_SEPARATOR)) {
     if ($realMediaPath === false || !is_dir($realMediaPath) || !is_writable($realMediaPath)) {
         $fail('Media storage', 'The configured storage directory must exist and be writable by PHP.');
     } else {
+        $applicationRoot = realpath(APP_ROOT);
         $documentRoot = trim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''));
         $realDocumentRoot = $documentRoot !== '' ? realpath($documentRoot) : false;
-        if ($realDocumentRoot !== false &&
-            ($realMediaPath === $realDocumentRoot || str_starts_with($realMediaPath, $realDocumentRoot . DIRECTORY_SEPARATOR))) {
-            $fail('Media storage', 'The media directory is inside the public document root.');
+        $insideApplication = $applicationRoot !== false &&
+            ($realMediaPath === $applicationRoot || str_starts_with($realMediaPath, $applicationRoot . DIRECTORY_SEPARATOR));
+        $insideDocumentRoot = $realDocumentRoot !== false &&
+            ($realMediaPath === $realDocumentRoot || str_starts_with($realMediaPath, $realDocumentRoot . DIRECTORY_SEPARATOR));
+        if ($insideApplication || $insideDocumentRoot) {
+            $fail('Media storage', 'The media directory must be outside the application and public document roots.');
         } else {
-            $pass('Media storage', 'An absolute writable storage directory is configured.');
+            $pass('Media storage', 'An absolute writable directory outside the application root is configured.');
         }
     }
 }
