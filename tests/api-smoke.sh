@@ -6,6 +6,8 @@ OUT="/tmp/supermarket-api-response.json"
 TOKEN="$(printf 'S%.0s' {1..43})"
 CSRF="$(printf 'C%.0s' {1..43})"
 UNPRIVILEGED_TOKEN="$(printf 'T%.0s' {1..43})"
+CUSTOMER_TOKEN="$(printf 'U%.0s' {1..43})"
+CUSTOMER_CSRF="$(printf 'W%.0s' {1..43})"
 
 request() {
   local method="$1"
@@ -70,6 +72,15 @@ assert_json() {
       if (!$product || !$category) exit(1);
       exit(0);
     }
+    if ($check === "cart-quote") {
+      if ((int)($data["data"]["total_rial"] ?? 0) !== 250000 || (int)($data["data"]["items"][0]["available_quantity"] ?? 0) !== 10) exit(1);
+      exit(0);
+    }
+    if ($check === "order-created") {
+      if (($data["data"]["status"] ?? "") !== "pending_payment" || empty($data["data"]["order_number"])) exit(1);
+      echo (int)$data["data"]["id"];
+      exit(0);
+    }
     if ($check === "created-id") {
       $id = (int)($data["data"]["id"] ?? 0);
       if ($id < 1) exit(1);
@@ -124,4 +135,14 @@ request DELETE "/admin/categories/$NEW_CATEGORY_ID" 200 "" "$TOKEN" "$CSRF"
 
 request GET "/products/$PRODUCT_ID" 404 "" "" "" "tenant-two.localhost"
 
-echo "HTTP API smoke tests passed."
+
+request POST /cart/quote 200 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}]}' 
+assert_json cart-quote
+request POST /me/addresses 201 '{"title":"خانه تست","recipient":"مشتری تست","mobile":"09120000003","province":"تهران","city":"تهران","address":"خیابان نمونه، پلاک ۱","postal_code":"1234567890"}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+ADDRESS_ID="$(assert_json created-id)"
+request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}],"fulfillment":"delivery","address_id":'$ADDRESS_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+ORDER_ID="$(assert_json order-created)"
+RESERVED="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT reserved FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID LIMIT 1")"
+if [[ "$RESERVED" != "2" ]]; then echo "Expected 2 reserved units, received $RESERVED"; exit 1; fi
+
+echo "HTTP API and commerce smoke tests passed."
