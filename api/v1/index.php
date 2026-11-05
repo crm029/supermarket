@@ -21,6 +21,39 @@ try {
     $method = app_method();
     $db = app_db();
 
+    if ($path === '/admin/categories') {
+        if ($method === 'GET') {
+            $session = app_auth_require($db, $tenant);
+            app_auth_require_permission($db, $tenant, $session, 'catalog.categories.read');
+            app_admin_category_list($db, $tenant);
+        }
+        if ($method === 'POST') {
+            $session = app_auth_require($db, $tenant);
+            app_auth_require_csrf($session);
+            app_auth_require_permission($db, $tenant, $session, 'catalog.categories.manage');
+            app_admin_category_create($db, $tenant, $session);
+        }
+        header('Allow: GET, POST');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if (preg_match('#^/admin/categories/([1-9][0-9]*)$#', $path, $categoryMatch)) {
+        $categoryId = (int)$categoryMatch[1];
+        $session = app_auth_require($db, $tenant);
+        if ($method === 'PATCH') {
+            app_auth_require_csrf($session);
+            app_auth_require_permission($db, $tenant, $session, 'catalog.categories.manage');
+            app_admin_category_update($db, $tenant, $session, $categoryId);
+        }
+        if ($method === 'DELETE') {
+            app_auth_require_csrf($session);
+            app_auth_require_permission($db, $tenant, $session, 'catalog.categories.manage');
+            app_admin_category_deactivate($db, $tenant, $session, $categoryId);
+        }
+        header('Allow: PATCH, DELETE');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
     if ($path === '/admin/products') {
         if ($method === 'GET') {
             $session = app_auth_require($db, $tenant);
