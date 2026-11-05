@@ -157,6 +157,10 @@ assert_json() {
       if ((int)($data["meta"]["unread_count"] ?? -1) !== 0) exit(1);
       exit(0);
     }
+    if ($check === "no-notifications") {
+      if (count($data["data"] ?? []) !== 0 || (int)($data["meta"]["unread_count"] ?? -1) !== 0) exit(1);
+      exit(0);
+    }
     if ($check === "store-settings") {
       $profile = $data["data"]["profile"] ?? [];
       $checkout = $data["data"]["checkout"] ?? [];
@@ -297,6 +301,8 @@ assert_json store-settings
 request GET /store 200
 assert_json public-store-settings
 request GET /admin/products 403 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
+request GET /admin/notifications 200 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
+assert_json no-notifications
 request POST /admin/products 419 '{"sku":"NO-CSRF-1","title":"نباید ثبت شود","price_rial":1000}' "$TOKEN"
 
 request POST /admin/products 201 "{\"sku\":\"API-CREATED-001\",\"title\":\"کالای ساخته‌شده با تست\",\"price_rial\":120000,\"category_id\":$CATEGORY_ID,\"unit_label\":\"عدد\",\"is_weighted\":false,\"is_active\":true,\"seo_title\":\"عنوان سئو API\",\"seo_slug\":\"api-created-product\",\"seo_description\":\"توضیحات متای API\"}" "$TOKEN" "$CSRF"
