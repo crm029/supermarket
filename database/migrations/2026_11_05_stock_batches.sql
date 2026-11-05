@@ -1,7 +1,4 @@
 -- Introduce batch-level inventory metadata and backfill the current aggregate stock.
-ALTER TABLE purchase_order_receipt_items
-  ADD UNIQUE KEY uq_purchase_receipt_item_tenant_id (tenant_id,id);
-
 CREATE TABLE stock_batches (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   tenant_id BIGINT UNSIGNED NOT NULL,
