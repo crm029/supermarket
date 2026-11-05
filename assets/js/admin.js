@@ -73,17 +73,17 @@ async function loadStaff() {
     staffData=result.data||{roles:[],staff:[],permissions:[]};
     const permissions=document.getElementById("staffPermissionList");
     permissions.innerHTML=(staffData.permissions||[]).map(p=>
-      '<label class="staff-permission"><input type="checkbox" value="'+escapeHTML(p.permission_key)+'" data-staff-permission><span><strong>'+escapeHTML(p.permission_key)+'</strong><small>'+escapeHTML(p.description||"")+'</small></span></label>'
+      '<label class="staff-permission"><input type="checkbox" value="'+escapeText(p.permission_key)+'" data-staff-permission><span><strong>'+escapeText(p.permission_key)+'</strong><small>'+escapeText(p.description||"")+'</small></span></label>'
     ).join("")||'<p class="admin-hint">مجوزی برای انتخاب وجود ندارد.</p>';
     const roleSelect=document.getElementById("staffRoleSelect");
     roleSelect.innerHTML='<option value="">انتخاب نقش</option>'+(staffData.roles||[]).map(r=>
-      '<option value="'+Number(r.id)+'">'+escapeHTML(r.title)+'</option>'
+      '<option value="'+Number(r.id)+'">'+escapeText(r.title)+'</option>'
     ).join("");
     const rows=document.getElementById("staffRows");
     rows.innerHTML=(staffData.staff||[]).map(person=>
-      '<tr><td>'+escapeHTML(person.full_name||"—")+'</td><td>'+escapeHTML(person.mobile||"")+'</td><td>'+escapeHTML(person.status||"")+'</td><td><div class="staff-role-tags">'+(person.role_ids||[]).map(id=>{
+      '<tr><td>'+escapeText(person.full_name||"—")+'</td><td>'+escapeText(person.mobile||"")+'</td><td>'+escapeText(person.status||"")+'</td><td><div class="staff-role-tags">'+(person.role_ids||[]).map(id=>{
         const role=(staffData.roles||[]).find(item=>Number(item.id)===Number(id));
-        return role?'<span class="staff-role-tag">'+escapeHTML(role.title)+' <button type="button" aria-label="حذف نقش" data-remove-staff-role="'+Number(id)+'" data-staff-user="'+Number(person.id)+'">×</button></span>':"";
+        return role?'<span class="staff-role-tag">'+escapeText(role.title)+' <button type="button" aria-label="حذف نقش" data-remove-staff-role="'+Number(id)+'" data-staff-user="'+Number(person.id)+'">×</button></span>':"";
       }).join("")+'</div></td></tr>'
     ).join("")||'<tr><td colspan="4">هنوز کارمندی با نقش ثبت نشده است.</td></tr>';
   } catch(error) {
