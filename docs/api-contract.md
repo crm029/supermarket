@@ -115,3 +115,9 @@ Checkout intentionally does not mark an order paid. Reservations expire after 20
 
 ## Reporting
 - GET /admin/reports/overview — tenant-scoped 30-day revenue/order totals, pending-payment count, low-stock count and seven-day sales series; requires reports.read.
+
+
+## Customer wallet
+- `GET /me/wallet` — authenticated tenant-scoped wallet summary with balance, the latest 50 append-only ledger entries and referral reward status. No client-facing balance mutation endpoint is exposed.
+- Wallet balance is derived from ledger entries; credits and reversals add value, debits subtract value. Ledger entries are never edited or deleted by application routes.
+- Referral reward is credited only after the referred customer's first server-verified paid order. Configure `REFERRAL_REWARD_BASIS_POINTS` (100 = 1%); zero disables rewards by default. Credits use a unique order idempotency key and are committed in the same database transaction as payment finalization.
