@@ -364,15 +364,21 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
             ]);
             $remaining = (int)$item['quantity'];
             $stockRows = $db->prepare(
-                'SELECT sl.warehouse_id, sl.on_hand, sl.reserved
-                 FROM stock_levels sl JOIN warehouses w ON w.id = sl.warehouse_id AND w.tenant_id = sl.tenant_id
+                'SELECT sl.warehouse_id, sl.on_hand, sl.reserved,
+                        COALESCE(SUM(CASE WHEN (b.expiry_date IS NULL OR b.expiry_date>=UTC_DATE())
+                                          THEN GREATEST(b.on_hand-b.reserved,0) ELSE 0 END),0) AS batch_available
+                 FROM stock_levels sl
+                 JOIN warehouses w ON w.id = sl.warehouse_id AND w.tenant_id = sl.tenant_id
+                 LEFT JOIN stock_batches b ON b.tenant_id=sl.tenant_id AND b.warehouse_id=sl.warehouse_id AND b.product_id=sl.product_id
                  WHERE sl.tenant_id = ? AND sl.product_id = ? AND w.is_active = 1 AND sl.on_hand > sl.reserved
-                 ORDER BY sl.on_hand - sl.reserved DESC, sl.warehouse_id FOR UPDATE'
+                 GROUP BY sl.warehouse_id,sl.on_hand,sl.reserved
+                 HAVING batch_available>0
+                 ORDER BY batch_available DESC, sl.warehouse_id FOR UPDATE'
             );
             $stockRows->execute([$tenant['id'], $item['product_id']]);
             foreach ($stockRows->fetchAll() as $stock) {
                 if ($remaining === 0) break;
-                $available = (int)$stock['on_hand'] - (int)$stock['reserved'];
+                $available = min((int)$stock['on_hand'] - (int)$stock['reserved'],(int)$stock['batch_available']);
                 $take = min($remaining, $available);
                 $updateStock->execute([$take, $tenant['id'], $stock['warehouse_id'], $item['product_id'], $take]);
                 if ($updateStock->rowCount() !== 1) throw new RuntimeException('Stock changed during reservation.');
