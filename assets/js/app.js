@@ -87,6 +87,7 @@ const apiBase = new URL("api/v1/", document.baseURI).toString();
 let csrfToken = "";
 let currentUser = null;
 let cartSyncReady = false;
+let cartSaveChain = Promise.resolve();
 let pendingCheckout = false;
 let pendingPaymentOrderId = null;
 let savedAddresses = [];
@@ -131,12 +132,13 @@ async function syncCustomerCart() {
     // Keep the local cart usable if the server cart is temporarily unavailable.
   } finally {
     cartSyncReady = synchronized;
+    if (synchronized) persistCustomerCart();
   }
 }
 function persistCustomerCart() {
   if (!currentUser || !csrfToken || !cartSyncReady) return;
   const items = [...cart].map(([product_id,quantity])=>({product_id,quantity}));
-  apiPut("me/cart", {items}, true).catch(() => {});
+  cartSaveChain = cartSaveChain.catch(() => {}).then(() => apiPut("me/cart", {items}, true)).catch(() => {});
 }
 
 async function ensureAccount() {
