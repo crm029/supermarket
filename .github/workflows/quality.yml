@@ -200,7 +200,6 @@ jobs:
           done
           curl -fsS -H "Host: localhost" http://127.0.0.1:8100/index.php >/dev/null
           bash tests/seo-smoke.sh
-2\t4'
 
       - name: Test stock batch reservation integrity
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/stock-batches.sql
