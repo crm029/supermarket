@@ -4,6 +4,8 @@ let csrfToken = "";
 let products = [];
 let categories = [];
 let orders = [];
+let warehouses = [];
+let stockRows = [];
 let activePanel = "overview";
 
 async function request(path, options = {}) {
@@ -46,6 +48,7 @@ async function loadAll() {
     products=p.data||[];categories=c.data||[];
     renderProducts();renderCategories();
     await loadOrders();
+    await loadInventory();
     document.getElementById("statProducts").textContent=new Intl.NumberFormat("fa-IR").format(products.filter(x=>Number(x.is_active)).length);
     document.getElementById("statCategories").textContent=new Intl.NumberFormat("fa-IR").format(categories.filter(x=>Number(x.is_active)).length);
     document.getElementById("statConnection").textContent="متصل";
@@ -55,6 +58,28 @@ async function loadAll() {
     document.getElementById("statConnection").textContent="محدود";
     message(error.message,"error");
   }
+}
+async function loadInventory() {
+  try {
+    const [w,s]=await Promise.all([request("admin/warehouses"),request("admin/stock")]);
+    warehouses=w.data||[];stockRows=s.data||[];
+    renderInventory();
+  } catch(error) {
+    document.getElementById("stockRows").innerHTML='<tr><td colspan="5">'+escapeText(error.message)+'</td></tr>';
+  }
+}
+function renderInventory() {
+  const warehouseOptions=warehouses.filter(w=>Number(w.is_active)).map(w=>'<option value="'+Number(w.id)+'">'+escapeText(w.title)+'</option>').join("");
+  ["receiptWarehouse","adjustWarehouse","transferFrom","transferTo"].forEach(id=>{
+    const select=document.getElementById(id);const previous=select.value;
+    select.innerHTML=warehouseOptions; if(previous)select.value=previous;
+  });
+  const productOptions=products.filter(p=>Number(p.is_active)).map(p=>'<option value="'+Number(p.id)+'">'+escapeText(p.title)+' · '+escapeText(p.sku)+'</option>').join("");
+  ["receiptProduct","adjustProduct","transferProduct"].forEach(id=>{
+    const select=document.getElementById(id);const previous=select.value;
+    select.innerHTML=productOptions;if(previous)select.value=previous;
+  });
+  document.getElementById("stockRows").innerHTML=stockRows.map(s=>'<tr><td><strong>'+escapeText(s.product_title)+'</strong><small>'+escapeText(s.sku)+'</small></td><td>'+escapeText(s.warehouse_title)+'</td><td>'+new Intl.NumberFormat("fa-IR").format(Number(s.on_hand))+'</td><td>'+new Intl.NumberFormat("fa-IR").format(Number(s.reserved))+'</td><td><strong>'+new Intl.NumberFormat("fa-IR").format(Number(s.available_quantity))+'</strong></td></tr>').join("")||'<tr><td colspan="5">هنوز موجودی ثبت نشده است.</td></tr>';
 }
 async function loadOrders() {
   try {
@@ -181,5 +206,50 @@ document.getElementById("orderRows").addEventListener("click",async e=>{
   try{
     await request("admin/orders/"+b.dataset.nextOrder+"/transition",{method:"POST",body:JSON.stringify({status:b.dataset.nextStatus}),csrf:true});
     await loadOrders();message("مرحله سفارش به‌روزرسانی شد.","success");
+  }catch(error){message(error.message,"error");}
+});
+
+document.getElementById("reloadInventory").addEventListener("click",loadInventory);
+document.getElementById("warehouseForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  try{
+    await request("admin/warehouses",{method:"POST",body:JSON.stringify({title:document.getElementById("warehouseTitle").value.trim(),warehouse_type:document.getElementById("warehouseType").value}),csrf:true});
+    e.target.reset();await loadInventory();message("انبار جدید ثبت شد.","success");
+  }catch(error){message(error.message,"error");}
+});
+document.getElementById("receiptForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  try{
+    await request("admin/stock/receipts",{method:"POST",body:JSON.stringify({
+      warehouse_id:Number(document.getElementById("receiptWarehouse").value),
+      product_id:Number(document.getElementById("receiptProduct").value),
+      quantity:Number(document.getElementById("receiptQuantity").value),
+      reason:document.getElementById("receiptReason").value.trim()
+    }),csrf:true});
+    e.target.reset();await loadInventory();message("رسید انبار ثبت شد.","success");
+  }catch(error){message(error.message,"error");}
+});
+document.getElementById("adjustmentForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  try{
+    await request("admin/stock/adjustments",{method:"POST",body:JSON.stringify({
+      warehouse_id:Number(document.getElementById("adjustWarehouse").value),
+      product_id:Number(document.getElementById("adjustProduct").value),
+      quantity:Number(document.getElementById("adjustQuantity").value),
+      reason:document.getElementById("adjustReason").value.trim()
+    }),csrf:true});
+    e.target.reset();await loadInventory();message("اصلاح موجودی ثبت شد.","success");
+  }catch(error){message(error.message,"error");}
+});
+document.getElementById("transferForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  try{
+    await request("admin/stock/transfers",{method:"POST",body:JSON.stringify({
+      from_warehouse_id:Number(document.getElementById("transferFrom").value),
+      to_warehouse_id:Number(document.getElementById("transferTo").value),
+      product_id:Number(document.getElementById("transferProduct").value),
+      quantity:Number(document.getElementById("transferQuantity").value)
+    }),csrf:true});
+    e.target.reset();await loadInventory();message("انتقال موجودی ثبت شد.","success");
   }catch(error){message(error.message,"error");}
 });
