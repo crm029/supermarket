@@ -91,6 +91,8 @@ let pendingPaymentOrderId = null;
 let savedAddresses = [];
 let publicScenes = [];
 let currentScene = 0;
+let panoramaOffset = 50;
+let panoramaPointer = null;
 
 async function apiPost(path, body, withCsrf = false) {
   const headers = { Accept: "application/json", "Content-Type": "application/json" };
@@ -181,7 +183,9 @@ function renderScenes() {
   const url = safeImageURL(scene.media.url);
   if (!url) return;
   view.style.backgroundImage = "linear-gradient(180deg,#ffffff00 55%,#17241c88),url('" + url.replace(/'/g, "%27") + "')";
-  view.style.backgroundSize = "cover";
+  view.style.backgroundSize = scene.scene_type === "panorama" ? "200% 100%" : "cover";
+  view.style.backgroundPosition = scene.scene_type === "panorama" ? panoramaOffset + "% center" : "center";
+  view.classList.toggle("panorama-mode", scene.scene_type === "panorama");
   view.querySelectorAll(".scene-hotspot").forEach(node => node.remove());
   (scene.hotspots || []).forEach(hotspot => {
     const button = document.createElement("button");
@@ -367,3 +371,21 @@ document.getElementById("customerOrdersList").addEventListener("click",async e=>
     catch(error){document.getElementById("customerOrderDetail").textContent=error.message;}
   }
 });
+
+// Drag-to-pan support for uploaded equirectangular panorama scenes.
+const panoramaView=document.getElementById("aisleScene");
+panoramaView.addEventListener("pointerdown",event=>{
+  if(publicScenes[currentScene]?.scene_type!=="panorama")return;
+  panoramaPointer={id:event.pointerId,startX:event.clientX,startOffset:panoramaOffset};
+  panoramaView.setPointerCapture(event.pointerId);
+});
+panoramaView.addEventListener("pointermove",event=>{
+  if(!panoramaPointer||panoramaPointer.id!==event.pointerId)return;
+  const delta=(event.clientX-panoramaPointer.startX)/Math.max(1,panoramaView.clientWidth)*100;
+  panoramaOffset=(panoramaPointer.startOffset-delta)%100;
+  if(panoramaOffset<0)panoramaOffset+=100;
+  panoramaView.style.backgroundPosition=panoramaOffset+"% center";
+});
+const stopPanoramaDrag=()=>{panoramaPointer=null;};
+panoramaView.addEventListener("pointerup",stopPanoramaDrag);
+panoramaView.addEventListener("pointercancel",stopPanoramaDrag);
