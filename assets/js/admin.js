@@ -6,6 +6,8 @@ let categories = [];
 let orders = [];
 let warehouses = [];
 let stockRows = [];
+let scenes = [];
+let hotspots = [];
 let activePanel = "overview";
 
 async function request(path, options = {}) {
@@ -49,6 +51,7 @@ async function loadAll() {
     renderProducts();renderCategories();
     await loadOrders();
     await loadInventory();
+    await loadScenes();
     document.getElementById("statProducts").textContent=new Intl.NumberFormat("fa-IR").format(products.filter(x=>Number(x.is_active)).length);
     document.getElementById("statCategories").textContent=new Intl.NumberFormat("fa-IR").format(categories.filter(x=>Number(x.is_active)).length);
     document.getElementById("statConnection").textContent="متصل";
@@ -58,6 +61,37 @@ async function loadAll() {
     document.getElementById("statConnection").textContent="محدود";
     message(error.message,"error");
   }
+}
+async function loadScenes() {
+  try {
+    const result=await request("admin/scenes");
+    scenes=result.data||[];
+    renderScenes();
+    const sceneOptions=scenes.map(s=>'<option value="'+Number(s.id)+'">'+escapeText(s.title)+'</option>').join("");
+    document.getElementById("hotspotScene").innerHTML=sceneOptions;
+    document.getElementById("hotspotTarget").innerHTML=scenes.filter(s=>s.is_published).map(s=>'<option value="'+Number(s.id)+'">'+escapeText(s.title)+'</option>').join("");
+    document.getElementById("hotspotProduct").innerHTML=products.filter(p=>Number(p.is_active)).map(p=>'<option value="'+Number(p.id)+'">'+escapeText(p.title)+'</option>').join("");
+    document.getElementById("hotspotCategory").innerHTML=categories.filter(c=>Number(c.is_active)).map(c=>'<option value="'+Number(c.id)+'">'+escapeText(c.title)+'</option>').join("");
+    if(scenes.length)await loadHotspots(scenes[0].id);else document.getElementById("hotspotRows").innerHTML="";
+  } catch(error) {
+    document.getElementById("sceneRows").textContent=error.message;
+  }
+}
+function renderScenes() {
+  document.getElementById("sceneRows").innerHTML=scenes.map(s=>'<article><div><strong>'+escapeText(s.title)+'</strong><small>'+escapeText(s.scene_type)+' · '+Number(s.hotspot_count)+' نقطه · رسانه '+(s.media_id||"ندارد")+'</small></div><span class="admin-status '+(s.is_published?"active":"inactive")+'">'+(s.is_published?"منتشرشده":"پیش‌نویس")+'</span><button class="admin-row-action" data-publish-scene="'+Number(s.id)+'" data-published="'+(s.is_published?"1":"0")+'">'+(s.is_published?"خروج از انتشار":"انتشار")+'</button></article>').join("")||'<p>هنوز صحنه‌ای ساخته نشده است. ابتدا تصویر راهرو را بارگذاری کنید.</p>';
+}
+async function loadHotspots(sceneId) {
+  try {
+    const result=await request("admin/scenes/"+sceneId+"/hotspots");
+    hotspots=result.data||[];
+    document.getElementById("hotspotRows").innerHTML=hotspots.map(h=>'<article><div><strong>'+escapeText(h.label)+'</strong><small>'+escapeText(h.action)+' · X '+Number(h.x).toFixed(2)+' / Y '+Number(h.y).toFixed(2)+'</small></div><button class="admin-row-action danger" data-delete-hotspot="'+Number(h.id)+'">حذف نقطه</button></article>').join("")||'<p>برای این صحنه نقطه تعاملی ثبت نشده است.</p>';
+  } catch(error) { document.getElementById("hotspotRows").textContent=error.message; }
+}
+function updateHotspotFields() {
+  const action=document.getElementById("hotspotAction").value;
+  document.getElementById("hotspotProductField").hidden=action!=="product";
+  document.getElementById("hotspotCategoryField").hidden=action!=="category";
+  document.getElementById("hotspotTargetField").hidden=action!=="navigate";
 }
 async function loadInventory() {
   try {
@@ -253,3 +287,68 @@ document.getElementById("transferForm").addEventListener("submit",async e=>{
     e.target.reset();await loadInventory();message("انتقال موجودی ثبت شد.","success");
   }catch(error){message(error.message,"error");}
 });
+
+document.getElementById("reloadScenes").addEventListener("click",loadScenes);
+document.getElementById("mediaUploadForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const file=document.getElementById("mediaFile").files[0];
+  if(!file){document.getElementById("mediaUploadMessage").textContent="ابتدا تصویر را انتخاب کنید.";return;}
+  const form=new FormData();form.append("file",file);form.append("media_type",document.getElementById("mediaType").value);form.append("alt_text",document.getElementById("mediaAlt").value.trim());
+  try{
+    const response=await fetch(apiBase+"admin/media",{method:"POST",credentials:"same-origin",headers:{"X-CSRF-Token":csrfToken,"Accept":"application/json"},body:form});
+    const payload=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(payload.error||"بارگذاری تصویر ناموفق بود.");
+    document.getElementById("sceneMediaId").value=payload.data.id;
+    document.getElementById("mediaUploadMessage").textContent="تصویر ذخیره شد؛ شناسه رسانه "+payload.data.id+" در فرم صحنه قرار گرفت.";
+    document.getElementById("mediaUploadMessage").className="form-message success";
+  }catch(error){document.getElementById("mediaUploadMessage").textContent=error.message;document.getElementById("mediaUploadMessage").className="form-message error";}
+});
+document.getElementById("sceneForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  try{
+    await request("admin/scenes",{method:"POST",body:JSON.stringify({
+      title:document.getElementById("sceneTitle").value.trim(),
+      scene_type:document.getElementById("sceneType").value,
+      media_id:Number(document.getElementById("sceneMediaId").value),
+      fallback_media_id:document.getElementById("sceneFallbackId").value?Number(document.getElementById("sceneFallbackId").value):null,
+      sort_order:Number(document.getElementById("sceneSort").value),
+      is_published:document.getElementById("scenePublished").checked
+    }),csrf:true});
+    e.target.reset();await loadScenes();message("صحنه فروشگاه ساخته شد.","success");
+  }catch(error){message(error.message,"error");}
+});
+document.getElementById("sceneRows").addEventListener("click",async e=>{
+  const b=e.target.closest("[data-publish-scene]");if(!b)return;
+  const id=Number(b.dataset.publishScene);const currently=b.dataset.published==="1";
+  try{
+    if(currently)await request("admin/scenes/"+id,{method:"DELETE",csrf:true});
+    else await request("admin/scenes/"+id,{method:"PATCH",body:JSON.stringify({is_published:true}),csrf:true});
+    await loadScenes();message(currently?"صحنه از انتشار خارج شد.":"صحنه منتشر شد.","success");
+  }catch(error){message(error.message,"error");}
+});
+document.getElementById("hotspotScene").addEventListener("change",e=>loadHotspots(Number(e.target.value)));
+document.getElementById("hotspotAction").addEventListener("change",updateHotspotFields);
+document.getElementById("hotspotForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const action=document.getElementById("hotspotAction").value;
+  const payload={
+    label:document.getElementById("hotspotLabel").value.trim(),
+    action,
+    x:Number(document.getElementById("hotspotX").value),
+    y:Number(document.getElementById("hotspotY").value)
+  };
+  if(action==="product")payload.product_id=Number(document.getElementById("hotspotProduct").value);
+  if(action==="category")payload.category_id=Number(document.getElementById("hotspotCategory").value);
+  if(action==="navigate")payload.target_scene_id=Number(document.getElementById("hotspotTarget").value);
+  try{
+    const sceneId=Number(document.getElementById("hotspotScene").value);
+    await request("admin/scenes/"+sceneId+"/hotspots",{method:"POST",body:JSON.stringify(payload),csrf:true});
+    document.getElementById("hotspotLabel").value="";await loadHotspots(sceneId);await loadScenes();message("نقطه تعاملی افزوده شد.","success");
+  }catch(error){message(error.message,"error");}
+});
+document.getElementById("hotspotRows").addEventListener("click",async e=>{
+  const b=e.target.closest("[data-delete-hotspot]");if(!b||!confirm("این نقطه تعاملی حذف شود؟"))return;
+  try{await request("admin/hotspots/"+b.dataset.deleteHotspot,{method:"DELETE",csrf:true});await loadHotspots(Number(document.getElementById("hotspotScene").value));await loadScenes();message("نقطه حذف شد.","success");}
+  catch(error){message(error.message,"error");}
+});
+updateHotspotFields();
