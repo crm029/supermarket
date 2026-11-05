@@ -104,6 +104,9 @@ jobs:
       - name: Apply order picker and courier assignment migration
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_06_order_assignments.sql
 
+      - name: Apply in-app notifications migration
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_06_notifications.sql
+
       - name: Run permission scope tests
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/permissions.sql
 
