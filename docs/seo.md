@@ -17,7 +17,7 @@ This platform is multi-tenant. SEO output must be generated for the verified hos
 
 ## Current limitations — do not treat these as complete
 
-- Product URLs use numeric IDs. A future migration should add stable, merchant-editable SEO slugs and permanent redirects.
+- Product URLs use a stable merchant-editable slug alongside the immutable numeric product ID. Legacy ID-only URLs and outdated slug variants permanently redirect to the current canonical URL.
 - Product SEO titles/descriptions and category descriptions/SEO titles/descriptions are merchant-editable in the seller dashboard. Their search quality still depends on accurate, unique merchant-written content.
 - LocalBusiness address, geographic coordinates and opening hours are not published because the store profile does not yet collect and verify those fields.
 - Product image quality and descriptive alt text depend on each merchant's real catalogue/media uploads.
