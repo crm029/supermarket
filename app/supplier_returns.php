@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/policies.php';
 require_once __DIR__ . '/inventory.php';
+require_once __DIR__ . '/stock_batches.php';
 
 function app_admin_supplier_return_list(PDO $db,array $tenant): never {
     $stmt=$db->prepare(
@@ -112,6 +113,12 @@ function app_admin_supplier_return_create(PDO $db,array $tenant,array $session):
             }
             $stockUpdate->execute([$requested['quantity'],$tenant['id'],$warehouseId,$line['product_id'],$requested['quantity']]);
             if($stockUpdate->rowCount()!==1)throw new RuntimeException('Stock changed during supplier return.');
+            try {
+                app_stock_batch_consume($db,(int)$tenant['id'],$warehouseId,(int)$line['product_id'],$requested['quantity'],(int)$line['id']);
+            } catch (RuntimeException $batchError) {
+                $db->rollBack();
+                app_json(['error'=>'موجودی بچِ همین رسید برای مرجوعی کافی نیست؛ بچ کالا باید ابتدا در انبار تطبیق داده شود.'],409);
+            }
             $returnItem->execute([$tenant['id'],$returnId,$line['id'],$line['product_id'],$requested['quantity'],$line['unit_cost_rial']]);
             $movement->execute([$tenant['id'],$warehouseId,$line['product_id'],$session['id'],-$requested['quantity'],$returnId,$reason]);
         }
