@@ -386,10 +386,23 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
 
 function app_commerce_order_history(PDO $db, array $tenant, array $session): never {
     $stmt = $db->prepare(
-        'SELECT id, order_number, status, fulfillment, subtotal_rial, discount_rial,
-                delivery_fee_rial, total_rial, created_at
-         FROM orders WHERE tenant_id = ? AND user_id = ? ORDER BY id DESC LIMIT 100'
+        'SELECT o.id, o.order_number, o.status, o.fulfillment, o.subtotal_rial, o.discount_rial,
+                o.delivery_fee_rial, o.total_rial, o.created_at,
+                ps.title AS pickup_slot_title, ps.starts_at AS pickup_slot_starts_at, ps.ends_at AS pickup_slot_ends_at
+         FROM orders o
+         LEFT JOIN pickup_slots ps ON ps.tenant_id=o.tenant_id AND ps.id=o.pickup_slot_id
+         WHERE o.tenant_id = ? AND o.user_id = ? ORDER BY o.id DESC LIMIT 100'
     );
     $stmt->execute([$tenant['id'], $session['id']]);
-    app_json(['data' => $stmt->fetchAll()]);
+    $rows = $stmt->fetchAll();
+    $timezone = app_pickup_timezone($tenant);
+    $utc = new DateTimeZone('UTC');
+    foreach ($rows as &$row) {
+        if (!empty($row['pickup_slot_starts_at'])) {
+            $row['pickup_slot_starts_at_label'] = (new DateTimeImmutable((string)$row['pickup_slot_starts_at'], $utc))->setTimezone($timezone)->format('Y/m/d H:i');
+            $row['pickup_slot_ends_at_label'] = (new DateTimeImmutable((string)$row['pickup_slot_ends_at'], $utc))->setTimezone($timezone)->format('Y/m/d H:i');
+        }
+    }
+    unset($row);
+    app_json(['data' => $rows]);
 }
