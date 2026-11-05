@@ -13,6 +13,7 @@ This platform is multi-tenant. SEO output must be generated for the verified hos
 - /product/{id}/{seo-slug} serves crawlable product detail pages; the slug is optional until the merchant assigns one.
 - The homepage includes a tenant-specific title, meta description, canonical, social metadata, GroceryStore structured data and server-rendered category links.
 - Optional merchant-verified street address, postal address, geo coordinates and opening hours are emitted as local-business structured data.
+- Google Search Console HTML verification and GA4 measurement IDs are configurable per tenant; GA4 is loaded only after the visitor accepts analytics.
 - SEO landing pages link back into the interactive storefront; product and category deep links are opened by the storefront after the live catalogue loads.
 - Query-string catalogue/filter URLs are excluded from crawling to reduce duplicate URL variants.
 
@@ -22,7 +23,7 @@ This platform is multi-tenant. SEO output must be generated for the verified hos
 - Optional store address, city/region, country code, postal code, geographic coordinates and opening hours are editable in store settings and included in GroceryStore structured data. Merchants must enter accurate, verified public details.
 - Product image quality and descriptive alt text depend on each merchant's real catalogue/media uploads.
 - The sitemap and metadata are code-ready, but a store is not discoverable until its domain is verified, deployed over HTTPS and crawled.
-- Google Search Console verification, sitemap submission, GA4 configuration and conversion tracking require the merchant's actual domain and analytics properties.
+- The merchant must still verify the production domain in Search Console and submit its sitemap. GA4 view_item, view_item_list, add_to_cart, begin_checkout and verified purchase events are available after analytics consent; event receipt must be checked against the merchant's real GA4 property.
 - Core Web Vitals, mobile performance, image delivery and crawl behaviour must be measured on the final hosting environment with real catalogue volume.
 
 ## Merchant launch checklist
