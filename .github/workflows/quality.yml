@@ -145,7 +145,7 @@ jobs:
       - name: Verify merchant SEO content fields
         run: |
           result="$(mysql --batch --skip-column-names --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/seo-fields.sql)"
-          test "$result" = 
+          test "$result" = "2:4"
 
       - name: Test stock batch reservation integrity
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/stock-batches.sql
