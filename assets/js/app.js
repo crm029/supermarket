@@ -447,7 +447,7 @@ async function loadLiveCatalog() {
       renderScenes();
       document.querySelector(".scene-controls > span").textContent = "● تور تصویری فعال";
     }
-    document.querySelector(".welcome-copy").textContent =
+    if (!profile.tagline) document.querySelector(".welcome-copy").textContent =
       "از میان دسته‌بندی‌ها انتخاب کن، محصولات واقعی فروشگاه را ببین و در محیط تصویری فروشگاه گردش کن.";
   } catch (error) {
     console.info("Public catalog API unavailable; showing sample preview.", error);
