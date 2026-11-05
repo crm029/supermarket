@@ -47,6 +47,13 @@ assert_json() {
       }
       exit(1);
     }
+    if ($check === "advanced-search") {
+      $rows = $data["data"] ?? [];
+      if (count($rows) !== 1 || ($rows[0]["sku"] ?? "") !== "API-SMOKE-001" ||
+          (int)($rows[0]["price_rial"] ?? 0) !== 125000 ||
+          ($rows[0]["in_stock"] ?? null) !== true) exit(1);
+      exit(0);
+    }
     if ($check === "product-detail") {
       if (($data["data"]["in_stock"] ?? null) !== true ||
           ($data["data"]["image"]["url"] ?? null) !== "https://cdn.example.test/assets/products/ci%20milk%20bottle.jpg") exit(1);
@@ -145,6 +152,9 @@ request GET /categories 200
 assert_json category-image
 request GET /products 200
 assert_json product-image
+request GET "/products?brand=%D8%A8%D8%B1%D9%86%D8%AF%20%D8%AA%D8%B3%D8%AA&min_price=120000&max_price=130000&sort=price_asc&in_stock=1" 200
+assert_json advanced-search
+request GET "/products?min_price=invalid" 422
 
 PRODUCT_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM products WHERE tenant_id=1 AND sku='API-SMOKE-001' LIMIT 1")"
 CATEGORY_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM categories WHERE tenant_id=1 AND slug='api-smoke-category' LIMIT 1")"
