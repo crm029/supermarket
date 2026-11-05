@@ -113,11 +113,14 @@ function app_customer_cancel_order(PDO $db, array $tenant, array $session, int $
             'UPDATE stock_levels SET reserved = reserved - ? WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ? AND reserved >= ?'
         );
         $release = $db->prepare("UPDATE stock_reservations SET status = 'released' WHERE id = ? AND status = 'active'");
+        $movement = $db->prepare("INSERT INTO stock_movements (tenant_id,warehouse_id,product_id,actor_user_id,movement_type,quantity,reference_type,reference_id,reason) VALUES (?,?,?,?,'release',?,'order',?,'لغو سفارش توسط مشتری')");
+        //"UPDATE stock_reservations SET status = 'released' WHERE id = ? AND status = 'active'");
         foreach ($rows as $row) {
             $qty = (int)$row['quantity'];
             $releaseStock->execute([$qty,$tenant['id'],$row['warehouse_id'],$row['product_id'],$qty]);
             if ($releaseStock->rowCount() !== 1) throw new RuntimeException('Unable to release order stock reservation.');
             $release->execute([$row['id']]);
+            $movement->execute([$tenant['id'],$row['warehouse_id'],$row['product_id'],$session['id'],-$qty,$orderId]);
         }
         $update = $db->prepare("UPDATE orders SET status = 'cancelled' WHERE tenant_id = ? AND id = ? AND status = 'pending_payment'");
         $update->execute([$tenant['id'], $orderId]);
