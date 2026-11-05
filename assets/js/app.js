@@ -375,6 +375,13 @@ async function loadLiveCatalog() {
     const pickupOption = document.querySelector('#fulfillmentSelect option[value="pickup"]');
     if (deliveryOption) deliveryOption.disabled = store?.fulfillment?.delivery === false;
     if (pickupOption) pickupOption.disabled = store?.fulfillment?.pickup === false;
+    const policyNote = document.getElementById("checkoutPolicyNote");
+    if (policyNote) {
+      const fee = Number(checkout.delivery_fee_rial || 0) / 10;
+      const minimum = Number(checkout.minimum_order_rial || 0) / 10;
+      const reservation = Number(checkout.reservation_minutes || 20);
+      policyNote.textContent = "هزینه ارسال: " + money(fee) + " تومان · حداقل سفارش: " + money(minimum) + " تومان · مهلت پرداخت: " + reservation + " دقیقه";
+    }
     const fulfillmentSelect = document.getElementById("fulfillmentSelect");
     if (fulfillmentSelect && fulfillmentSelect.selectedOptions[0]?.disabled) {
       fulfillmentSelect.value = deliveryOption && !deliveryOption.disabled ? "delivery" : "pickup";
