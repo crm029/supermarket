@@ -79,3 +79,6 @@ Real merchant photography, production domains, SMS credentials and payment-gatew
 
 
 For first-time tenant setup, apply database/bootstrap-store-owner.sql after all migrations (edit its tenant and owner variables first). See docs/local-setup.md.
+
+
+Production deployment and external-service acceptance checklist: docs/production-readiness.md. Live launch still requires the store's real hosting, domain, SMS and payment credentials, and store-specific photography.
