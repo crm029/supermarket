@@ -29,7 +29,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [ ] Product variants, barcode uniqueness, promotions and advanced search.
 - [x] Server-side cart quote validation against live prices and available stock.\n- [ ] Persistent browser cart across devices and sessions.
 - [x] Customer address book API (list/create, tenant and owner scoped).\n- [ ] Address editing/deletion, delivery zones, pickup scheduling and configurable fees.
-- [x] Transactional pending-order creation with cross-warehouse stock reservations and customer order history API.\n- [ ] Payment verification, reservation expiry worker, order state transitions and customer order detail/tracking.
+- [x] Transactional pending-order creation with cross-warehouse stock reservations and customer order history API.\n- [x] CLI worker to release expired stock reservations and cancel unpaid orders.\n- [ ] Payment verification, order state transitions and customer order detail/tracking.
 
 ## Phase 3 — immersive storefront
 - [ ] Merchant scene/media editor.
