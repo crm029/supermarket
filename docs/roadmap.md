@@ -56,20 +56,23 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Merchant scene editor and hotspot authoring workflow with image upload and click-to-place hotspots.
 - [x] Category/product/navigation hotspots connect scenes to the live catalogue.
 - [x] Procedural WebGL supermarket with three connected aisles, cross-aisle movement, keyboard/touch controls, clickable category shelves, drag-to-look and guided/photo-tour fallback (PHP/JS and integration CI passed; physical-device visual acceptance remains a launch check).
+- [x] Build 3D shelf positions from live category slugs and show clickable live catalogue products with product-detail handoff.
 - [ ] Real-store media onboarding and responsive image delivery.
 
 ## Phase 4 — store operations
 - [x] Multi-warehouse stock receipt, transfer and adjustment services with tenant checks, reserved-stock protection and audit trail.
-- [x] Per-product low-stock warnings in inventory and threshold-based dashboard counts.
+- [x] Per-product low-stock thresholds, warehouse-aware alerts (including zero-stock rows) and purchase-form shortcuts.
 - [x] Tenant-scoped supplier directory, purchase orders, partial receiving, inventory posting, audit trail and seller management UI (PHP/JavaScript validation, MySQL schema, tenant isolation and tenant-aware HTTP API integration CI verified).
-- [ ] Supplier returns.
-- [ ] Expiry/batch tracking with FIFO/FEFO stock allocation and expiry alerts.
+- [x] Supplier returns with receipt-line eligibility, quantity validation, stock reduction and audit trail.
+- [x] Batch/expiry tracking with FEFO allocation, expiry reports and reservation safety.
+- [x] Audited expired-stock write-off with tenant-scoped stock reduction and movement history.
 - [x] Transactional reservations, expiry/release and paid-order stock commit.
 - [x] Customer cancellation for pending-payment orders with transactional stock release.
 - [x] Tenant-scoped order queue and guarded fulfilment transitions (accept, picking, packing, pickup/dispatch, delivery).
 - [ ] Cashier assignment, picker workflow, courier tracking and operational dashboards.
 - [x] Seller dashboard with 30-day paid revenue, seven-day sales trend and low-stock count.
-- [ ] Configurable stock thresholds, notifications and report exports.
+- [x] Tenant-scoped inventory movement ledger with warehouse/product/type/date filters and signed quantities.
+- [ ] Operational notifications and report exports.
 
 ## Phase 5 — customer growth and integrations
 - [x] ZarinPal v4 request/verify adapter, payment-attempt persistence, callback verification, stock commit and duplicate-callback protection.
@@ -85,3 +88,13 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [ ] Custom domains, HTTPS, backups, monitoring and disaster recovery.
 - [ ] Security review, load testing, accessibility and device testing.
 - [ ] Merchant acceptance, operational runbooks and production release.
+
+## Phase 7 — search visibility and SEO
+- [x] Tenant-aware SEO context with verified primary-domain canonical URLs.
+- [x] Per-tenant robots.txt and XML sitemap generation.
+- [x] Crawlable product and category landing pages with Product, Offer, CollectionPage and ItemList structured data.
+- [x] Homepage title, description, canonical, social metadata, GroceryStore schema and crawlable category links.
+- [x] CI smoke tests for SEO pages, sitemap and robots output.
+- [ ] Merchant-managed product/category SEO titles, descriptions and stable slugs.
+- [ ] Google Search Console verification, sitemap submission, GA4 and conversion tracking.
+- [ ] Production Core Web Vitals, image delivery, mobile and index coverage review.
