@@ -3,6 +3,7 @@ const apiBase = new URL("api/v1/", document.baseURI).toString();
 let csrfToken = "";
 let products = [];
 let categories = [];
+let orders = [];
 let activePanel = "overview";
 
 async function request(path, options = {}) {
@@ -44,6 +45,7 @@ async function loadAll() {
     const [p,c]=await Promise.all([request("admin/products"),request("admin/categories")]);
     products=p.data||[];categories=c.data||[];
     renderProducts();renderCategories();
+    await loadOrders();
     document.getElementById("statProducts").textContent=new Intl.NumberFormat("fa-IR").format(products.filter(x=>Number(x.is_active)).length);
     document.getElementById("statCategories").textContent=new Intl.NumberFormat("fa-IR").format(categories.filter(x=>Number(x.is_active)).length);
     document.getElementById("statConnection").textContent="متصل";
@@ -53,6 +55,26 @@ async function loadAll() {
     document.getElementById("statConnection").textContent="محدود";
     message(error.message,"error");
   }
+}
+async function loadOrders() {
+  try {
+    const result=await request("admin/orders");
+    orders=result.data||[];
+    renderOrders();
+  } catch(error) {
+    orders=[];
+    document.getElementById("orderRows").innerHTML='<tr><td colspan="6">'+escapeText(error.message)+'</td></tr>';
+  }
+}
+function renderOrders() {
+  const labels={pending_payment:"در انتظار پرداخت",paid:"پرداخت‌شده",accepted:"پذیرفته‌شده",picking:"در حال جمع‌آوری",packed:"بسته‌بندی‌شده",ready_pickup:"آماده تحویل",dispatched:"ارسال‌شده",delivered:"تحویل‌شده",cancelled:"لغوشده",refunded:"مستردشده"};
+  const next={paid:"accepted",accepted:"picking",picking:"packed",packed:"dispatched",ready_pickup:"delivered",dispatched:"delivered"};
+  document.getElementById("orderRows").innerHTML=orders.map(o=>{
+    let nextStatus=next[o.status];
+    if(o.status==="packed"&&o.fulfillment==="pickup")nextStatus="ready_pickup";
+    const action=nextStatus?'<button class="admin-row-action" data-next-order="'+Number(o.id)+'" data-next-status="'+nextStatus+'">مرحله بعد</button>':"—";
+    return '<tr><td><strong>'+escapeText(o.order_number)+'</strong><small>'+escapeText(o.created_at||"")+'</small></td><td>'+escapeText(o.customer_name)+'<small>'+escapeText(o.customer_mobile)+'</small></td><td>'+new Intl.NumberFormat("fa-IR").format(Number(o.item_count)||0)+'</td><td>'+money(Number(o.total_rial)/10)+'</td><td><span class="admin-status '+(o.status==="delivered"?"active":"inactive")+'">'+(labels[o.status]||escapeText(o.status))+'</span></td><td>'+action+'</td></tr>';
+  }).join("")||'<tr><td colspan="6">هنوز سفارشی ثبت نشده است.</td></tr>';
 }
 function renderProducts() {
   const query=document.getElementById("productSearch").value.trim().toLocaleLowerCase();
@@ -148,3 +170,16 @@ document.getElementById("adminOtpVerify").addEventListener("click",async()=>{
   }catch(error){loginMessage(error.message,"error");}
 });
 loadSession();
+
+document.getElementById("reloadOrders").addEventListener("click",loadOrders);
+document.getElementById("orderStatusFilter").addEventListener("change",async e=>{
+  try{const suffix=e.target.value?"?status="+encodeURIComponent(e.target.value):"";const result=await request("admin/orders"+suffix);orders=result.data||[];renderOrders();}
+  catch(error){message(error.message,"error");}
+});
+document.getElementById("orderRows").addEventListener("click",async e=>{
+  const b=e.target.closest("[data-next-order]");if(!b)return;
+  try{
+    await request("admin/orders/"+b.dataset.nextOrder+"/transition",{method:"POST",body:JSON.stringify({status:b.dataset.nextStatus}),csrf:true});
+    await loadOrders();message("مرحله سفارش به‌روزرسانی شد.","success");
+  }catch(error){message(error.message,"error");}
+});
