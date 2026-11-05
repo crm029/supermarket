@@ -50,8 +50,9 @@ Still in progress:
 ## Local development
 
 - Visual demo: place the repository in XAMPP's `htdocs` and open the project root.
-- API: requires PHP 8.1+ with PDO MySQL and MySQL/MariaDB. See `docs/local-setup.md`.
+- API: requires PHP 8.2+ with PDO MySQL, mbstring, cURL and fileinfo; production domain onboarding also requires PHP DNS TXT lookup. See `docs/local-setup.md`.
 - Optional sample database: import `database/schema.sql`, then `database/demo-seed.sql` into a fresh local database. The sample domain is `localhost`.
+- After the existing 2026_11_05 migrations, apply in order: `2026_11_06_order_assignments.sql`, `2026_11_06_notifications.sql`, `2026_11_06_order_wallet_refunds.sql`, and `2026_11_06_domain_verification_challenge.sql`. See `docs/local-setup.md` for the full sequence.
 
 ## Documentation
 
