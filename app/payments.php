@@ -169,8 +169,7 @@ function app_payment_callback(PDO $db, array $tenant): never {
     $find->execute([$tenant['id'], $authority]);
     $attempt = $find->fetch();
     if (!$attempt) {
-        header('Location: /payment-result.php?status=failed', true, 303);
-        exit;
+        app_payment_redirect_result('failed');
     }
     if ($attempt['status'] === 'verified') {
         app_payment_redirect_result('success', (int)$attempt['order_id']);
@@ -193,8 +192,7 @@ function app_payment_callback(PDO $db, array $tenant): never {
         if (!in_array($code, [100, 101], true) || $reference === '') {
             $fail = $db->prepare("UPDATE payment_attempts SET status = 'failed' WHERE id = ? AND status <> 'verified'");
             $fail->execute([$attempt['id']]);
-            header('Location: /payment-result.php?status=failed&order=' . (int)$attempt['order_id'], true, 303);
-            exit;
+            app_payment_redirect_result('failed', (int)$attempt['order_id']);
         }
 
         $db->beginTransaction();
@@ -204,8 +202,7 @@ function app_payment_callback(PDO $db, array $tenant): never {
         if (!$lockedAttempt) throw new RuntimeException('Payment attempt disappeared.');
         if ($lockedAttempt['status'] === 'verified') {
             $db->commit();
-            header('Location: /payment-result.php?status=success&order=' . (int)$attempt['order_id'], true, 303);
-            exit;
+            app_payment_redirect_result('success', (int)$attempt['order_id']);
         }
 
         $orderQuery = $db->prepare('SELECT id, user_id, status FROM orders WHERE tenant_id = ? AND id = ? FOR UPDATE');
