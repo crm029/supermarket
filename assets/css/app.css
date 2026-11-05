@@ -23,3 +23,16 @@
 
 
 .sales-chart{display:grid;gap:9px;margin-top:12px}.sales-bar-row{display:grid;grid-template-columns:90px minmax(60px,1fr) auto;align-items:center;gap:10px;font-size:10px}.sales-bar-row>div{height:9px;border-radius:10px;background:#edf0e9;overflow:hidden}.sales-bar-row i{display:block;height:100%;border-radius:10px;background:#9bb36a}.sales-bar-row strong{font-size:10px;white-space:nowrap}
+
+
+/* Customer address book controls */
+.saved-address-manager{display:grid;gap:10px;margin:4px 0 12px}
+.saved-address-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--line,#e5e7eb);border-radius:14px;background:var(--surface,#fff)}
+.saved-address-row>div:first-child{display:grid;gap:4px;min-width:0}
+.saved-address-row strong{font-size:.92rem}
+.saved-address-row small{color:var(--muted,#667085);line-height:1.7;overflow-wrap:anywhere}
+.saved-address-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.danger-text{color:#b42318!important}
+.address-empty{margin:0;color:var(--muted,#667085);font-size:.88rem}
+.address-edit-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+@media(max-width:520px){.saved-address-row{align-items:flex-start;flex-direction:column}.saved-address-actions{width:100%;justify-content:flex-end}}
