@@ -55,6 +55,14 @@ function app_admin_product_payload(array $body, bool $partial = false): array {
         }
     }
 
+    if (!$partial || array_key_exists('seo_slug',$body)) {
+        $slug = strtolower(trim((string)($body['seo_slug'] ?? '')));
+        if ($slug !== '' && (!preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/',$slug) || strlen($slug)>180)) {
+            app_json(['error'=>'نامک سئوی محصول باید انگلیسی، با حروف کوچک و بدون فاصله باشد.'],422);
+        }
+        $data['seo_slug'] = $slug === '' ? null : $slug;
+    }
+
     foreach (['barcode' => 80, 'brand' => 120, 'unit_label' => 80, 'description' => 10000, 'seo_title' => 180, 'seo_description' => 160] as $field => $max) {
         if (!$partial || array_key_exists($field, $body)) {
             $value = trim((string)($body[$field] ?? ''));
@@ -134,7 +142,7 @@ function app_admin_product_list(PDO $db, array $tenant): never {
                      THEN COALESCE((SELECT MIN(v.price_rial) FROM products v WHERE v.tenant_id=p.tenant_id AND v.parent_product_id=p.id AND v.is_active=1),0)
                      ELSE p.price_rial END AS price_rial,
                 p.compare_at_rial, p.category_id, p.is_weighted, p.is_active, p.low_stock_threshold,
-                p.seo_title,p.seo_description,
+                p.seo_title,p.seo_slug,p.seo_description,
                 p.product_kind,p.parent_product_id,p.variant_label,parent.title AS parent_title
          FROM products p
          LEFT JOIN products parent ON parent.tenant_id=p.tenant_id AND parent.id=p.parent_product_id
@@ -156,10 +164,10 @@ function app_admin_product_create(PDO $db, array $tenant, array $session): never
         app_admin_validate_product_category($db, (int)$tenant['id'], $data);
         $stmt = $db->prepare(
             "INSERT INTO products
-              (tenant_id, category_id, sku, barcode, title, brand, description, seo_title, seo_description,
+              (tenant_id, category_id, sku, barcode, title, brand, description, seo_title, seo_slug, seo_description,
                unit_label, price_rial, compare_at_rial, is_weighted, product_kind, is_active, low_stock_threshold)
              VALUES
-              (:tenant, :category_id, :sku, :barcode, :title, :brand, :description, :seo_title, :seo_description,
+              (:tenant, :category_id, :sku, :barcode, :title, :brand, :description, :seo_title, :seo_slug, :seo_description,
                :unit_label, :price_rial, :compare_at_rial, :is_weighted, :product_kind, :is_active, :low_stock_threshold)"
         );
         $stmt->execute([
@@ -171,6 +179,7 @@ function app_admin_product_create(PDO $db, array $tenant, array $session): never
             'brand' => $data['brand'],
             'description' => $data['description'],
             'seo_title' => $data['seo_title'],
+            'seo_slug' => $data['seo_slug'],
             'seo_description' => $data['seo_description'],
             'unit_label' => $data['unit_label'] ?? 'عدد',
             'price_rial' => $data['price_rial'],
@@ -189,7 +198,7 @@ function app_admin_product_create(PDO $db, array $tenant, array $session): never
     } catch (PDOException $e) {
         if ($db->inTransaction()) $db->rollBack();
         if ($e->getCode() === '23000' && (int)($e->errorInfo[1] ?? 0) === 1062) {
-            app_json(['error' => 'کد کالا یا بارکد قبلاً در این فروشگاه ثبت شده است.'], 409);
+            app_json(['error' => 'کد کالا، بارکد یا نامک سئو قبلاً در این فروشگاه ثبت شده است.'], 409);
         }
         throw $e;
     } catch (Throwable $e) {
@@ -203,7 +212,7 @@ function app_admin_product_update(PDO $db, array $tenant, array $session, int $i
     if ($data === []) app_json(['error' => 'هیچ فیلدی برای ویرایش ارسال نشده است.'], 422);
     $allowed = [
         'sku', 'title', 'price_rial', 'category_id', 'compare_at_rial',
-        'barcode', 'brand', 'unit_label', 'description', 'seo_title', 'seo_description', 'is_weighted', 'is_active', 'low_stock_threshold',
+        'barcode', 'brand', 'unit_label', 'description', 'seo_title', 'seo_slug', 'seo_description', 'is_weighted', 'is_active', 'low_stock_threshold',
     ];
     $sets = [];
     $params = ['tenant' => $tenant['id'], 'id' => $id];
@@ -243,7 +252,7 @@ function app_admin_product_update(PDO $db, array $tenant, array $session, int $i
     } catch (PDOException $e) {
         if ($db->inTransaction()) $db->rollBack();
         if ($e->getCode() === '23000' && (int)($e->errorInfo[1] ?? 0) === 1062) {
-            app_json(['error' => 'کد کالا یا بارکد با کالای دیگری تداخل دارد.'], 409);
+            app_json(['error' => 'کد کالا، بارکد یا نامک سئو با کالای دیگری تداخل دارد.'], 409);
         }
         throw $e;
     } catch (Throwable $e) {

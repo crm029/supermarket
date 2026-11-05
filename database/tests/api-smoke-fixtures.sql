@@ -83,7 +83,7 @@ WHERE sl.tenant_id=1 AND sl.product_id=@api_product_id AND sl.on_hand>0;
 
 -- Seed merchant-managed SEO copy for the server-rendered product/category pages.
 UPDATE products
-SET seo_title='عنوان سئو محصول تست',seo_description='توضیحات متا محصول تست'
+SET seo_title='عنوان سئو محصول تست',seo_slug='test-product',seo_description='توضیحات متا محصول تست'
 WHERE tenant_id=1 AND id=1;
 
 UPDATE categories

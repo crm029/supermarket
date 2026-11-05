@@ -23,14 +23,30 @@ check_page() {
   fi
 }
 
+check_redirect() {
+  local path="$1"
+  local expected="$2"
+  local status
+  status="$(curl -sS -D "$OUT" -o /dev/null -w '%{http_code}' -H "Host: $HOST_HEADER" "$BASE_URL$path")"
+  if [[ "$status" != "301" ]] || ! grep -Fiq "Location: http://localhost$expected" "$OUT"; then
+    echo "Expected permanent redirect from $path to $expected; received HTTP $status"
+    cat "$OUT"
+    exit 1
+  fi
+}
+
 check_page "/robots.php" "Sitemap: http://localhost/sitemap.xml"
-check_page "/sitemap.php" "http://localhost/product/1"
+check_page "/sitemap.php" "http://localhost/product/1/test-product"
 check_page "/sitemap.php" "http://localhost/category/dairy"
-check_page "/product.php?id=1" "شیر پرچرب یک لیتری"
-check_page "/product.php?id=1" "عنوان سئو محصول تست"
-check_page "/product.php?id=1" "توضیحات متا محصول تست"
-check_page "/product.php?id=1" 'application/ld+json'
-check_page "/category.php?slug=dairy" "/product/1"
+check_page "/product/1/test-product" "شیر پرچرب یک لیتری"
+check_page "/product/1/test-product" "عنوان سئو محصول تست"
+check_page "/product/1/test-product" "توضیحات متا محصول تست"
+check_page "/product/1/test-product" 'application/ld+json'
+check_page "/product/1/test-product" 'rel="canonical" href="http://localhost/product/1/test-product"'
+check_redirect "/product/1" "/product/1/test-product"
+check_redirect "/product/1/old-product-slug" "/product/1/test-product"
+check_redirect "/product.php?id=1" "/product/1/test-product"
+check_page "/category.php?slug=dairy" "/product/1/test-product"
 check_page "/category.php?slug=dairy" "عنوان سئو دسته تست"
 check_page "/category.php?slug=dairy" "توضیحات متا دسته تست"
 check_page "/index.php" 'rel="canonical" href="http://localhost/"'

@@ -19,7 +19,7 @@ $category = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$category) { http_response_code(404); exit('دسته‌بندی پیدا نشد.'); }
 
 $productsQuery = $seo['db']->prepare(
-    "SELECT p.id,p.title,p.sku,p.brand,p.description,p.unit_label,p.price_rial,p.image_media_id,
+    "SELECT p.id,p.title,p.sku,p.seo_slug,p.brand,p.description,p.unit_label,p.price_rial,p.image_media_id,
             m.storage_key,m.alt_text AS image_alt_text,
             COALESCE((SELECT SUM(sl.on_hand-sl.reserved)
                       FROM stock_levels sl
@@ -55,7 +55,7 @@ foreach ($products as $index=>$item) {
     $listItems[] = [
         '@type'=>'ListItem',
         'position'=>$index+1,
-        'url'=>app_seo_url($seo,'product/'.(int)$item['id']),
+        'url'=>app_seo_url($seo,app_seo_product_path($item)),
         'name'=>(string)$item['title'],
     ];
 }
@@ -114,7 +114,7 @@ $jsonLd = json_encode($schema,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON
       $imageUrl = $item['storage_key'] ? app_media_public_url((string)$item['storage_key']) : null;
       $inStock = (int)$item['available_quantity'] > 0;
     ?>
-      <a class="seo-product-card" href="/product/<?= (int)$item['id'] ?>">
+      <a class="seo-product-card" href="/<?= $e(app_seo_product_path($item)) ?>">
         <?php if ($imageUrl): ?><img src="<?= $e($imageUrl) ?>" alt="<?= $e($item['image_alt_text'] ?: $item['title']) ?>" loading="lazy"><?php else: ?><div class="product-image"></div><?php endif; ?>
         <h2><?= $e($item['title']) ?></h2>
         <p><?= $e($item['brand'] ?? '') ?> · <?= $e($item['unit_label']) ?></p>

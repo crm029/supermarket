@@ -10,14 +10,14 @@ This platform is multi-tenant. SEO output must be generated for the verified hos
 - /robots.txt is served by robots.php and points to the tenant-aware /sitemap.xml.
 - /sitemap.xml is generated from the current tenant's active categories and active non-variant product pages.
 - /category/{slug} serves crawlable category pages with product links and CollectionPage / ItemList structured data.
-- /product/{id} serves crawlable product detail pages with canonical, Open Graph, Twitter metadata and Product / Offer structured data.
+- /product/{id}/{seo-slug} serves crawlable product detail pages; the slug is optional until the merchant assigns one.
 - The homepage includes a tenant-specific title, meta description, canonical, social metadata, GroceryStore structured data and server-rendered category links.
 - SEO landing pages link back into the interactive storefront; product and category deep links are opened by the storefront after the live catalogue loads.
 - Query-string catalogue/filter URLs are excluded from crawling to reduce duplicate URL variants.
 
 ## Current limitations — do not treat these as complete
 
-- Product URLs use numeric IDs. A future migration should add stable, merchant-editable SEO slugs and permanent redirects.
+- Product URLs use a stable merchant-editable slug alongside the immutable numeric product ID. Legacy ID-only URLs and outdated slug variants permanently redirect to the current canonical URL.
 - Product SEO titles/descriptions and category descriptions/SEO titles/descriptions are merchant-editable in the seller dashboard. Their search quality still depends on accurate, unique merchant-written content.
 - LocalBusiness address, geographic coordinates and opening hours are not published because the store profile does not yet collect and verify those fields.
 - Product image quality and descriptive alt text depend on each merchant's real catalogue/media uploads.

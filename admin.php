@@ -61,8 +61,9 @@ declare(strict_types=1);
         </div>
         <label>توضیحات کامل محصول<textarea id="productDescription" rows="3" maxlength="10000"></textarea></label>
         <div class="admin-form-grid">
+          <label>نامک محصول برای آدرس گوگل<input id="productSeoSlug" maxlength="180" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="مثال: fresh-milk-1l"></label>
           <label>عنوان سئو (اختیاری)<input id="productSeoTitle" maxlength="180" placeholder="اگر خالی باشد از نام محصول استفاده می‌شود"></label>
-          <label>توضیحات متا (حداکثر ۳۲۰ نویسه)<textarea id="productSeoDescription" rows="2" maxlength="160" placeholder="متن کوتاه مخصوص نتیجه جست‌وجو"></textarea></label>
+          <label>توضیحات متا (حداکثر ۱۶۰ نویسه)<textarea id="productSeoDescription" rows="2" maxlength="160" placeholder="متن کوتاه مخصوص نتیجه جست‌وجو"></textarea></label>
         </div>
         <div class="admin-form-actions"><button class="primary-button" type="submit">ذخیره محصول</button><button class="text-button" id="cancelProductForm" type="button">انصراف</button></div>
       </form>

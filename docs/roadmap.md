@@ -96,6 +96,6 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Homepage title, description, canonical, social metadata, GroceryStore schema and crawlable category links.
 - [x] CI smoke tests for SEO pages, sitemap and robots output.
 - [x] Merchant-managed product/category SEO titles and descriptions in the seller dashboard.
-- [ ] Stable product slugs and permanent redirects.
+- [x] Merchant-managed unique product slugs, canonical slug URLs, legacy ID-only redirects and permanent redirects from outdated slug variants.
 - [ ] Google Search Console verification, sitemap submission, GA4 and conversion tracking.
 - [ ] Production Core Web Vitals, image delivery, mobile and index coverage review.

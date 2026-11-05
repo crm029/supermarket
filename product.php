@@ -9,7 +9,7 @@ if ($productId === false || $productId === null || $productId < 1) { http_respon
 
 $stmt = $seo['db']->prepare(
     "SELECT p.id,p.title,p.sku,p.brand,p.description,p.unit_label,p.price_rial,p.compare_at_rial,
-            p.image_media_id,p.product_kind,p.seo_title,p.seo_description,c.title AS category_title,c.slug AS category_slug,
+            p.image_media_id,p.product_kind,p.seo_title,p.seo_slug,p.seo_description,c.title AS category_title,c.slug AS category_slug,
             COALESCE((SELECT SUM(sl.on_hand-sl.reserved)
                       FROM stock_levels sl
                       JOIN warehouses w ON w.tenant_id=sl.tenant_id AND w.id=sl.warehouse_id
@@ -37,7 +37,14 @@ $metaDescription = trim(strip_tags((string)($product['seo_description'] ?? '')))
 if ($metaDescription === '') $metaDescription = $visibleDescription;
 $description = mb_substr(preg_replace('/\s+/u',' ',$metaDescription) ?? $metaDescription,0,160);
 $image = app_media_public_data($seo['db'],(int)$seo['tenant']['id'],$product['image_media_id'] === null ? null : (int)$product['image_media_id']);
-$canonical = app_seo_url($seo,'product/'.(int)$product['id']);
+$canonicalPath = app_seo_product_path($product);
+$canonical = app_seo_url($seo,$canonicalPath);
+$currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '',PHP_URL_PATH) ?: '';
+$expectedPath = '/'.$canonicalPath;
+if ($currentPath !== $expectedPath || (string)($_SERVER['HTTP_HOST'] ?? '') !== (string)$seo['host']) {
+    header('Location: '.$canonical,true,301);
+    exit;
+}
 $inStock = (int)$product['available_quantity'] > 0;
 $priceRial = (int)$product['price_rial'];
 $title = trim((string)($product['seo_title'] ?? '')) ?: ((string)$product['title'].' | '.$storeName);

@@ -1018,6 +1018,7 @@ document.getElementById("productRows").addEventListener("click",async e=>{
     syncProductKindFields();
     document.getElementById("productLowStockThreshold").value=Number(p.low_stock_threshold??5);
     document.getElementById("productDescription").value=p.description||"";
+    document.getElementById("productSeoSlug").value=p.seo_slug||"";
     document.getElementById("productSeoTitle").value=p.seo_title||"";
     document.getElementById("productSeoDescription").value=p.seo_description||"";
     document.getElementById("productMediaId").value=p.media_id||"";
@@ -1044,6 +1045,7 @@ document.getElementById("productForm").addEventListener("submit",async e=>{
     brand:document.getElementById("productBrand").value.trim(),
     unit_label:document.getElementById("productUnit").value.trim()||"عدد",
     description:document.getElementById("productDescription").value.trim(),
+    seo_slug:document.getElementById("productSeoSlug").value.trim().toLowerCase(),
     seo_title:document.getElementById("productSeoTitle").value.trim(),
     seo_description:document.getElementById("productSeoDescription").value.trim(),
     media_id:document.getElementById("productMediaId").value?Number(document.getElementById("productMediaId").value):null,
