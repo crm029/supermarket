@@ -125,3 +125,7 @@ After applying schema.sql and every migration, edit database/bootstrap-store-own
 
 ## Store branding and checkout settings
 The store owner can configure the public store name, tagline, support phone, primary/accent colors, delivery and pickup availability, delivery fee, minimum order and payment reservation duration from `admin.php`. Settings are tenant-scoped and saved through the permission-guarded `/api/v1/admin/settings` endpoint. Delivery fee and minimum order are stored in IRR; the panel accepts toman and converts them. The checkout service revalidates all policies server-side.
+
+
+## Staff role management
+A store owner can create limited tenant roles and assign them to active OTP-verified accounts from the staff panel in `admin.php`. Create the employee's account first, then assign their mobile number a role. The `staff.manage` privilege is intentionally non-delegable in this panel; platform super-admin role management is not included.
