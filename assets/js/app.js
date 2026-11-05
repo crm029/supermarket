@@ -355,7 +355,33 @@ async function loadLiveCatalog() {
     const [store, categories, rows] = await Promise.all([
       apiGet("store"), apiGet("categories"), apiGet("products")
     ]);
-    if (store?.name) document.title = store.name + " | سوپرمارکت ۳۶۰";
+    const profile = store?.settings?.profile || {};
+    const checkout = store?.settings?.checkout || {};
+    if (store?.name) {
+      document.title = store.name + " | سوپرمارکت ۳۶۰";
+      const brandName = document.querySelector(".brand > span:last-child");
+      if (brandName) brandName.textContent = store.name;
+    }
+    if (profile.primary_color) {
+      document.documentElement.style.setProperty("--forest", profile.primary_color);
+      document.documentElement.style.setProperty("--forest-2", profile.primary_color);
+    }
+    if (profile.accent_color) {
+      document.documentElement.style.setProperty("--lime", profile.accent_color);
+      document.documentElement.style.setProperty("--orange", profile.accent_color);
+    }
+    if (profile.tagline) document.querySelector(".welcome-copy").textContent = profile.tagline;
+    const deliveryOption = document.querySelector('#fulfillmentSelect option[value="delivery"]');
+    const pickupOption = document.querySelector('#fulfillmentSelect option[value="pickup"]');
+    if (deliveryOption) deliveryOption.disabled = store?.fulfillment?.delivery === false;
+    if (pickupOption) pickupOption.disabled = store?.fulfillment?.pickup === false;
+    const fulfillmentSelect = document.getElementById("fulfillmentSelect");
+    if (fulfillmentSelect && fulfillmentSelect.selectedOptions[0]?.disabled) {
+      fulfillmentSelect.value = deliveryOption && !deliveryOption.disabled ? "delivery" : "pickup";
+    }
+    const trustItems = document.querySelectorAll(".trust-row span");
+    if (trustItems[1]) trustItems[1].hidden = store?.fulfillment?.delivery === false;
+    if (trustItems[2]) trustItems[2].hidden = store?.fulfillment?.pickup === false;
     if (Array.isArray(categories)) renderCategories(categories);
     if (Array.isArray(rows)) {
       products = rows.map(row => ({
