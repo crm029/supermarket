@@ -5,8 +5,6 @@ require_once __DIR__ . '/app/seo.php';
 $seo = app_seo_context();
 if (!$seo) { http_response_code(404); exit('فروشگاه پیدا نشد.'); }
 $productId = filter_var($_GET['id'] ?? null,FILTER_VALIDATE_INT);
-$requestedSlug = $_GET['slug'] ?? '';
-if (!is_string($requestedSlug)) { http_response_code(404); exit('کالا پیدا نشد.'); }
 if ($productId === false || $productId === null || $productId < 1) { http_response_code(404); exit('کالا پیدا نشد.'); }
 
 $stmt = $seo['db']->prepare(
@@ -42,7 +40,7 @@ $image = app_media_public_data($seo['db'],(int)$seo['tenant']['id'],$product['im
 $canonicalPath = app_seo_product_path($product);
 $canonical = app_seo_url($seo,$canonicalPath);
 $currentSlug = trim((string)($product['seo_slug'] ?? ''));
-if ($requestedSlug !== $currentSlug || !empty($_GET['id'])) {
+if (true) {
     $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '',PHP_URL_PATH) ?: '';
     $expectedPath = '/'.$canonicalPath;
     if ($currentPath !== $expectedPath || (string)($_SERVER['HTTP_HOST'] ?? '') !== (string)$seo['host']) {
