@@ -15,7 +15,7 @@ declare(strict_types=1);
 <body class="admin-body">
 <header class="topbar admin-topbar">
   <a class="brand" href="index.php"><span class="brand-mark">۳۶۰</span><span>مدیریت<span class="brand-light"> فروشگاه</span></span></a>
-  <div class="admin-top-actions"><span id="adminIdentity">در حال بررسی دسترسی...</span><a class="text-button" href="staff.php">مرکز وظایف کارکنان</a><a class="text-button" href="platform.php">مدیریت پلتفرم</a><a class="text-button" href="index.php">مشاهده فروشگاه ←</a></div>
+  <div class="admin-top-actions"><span id="adminIdentity">در حال بررسی دسترسی...</span><a class="text-button" href="staff.php">مرکز وظایف کارکنان</a><a class="text-button" href="notifications.php">اعلان‌ها</a><a class="text-button" href="platform.php">مدیریت پلتفرم</a><a class="text-button" href="index.php">مشاهده فروشگاه ←</a></div>
 </header>
 <main class="admin-shell">
   <aside class="admin-sidebar">
