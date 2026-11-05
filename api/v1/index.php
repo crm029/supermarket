@@ -136,12 +136,28 @@ try {
 
     if ($path === '/categories') {
         $stmt = $db->prepare(
-            "SELECT id, parent_id, title, slug, image_media_id
-             FROM categories WHERE tenant_id = ? AND is_active = 1
-             ORDER BY sort_order, title"
+            "SELECT c.id, c.parent_id, c.title, c.slug, c.image_media_id,
+                    m.storage_key AS media_storage_key, m.alt_text AS media_alt_text,
+                    m.width AS media_width, m.height AS media_height
+             FROM categories c
+             LEFT JOIN media_assets m ON m.tenant_id = c.tenant_id AND m.id = c.image_media_id
+             WHERE c.tenant_id = ? AND c.is_active = 1
+             ORDER BY c.sort_order, c.title"
         );
         $stmt->execute([$tenant['id']]);
-        app_json(['data' => $stmt->fetchAll()]);
+        $categories = $stmt->fetchAll();
+        foreach ($categories as &$categoryRow) {
+            $categoryRow['image'] = $categoryRow['media_storage_key'] === null ? null : [
+                'url' => app_media_public_url((string)$categoryRow['media_storage_key']),
+                'alt_text' => $categoryRow['media_alt_text'],
+                'width' => $categoryRow['media_width'] === null ? null : (int)$categoryRow['media_width'],
+                'height' => $categoryRow['media_height'] === null ? null : (int)$categoryRow['media_height'],
+            ];
+            unset($categoryRow['image_media_id'], $categoryRow['media_storage_key'],
+                $categoryRow['media_alt_text'], $categoryRow['media_width'], $categoryRow['media_height']);
+        }
+        unset($categoryRow);
+        app_json(['data' => $categories]);
     }
 
     if ($path === '/products') {
@@ -149,30 +165,47 @@ try {
         $category = filter_input(INPUT_GET, 'category', FILTER_VALIDATE_INT);
         $page = max(1, min(1000, (int)($_GET['page'] ?? 1)));
         $limit = 24;
-        $where = ['tenant_id = :tenant', 'is_active = 1'];
+        $where = ['p.tenant_id = :tenant', 'p.is_active = 1'];
         $params = ['tenant' => $tenant['id']];
         if ($query !== '') {
-            $where[] = '(title LIKE :q_title OR sku LIKE :q_sku OR barcode LIKE :q_barcode)';
+            $where[] = '(p.title LIKE :q_title OR p.sku LIKE :q_sku OR p.barcode LIKE :q_barcode)';
             $search = '%' . mb_substr($query, 0, 80) . '%';
             $params['q_title'] = $search;
             $params['q_sku'] = $search;
             $params['q_barcode'] = $search;
         }
         if ($category) {
-            $where[] = 'category_id = :category';
+            $where[] = 'p.category_id = :category';
             $params['category'] = $category;
         }
         $sqlWhere = implode(' AND ', $where);
-        $count = $db->prepare("SELECT COUNT(*) FROM products WHERE {$sqlWhere}");
+        $count = $db->prepare("SELECT COUNT(*) FROM products p WHERE {$sqlWhere}");
         $count->execute($params);
         $stmt = $db->prepare(
-            "SELECT id, sku, title, brand, description, unit_label, price_rial,
-                    compare_at_rial, image_media_id, is_weighted
-             FROM products WHERE {$sqlWhere}
-             ORDER BY title LIMIT {$limit} OFFSET " . (($page - 1) * $limit)
+            "SELECT p.id, p.sku, p.title, p.brand, p.description, p.unit_label, p.price_rial,
+                    p.compare_at_rial, p.image_media_id, p.is_weighted,
+                    m.storage_key AS media_storage_key, m.alt_text AS media_alt_text,
+                    m.width AS media_width, m.height AS media_height
+             FROM products p
+             LEFT JOIN media_assets m ON m.tenant_id = p.tenant_id AND m.id = p.image_media_id
+             WHERE {$sqlWhere}
+             ORDER BY p.title LIMIT {$limit} OFFSET " . (($page - 1) * $limit)
         );
         $stmt->execute($params);
-        app_json(['data' => $stmt->fetchAll(), 'meta' => [
+        $products = $stmt->fetchAll();
+        foreach ($products as &$productRow) {
+            $productRow['image'] = $productRow['media_storage_key'] === null ? null : [
+                'url' => app_media_public_url((string)$productRow['media_storage_key']),
+                'alt_text' => $productRow['media_alt_text'],
+                'width' => $productRow['media_width'] === null ? null : (int)$productRow['media_width'],
+                'height' => $productRow['media_height'] === null ? null : (int)$productRow['media_height'],
+            ];
+            $productRow['is_weighted'] = (bool)$productRow['is_weighted'];
+            unset($productRow['image_media_id'], $productRow['media_storage_key'],
+                $productRow['media_alt_text'], $productRow['media_width'], $productRow['media_height']);
+        }
+        unset($productRow);
+        app_json(['data' => $products, 'meta' => [
             'page' => $page, 'per_page' => $limit, 'total' => (int)$count->fetchColumn()
         ]]);
     }
