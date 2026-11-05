@@ -88,6 +88,7 @@ let csrfToken = "";
 let currentUser = null;
 let pendingCheckout = false;
 let pendingPaymentOrderId = null;
+let savedAddresses = [];
 let publicScenes = [];
 let currentScene = 0;
 
@@ -136,6 +137,11 @@ async function startCheckout() {
   }
   document.getElementById("addressRecipient").value = currentUser.full_name || "";
   document.getElementById("addressMobile").value = currentUser.mobile || "";
+  try { savedAddresses = await apiGet("me/addresses") || []; } catch (_) { savedAddresses = []; }
+  const addressSelect=document.getElementById("savedAddressSelect");
+  addressSelect.innerHTML='<option value="new">ثبت نشانی جدید</option>'+savedAddresses.map(a=>'<option value="'+Number(a.id)+'">'+escapeHTML(a.title)+' — '+escapeHTML(a.city||"")+'، '+escapeHTML(a.address)+'</option>').join("");
+  if(savedAddresses.length){addressSelect.value=String(savedAddresses[0].id);document.getElementById("deliveryAddressFields").hidden=true;}
+  else{addressSelect.value="new";document.getElementById("deliveryAddressFields").hidden=false;}
   document.getElementById("checkoutDialog").showModal();
 }
 
@@ -271,7 +277,12 @@ document.getElementById("verifyOtpButton").addEventListener("click", async () =>
   } catch(error){setFormMessage("accountMessage",error.message,"error");}
 });
 document.getElementById("fulfillmentSelect").addEventListener("change",e=>{
-  document.getElementById("deliveryAddressFields").hidden=e.target.value==="pickup";
+  const useDelivery=e.target.value==="delivery";
+  document.getElementById("savedAddressSelect").parentElement.hidden=!useDelivery;
+  document.getElementById("deliveryAddressFields").hidden=!useDelivery||document.getElementById("savedAddressSelect").value!=="new";
+});
+document.getElementById("savedAddressSelect").addEventListener("change",e=>{
+  document.getElementById("deliveryAddressFields").hidden=e.target.value!=="new"||document.getElementById("fulfillmentSelect").value==="pickup";
 });
 document.getElementById("placeOrderButton").addEventListener("click",async()=>{
   const button=document.getElementById("placeOrderButton");
@@ -288,6 +299,10 @@ document.getElementById("placeOrderButton").addEventListener("click",async()=>{
     let addressId=null;
     const fulfillment=document.getElementById("fulfillmentSelect").value;
     if(fulfillment==="delivery"){
+      const selectedAddress=document.getElementById("savedAddressSelect").value;
+      if(selectedAddress!=="new"){
+        addressId=Number(selectedAddress);
+      }else{
       const address=await apiPost("me/addresses",{
         title:document.getElementById("addressTitle").value.trim(),
         recipient:document.getElementById("addressRecipient").value.trim(),
@@ -298,6 +313,7 @@ document.getElementById("placeOrderButton").addEventListener("click",async()=>{
         postal_code:document.getElementById("addressPostal").value.trim()
       },true);
       addressId=address.data.id;
+      }
     }
     const order=await apiPost("checkout",{
       items:[...cart].map(([product_id,quantity])=>({product_id,quantity})),
