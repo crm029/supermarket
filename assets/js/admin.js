@@ -734,7 +734,7 @@ async function loadInventory() {
     const [w,s,l]=await Promise.all([request("admin/warehouses"),request("admin/stock"),request("admin/stock/low")]);
     warehouses=w.data||[];stockRows=s.data||[];lowStockRows=l.data||[];
     renderInventory();
-    await loadStockBatches();
+    await Promise.all([loadStockBatches(),loadStockMovements()]);
   } catch(error) {
     document.getElementById("stockRows").innerHTML='<tr><td colspan="6">'+escapeText(error.message)+'</td></tr>';
   }
@@ -781,6 +781,14 @@ function renderInventory() {
     const select=document.getElementById(id);const previous=select.value;
     select.innerHTML=productOptions;if(previous)select.value=previous;
   });
+  const movementWarehouse=document.getElementById("movementWarehouseFilter");
+  const previousMovementWarehouse=movementWarehouse.value;
+  movementWarehouse.innerHTML='<option value="">همه انبارها</option>'+warehouseOptions;
+  if(previousMovementWarehouse)movementWarehouse.value=previousMovementWarehouse;
+  const movementProduct=document.getElementById("movementProductFilter");
+  const previousMovementProduct=movementProduct.value;
+  movementProduct.innerHTML='<option value="">همه کالاها</option>'+productOptions;
+  if(previousMovementProduct)movementProduct.value=previousMovementProduct;
   document.getElementById("stockRows").innerHTML=stockRows.map(s=>'<tr><td><strong>'+escapeText(s.product_title)+'</strong><small>'+escapeText(s.sku)+'</small></td><td>'+escapeText(s.warehouse_title)+'</td><td>'+new Intl.NumberFormat("fa-IR").format(Number(s.on_hand))+'</td><td>'+new Intl.NumberFormat("fa-IR").format(Number(s.reserved))+'</td><td><strong>'+new Intl.NumberFormat("fa-IR").format(Number(s.available_quantity))+'</strong></td><td><span class="admin-status '+(Number(s.is_low_stock)?"inactive":"active")+'">'+new Intl.NumberFormat("fa-IR").format(Number(s.low_stock_threshold))+(Number(s.is_low_stock)?" · هشدار":"")+'</span></td></tr>').join("")||'<tr><td colspan="6">هنوز موجودی ثبت نشده است.</td></tr>';
   const formatQuantity=value=>new Intl.NumberFormat("fa-IR").format(Number(value)||0);
   document.getElementById("stockLowSummary").textContent=lowStockRows.length
@@ -794,6 +802,39 @@ function renderInventory() {
     '<td><strong>'+formatQuantity(item.shortage_quantity)+'</strong></td>'+
     '<td><button class="admin-row-action" type="button" data-reorder-product="'+Number(item.product_id)+'" data-reorder-quantity="'+Number(item.shortage_quantity)+'">آماده‌سازی سفارش خرید</button></td></tr>'
   ).join("")||'<tr><td colspan="6">هشدار کمبود موجودی ثبت نشده است.</td></tr>';
+
+async function loadStockMovements(){
+  const params=new URLSearchParams();
+  const filters=[
+    ["warehouse_id","movementWarehouseFilter"],["product_id","movementProductFilter"],
+    ["movement_type","movementTypeFilter"],["from","movementFromDate"],["to","movementToDate"]
+  ];
+  filters.forEach(([key,id])=>{const value=document.getElementById(id).value;if(value)params.set(key,value);});
+  const rows=document.getElementById("stockMovementRows");
+  try{
+    const result=await request("admin/stock-movements"+(params.toString()?"?"+params.toString():""));
+    const data=result.data||[];
+    const labels={receipt:"ورود موجودی",transfer_in:"ورود انتقال",transfer_out:"خروج انتقال",adjustment:"اصلاح موجودی",reservation:"رزرو سفارش",release:"آزادسازی رزرو",sale:"فروش",return:"مرجوعی مشتری",supplier_return:"مرجوعی تأمین‌کننده",expiry_writeoff:"امحای کالای منقضی"};
+    const number=value=>new Intl.NumberFormat("fa-IR").format(Math.abs(Number(value)||0));
+    rows.innerHTML=data.map(item=>{
+      const quantity=Number(item.quantity)||0;
+      const signed=(quantity>0?"+":quantity<0?"−":"")+number(quantity);
+      const reference=item.reference_type?(item.reference_type+(item.reference_id?" #"+Number(item.reference_id):"")):"—";
+      return '<tr><td>'+escapeText(item.created_at||"")+'</td>'+
+        '<td><strong>'+escapeText(item.product_title)+'</strong><small>'+escapeText(item.sku||"")+'</small></td>'+
+        '<td>'+escapeText(item.warehouse_title)+'</td>'+
+        '<td>'+escapeText(labels[item.movement_type]||item.movement_type)+'</td>'+
+        '<td><strong>'+signed+'</strong></td>'+
+        '<td>'+escapeText(item.actor_name||"سیستم")+'</td>'+
+        '<td>'+escapeText(item.reason||reference)+'</td></tr>';
+    }).join("")||'<tr><td colspan="7">برای این فیلتر سابقه‌ای ثبت نشده است.</td></tr>';
+    document.getElementById("stockMovementSummary").textContent=
+      new Intl.NumberFormat("fa-IR").format(data.length)+" گردش اخیر نمایش داده می‌شود؛ حداکثر ۳۰۰ رکورد در هر جست‌وجو.";
+  }catch(error){
+    document.getElementById("stockMovementSummary").textContent=error.message;
+    rows.innerHTML='<tr><td colspan="7">'+escapeText(error.message)+'</td></tr>';
+  }
+}
 }
 async function loadOrders() {
   try {
@@ -1063,6 +1104,13 @@ document.getElementById("orderRows").addEventListener("click",async e=>{
 });
 
 document.getElementById("reloadInventory").addEventListener("click",loadInventory);
+document.getElementById("reloadStockMovements").addEventListener("click",loadStockMovements);
+document.getElementById("applyMovementFilters").addEventListener("click",()=>{
+  const from=document.getElementById("movementFromDate").value;
+  const to=document.getElementById("movementToDate").value;
+  if(from&&to&&from>to){message("تاریخ شروع نباید بعد از تاریخ پایان باشد.","error");return;}
+  loadStockMovements();
+});
 document.getElementById("stockLowRows").addEventListener("click",event=>{
   const button=event.target.closest("[data-reorder-product]");
   if(!button)return;
