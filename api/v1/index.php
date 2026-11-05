@@ -151,6 +151,12 @@ try {
         app_inventory_transfer($db, $tenant, $session);
     }
 
+    if ($path === '/admin/supplier-returns/eligible-lines' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'inventory.read');
+        app_admin_supplier_return_eligible_lines($db, $tenant);
+    }
+
     if ($path === '/admin/supplier-returns') {
         $session = app_auth_require($db, $tenant);
         if ($method === 'GET') {
