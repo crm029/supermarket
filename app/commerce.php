@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/notifications.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/stock_batches.php';
 
@@ -400,6 +401,16 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
             }
         }
         $db->commit();
+        try {
+            app_notification_publish_permission(
+                $db,(int)$tenant['id'],'orders.manage','order_created',
+                'سفارش جدید ثبت شد',
+                'سفارش شماره '.$orderNumber.' در انتظار بررسی فروشگاه است.',
+                'order',(int)$orderId
+            );
+        } catch (Throwable $notificationError) {
+            error_log('Supermarket 360: failed to publish order notification.');
+        }
         app_json(['data' => [
             'id' => $orderId, 'order_number' => $orderNumber, 'status' => 'pending_payment',
             'fulfillment' => $fulfillment, 'items' => $quote['items'],
