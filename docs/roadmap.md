@@ -15,7 +15,9 @@ Status is intentionally conservative: a checklist item is complete only when imp
 
 ## Phase 1 — secure production foundation
 - [x] Add tenant-aware composite foreign keys, scoped/global role protections and cross-tenant negative tests (MySQL 8 CI verified).
-- [x] OTP login challenge storage, expiry, attempt lockout and phone/IP rate limiting.\n- [x] Opaque database-backed sessions, HttpOnly cookies and CSRF-protected logout.\n- [ ] Production SMS provider adapter, customer registration and password reset.
+- [x] OTP login challenge storage, expiry, attempt lockout and phone/IP rate limiting.
+- [x] Opaque database-backed sessions, HttpOnly cookies and CSRF-protected logout.
+- [ ] Production SMS provider adapter, customer registration and password reset.
 - [ ] Permission matrix, policies, CSRF protection and audit service.
 - [ ] Platform super-admin tenant provisioning and domain verification.
 - [ ] Store settings, branding and secure media library.
