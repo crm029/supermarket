@@ -1316,10 +1316,19 @@ document.getElementById("mediaUploadForm").addEventListener("submit",async e=>{
     const response=await fetch(apiBase+"admin/media",{method:"POST",credentials:"same-origin",headers:{"X-CSRF-Token":csrfToken,"Accept":"application/json"},body:form});
     const payload=await response.json().catch(()=>({}));
     if(!response.ok)throw new Error(payload.error||"بارگذاری تصویر ناموفق بود.");
-    document.getElementById("sceneMediaId").value=payload.data.id;
-    if(document.getElementById("mediaType").value==="product")document.getElementById("productMediaId").value=payload.data.id;
-    if(document.getElementById("mediaType").value==="category")document.getElementById("categoryMediaId").value=payload.data.id;
-    document.getElementById("mediaUploadMessage").textContent="تصویر ذخیره شد؛ شناسه رسانه "+payload.data.id+" در فرم صحنه قرار گرفت.";
+    const mediaType=document.getElementById("mediaType").value;
+    if(mediaType==="aisle"||mediaType==="panorama")document.getElementById("sceneMediaId").value=payload.data.id;
+    if(mediaType==="product")document.getElementById("productMediaId").value=payload.data.id;
+    if(mediaType==="category")document.getElementById("categoryMediaId").value=payload.data.id;
+    const uploadMessages={
+      logo:"لوگوی فروشگاه ذخیره شد و به‌صورت خودکار در سربرگ و پابرگ نمایش داده می‌شود.",
+      hero:"بنر اصلی ذخیره شد و به‌صورت خودکار در صفحه فروشگاه و پیش‌نمایش اشتراک‌گذاری نمایش داده می‌شود.",
+      aisle:"تصویر راهرو ذخیره شد؛ شناسه آن در فرم ساخت صحنه قرار گرفت.",
+      panorama:"تصویر پانوراما ذخیره شد؛ شناسه آن در فرم ساخت صحنه قرار گرفت.",
+      product:"تصویر محصول ذخیره شد؛ شناسه آن در فرم محصول قرار گرفت.",
+      category:"تصویر دسته‌بندی ذخیره شد؛ شناسه آن در فرم دسته‌بندی قرار گرفت."
+    };
+    document.getElementById("mediaUploadMessage").textContent=uploadMessages[mediaType]||("تصویر ذخیره شد؛ شناسه رسانه "+payload.data.id+".");
     await loadMediaLibrary();
     document.getElementById("mediaUploadMessage").className="form-message success";
   }catch(error){document.getElementById("mediaUploadMessage").textContent=error.message;document.getElementById("mediaUploadMessage").className="form-message error";}
