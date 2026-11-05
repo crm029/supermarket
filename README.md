@@ -19,7 +19,8 @@ Implemented in this milestone:
 - MySQL schema foundation for tenants/domains, users/roles, media, categories/products, virtual-store scenes/hotspots, multi-warehouse stock, stock movements/reservations, orders, payments, wallet ledger, referrals and audit logs.
 - Verified-host tenant resolver and read-only API routes for store profile, categories and product search.
 - Local sample tenant seed and API/setup documentation.
-- GitHub Actions PHP/JavaScript checks plus a MySQL 8 schema-migration and tenant-isolation integration job.\n- Additive tenant-isolation migration with composite foreign keys for tenant-owned relations and scope guards for role assignments and audit actors.
+- GitHub Actions PHP/JavaScript checks plus a MySQL 8 schema-migration and tenant-isolation integration job.
+- Additive tenant-isolation migration with composite foreign keys for tenant-owned relations and scope guards for role assignments and audit actors.
 
 Not implemented yet:
 - Real customer registration/OTP, persistent cart and checkout.
