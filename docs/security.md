@@ -4,7 +4,7 @@
 - Password hashing via Argon2id/bcrypt and phone OTP throttling.
 - CSRF protection, output escaping, parameterized queries and strict input validation.
 - Tenant context resolved from host mapping; deny-by-default tenant authorization.
-- Permission checks on every server action; cashier and warehouse scopes are separate.
+- Permission checks on protected server actions; the current admin product API uses deny-by-default tenant-scoped permissions. Cashier and warehouse scopes still need their own policies.
 - Rate limits for login, OTP, referral validation, checkout and payment endpoints.
 - Secrets only in environment/secret manager; never in Git or frontend JavaScript.
 - Payment callback verification server-to-server; idempotency and reconciliation.
