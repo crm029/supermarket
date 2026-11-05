@@ -31,7 +31,7 @@ declare(strict_types=1);
   <section class="admin-content">
     <section class="admin-panel active" id="panel-overview">
       <p class="eyebrow">داشبورد فروشگاه</p><h2>خلاصه وضعیت</h2>
-      <div class="admin-stats"><article><small>محصولات فعال</small><strong id="statProducts">—</strong></article><article><small>دسته‌بندی‌ها</small><strong id="statCategories">—</strong></article><article><small>وضعیت اتصال</small><strong id="statConnection">—</strong></article></div>
+      <div class="admin-stats"><article><small>محصولات فعال</small><strong id="statProducts">—</strong></article><article><small>دسته‌بندی‌ها</small><strong id="statCategories">—</strong></article><article><small>وضعیت اتصال</small><strong id="statConnection">—</strong></article><article><small>فروش تأییدشده ۳۰ روز</small><strong id="statRevenue">—</strong></article><article><small>در انتظار پرداخت</small><strong id="statPending">—</strong></article><article><small>هشدار موجودی کم</small><strong id="statLowStock">—</strong></article></div><div class="admin-welcome"><h3>فروش روزانه ۷ روز اخیر</h3><div id="salesChart" class="sales-chart">در حال بارگذاری...</div></div>
       <div class="admin-welcome"><h3>به مرکز مدیریت خوش آمدید</h3><p>از اینجا می‌توانید کاتالوگ فروشگاه را مدیریت کنید. قیمت‌ها در API بر اساس ریال ذخیره می‌شوند و در پنل با تومان وارد می‌شوند.</p></div>
     </section>
     <section class="admin-panel" id="panel-products">
