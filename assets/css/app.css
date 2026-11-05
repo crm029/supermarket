@@ -72,3 +72,29 @@
 .product-stock-badge{display:inline-block;margin-top:4px;font-size:10px;color:#a33}
 @media(max-width:760px){.catalog-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:420px){.catalog-filters{grid-template-columns:1fr 1fr}.catalog-filters button{width:100%}}
+
+
+/* Immersive 3D supermarket navigation */
+#aisleScene.free-movement-active{background:#e8e4d8;cursor:grab;touch-action:none}
+#aisleScene.free-movement-active:active{cursor:grabbing}
+#aisleScene .free-movement-canvas{position:absolute;inset:0;z-index:1;width:100%;height:100%;display:block;touch-action:none}
+#aisleScene.free-movement-active>.scene-overlay,
+#aisleScene.free-movement-active>.scene-arrow,
+#aisleScene.free-movement-active>.scene-floor{display:none}
+.free-movement-controls{position:absolute;inset:0;z-index:5;pointer-events:none}
+.free-movement-controls[hidden]{display:none}
+.free-movement-hud{position:absolute;top:12px;right:12px;display:flex;flex-direction:column;gap:4px;max-width:min(75%,430px);padding:10px 13px;border-radius:12px;background:#10251de8;color:#fff;box-shadow:0 5px 20px #0003}
+.free-movement-hud strong{font-size:11px}
+.free-movement-hud small{font-size:9px;color:#d3ded3;line-height:1.6}
+.free-movement-exit{position:absolute;left:12px;top:12px;pointer-events:auto;border:1px solid #fff8;border-radius:10px;padding:9px 12px;background:#fff;color:#10251d;font:700 10px Vazirmatn,sans-serif;cursor:pointer}
+.free-movement-pad{position:absolute;left:12px;bottom:12px;display:grid;justify-items:center;gap:4px;pointer-events:auto}
+.free-movement-pad>div{display:flex;gap:4px}
+.free-movement-pad button{width:39px;height:35px;border:1px solid #fff8;border-radius:9px;background:#10251de8;color:#fff;font-size:17px;touch-action:none;user-select:none;cursor:pointer}
+.free-movement-pad button:active{background:#c8e36a;color:#10251d}
+#aisleScene.free-movement-fallback{background-position:center;background-size:cover}
+@media(max-width:650px){
+  .free-movement-hud{max-width:calc(100% - 24px);top:54px;right:10px}
+  .free-movement-exit{top:10px;left:10px}
+  .free-movement-pad{left:10px;bottom:10px}
+  .free-movement-pad button{width:36px;height:33px}
+}
