@@ -672,7 +672,7 @@ try {
         $stmt = $db->prepare(
             "SELECT p.id, p.sku, p.barcode, p.title, p.brand, p.description,
                     p.unit_label, p.price_rial, p.compare_at_rial, p.image_media_id,
-                    p.is_weighted, c.id AS category_id, c.title AS category_title, c.slug AS category_slug,
+                    p.is_weighted, p.product_kind, c.id AS category_id, c.title AS category_title, c.slug AS category_slug,
                     (SELECT COALESCE(SUM(sl.on_hand - sl.reserved), 0)
                      FROM stock_levels sl
                      JOIN warehouses w ON w.id = sl.warehouse_id AND w.tenant_id = sl.tenant_id
@@ -680,7 +680,7 @@ try {
              FROM products p
              LEFT JOIN categories c
                ON c.tenant_id = p.tenant_id AND c.id = p.category_id AND c.is_active = 1
-             WHERE p.tenant_id = ? AND p.id = ? AND p.is_active = 1
+             WHERE p.tenant_id = ? AND p.id = ? AND p.is_active = 1 AND p.product_kind <> 'variant'
              LIMIT 1"
         );
         $stmt->execute([$tenant['id'], $productId]);
@@ -698,6 +698,33 @@ try {
         unset($product['image_media_id'], $product['category_id'], $product['category_title'],
             $product['category_slug'], $product['available_quantity']);
         $product['is_weighted'] = (bool)$product['is_weighted'];
+        $product['has_variants'] = $product['product_kind'] === 'variant_parent';
+        $product['variants'] = [];
+        if ($product['has_variants']) {
+            $variantsQuery=$db->prepare(
+                "SELECT v.id,v.sku,v.barcode,v.variant_label,v.unit_label,v.price_rial,v.compare_at_rial,
+                        v.is_weighted,v.image_media_id,
+                        COALESCE((SELECT SUM(sl.on_hand-sl.reserved)
+                                  FROM stock_levels sl
+                                  JOIN warehouses w ON w.tenant_id=sl.tenant_id AND w.id=sl.warehouse_id
+                                  WHERE sl.tenant_id=v.tenant_id AND sl.product_id=v.id AND w.is_active=1),0) AS available_quantity
+                 FROM products v
+                 WHERE v.tenant_id=? AND v.parent_product_id=? AND v.product_kind='variant' AND v.is_active=1
+                 ORDER BY v.id"
+            );
+            $variantsQuery->execute([$tenant['id'],$productId]);
+            $variants=$variantsQuery->fetchAll(PDO::FETCH_ASSOC);
+            foreach($variants as &$variant){
+                $variant['image']=$variant['image_media_id']===null?$product['image']:app_media_public_data($db,(int)$tenant['id'],(int)$variant['image_media_id']);
+                $variant['available_quantity']=(int)$variant['available_quantity'];
+                $variant['in_stock']=$variant['available_quantity']>0;
+                $variant['is_weighted']=(bool)$variant['is_weighted'];
+                unset($variant['image_media_id']);
+            }
+            unset($variant);
+            $product['variants']=$variants;
+        }
+        unset($product['product_kind']);
         app_json(['data' => $product]);
     }
 
