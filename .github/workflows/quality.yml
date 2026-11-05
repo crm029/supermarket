@@ -175,3 +175,20 @@ jobs:
           trap 'kill "$server_pid" 2>/dev/null || true' EXIT
           bash tests/api-smoke.sh
           REFERRAL_REWARD_BASIS_POINTS=500 php tests/wallet-referral-integration.php
+
+      - name: Run tenant-aware SEO page smoke tests
+        env:
+          APP_ENV: testing
+          APP_KEY: ci-test-secret-with-more-than-thirty-two-characters
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: supermarket360
+          DB_USERNAME: root
+          DB_PASSWORD: root
+          MEDIA_BASE_URL: https://cdn.example.test/assets
+          MEDIA_STORAGE_PATH: /tmp/supermarket-media
+        run: |
+          set -euo pipefail
+          php -S 127.0.0.1:8100 -t . >/tmp/supermarket-seo.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          bash tests/seo-smoke.sh
