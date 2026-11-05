@@ -34,7 +34,8 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Basic tenant-scoped product list/create/update/deactivate API with permission checks.
 - [x] Basic tenant-scoped category list/create/update/deactivate API with parent-cycle and media ownership checks.
 - [x] Tenant-local unique product barcodes and product-level low-stock thresholds.
-- [ ] Product variants, promotions and advanced search.
+- [x] Advanced tenant-scoped product search with brand, category, price range, availability, sorting and pagination.
+- [ ] Product variants and promotion/coupon engine.
 - [x] Server-side cart quote validation against live prices and available stock.
 - [x] Tenant-scoped persistent customer cart across devices, with guest-cart merge and server-side replacement.
 - [x] Customer address book API (list/create, tenant and owner scoped).
