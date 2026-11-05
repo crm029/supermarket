@@ -72,7 +72,8 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [ ] Cashier assignment, picker workflow, courier tracking and operational dashboards.
 - [x] Seller dashboard with 30-day paid revenue, seven-day sales trend and low-stock count.
 - [x] Tenant-scoped inventory movement ledger with warehouse/product/type/date filters and signed quantities.
-- [ ] Operational notifications and report exports.
+- [x] Tenant-scoped CSV exports for orders and inventory movements, with date/status/warehouse/product filters, formula-injection protection and permission checks.
+- [ ] Operational notifications.
 
 ## Phase 5 — customer growth and integrations
 - [x] ZarinPal v4 request/verify adapter, payment-attempt persistence, callback verification, stock commit and duplicate-callback protection.
