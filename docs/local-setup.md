@@ -71,3 +71,14 @@ The API resolves the tenant by the verified request host. A tenant identifier su
 
 ## Not production-ready yet
 Before real customers or money are involved, implement a production SMS adapter, registration and account recovery, role-based authorization policies, CSRF on all write routes, transactional checkout, stock reservation, payment-provider verification, broader automated tests, HTTPS, backups and monitoring. Never expose database errors to clients.
+
+
+## Reservation expiry worker
+
+Unpaid checkout reservations expire after 20 minutes. Configure the host's cron or Windows Task Scheduler to run this command every minute:
+
+```sh
+php /path/to/supermarket/bin/expire-reservations.php
+```
+
+The worker releases reserved quantities and cancels pending-payment orders once all their active reservations have expired. It is safe to run repeatedly; it processes at most 100 expired reservation rows per invocation. Configure the same database environment variables used by the API. Monitor its stderr/exit code; do not expose this script through the web server.
