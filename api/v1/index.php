@@ -6,6 +6,7 @@ require_once dirname(__DIR__, 2) . '/app/auth.php';
 require_once dirname(__DIR__, 2) . '/app/policies.php';
 require_once dirname(__DIR__, 2) . '/app/admin_catalog.php';
 require_once dirname(__DIR__, 2) . '/app/media.php';
+require_once dirname(__DIR__, 2) . '/app/commerce.php';
 
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
@@ -92,6 +93,32 @@ try {
         }
         header('Allow: PATCH, DELETE');
         app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if ($path === '/cart/quote' && $method === 'POST') {
+        app_commerce_public_quote($db, $tenant);
+    }
+
+    if ($path === '/me/addresses') {
+        $session = app_auth_require($db, $tenant);
+        if ($method === 'GET') app_commerce_list_addresses($db, $tenant, $session);
+        if ($method === 'POST') {
+            app_auth_require_csrf($session);
+            app_commerce_create_address($db, $tenant, $session);
+        }
+        header('Allow: GET, POST');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if ($path === '/checkout' && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_commerce_create_order($db, $tenant, $session);
+    }
+
+    if ($path === '/me/orders' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_commerce_order_history($db, $tenant, $session);
     }
 
     if ($path === '/auth/request-otp' && $method === 'POST') {
