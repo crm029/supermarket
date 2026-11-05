@@ -343,3 +343,5 @@ REGISTERED_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-c
 REFERRAL_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM referral_events re JOIN users u ON u.id=re.referred_user_id WHERE u.tenant_id=1 AND u.mobile='09120000004'")"
 if [[ "$REGISTERED_STATUS" != "active" || "$REFERRAL_COUNT" != "1" ]]; then echo "OTP registration or referral activation failed"; exit 1; fi
 echo "HTTP API and commerce smoke tests passed."
+
+# Product variant integration coverage follows the same tenant-scoped checkout fixtures.
