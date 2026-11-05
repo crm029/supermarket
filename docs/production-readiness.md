@@ -27,6 +27,11 @@ The application code includes customer registration, catalogue management, inven
 - [ ] Complete sandbox and low-value live tests for success, cancellation, duplicate callbacks, delayed callbacks and provider outages.
 - [ ] Configure settlement reconciliation and a manual refund procedure. Refund API integration is not included.
 
+## Notifications
+
+- [ ] Apply database/migrations/2026_11_06_notifications.sql after tenant isolation and verify customer, staff and manager inbox permissions on the real tenant.
+- [ ] Configure and test the production SMS provider; in-app notifications do not replace SMS delivery or operational escalation.
+
 ## Media and operations
 
 - [ ] Configure MEDIA_STORAGE_PATH outside the public PHP document root and MEDIA_BASE_URL through a static-only web-server alias or CDN.

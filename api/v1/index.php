@@ -12,6 +12,7 @@ require_once dirname(__DIR__, 2) . '/app/admin_orders.php';
 require_once dirname(__DIR__, 2) . '/app/order_assignments.php';
 require_once dirname(__DIR__, 2) . '/app/staff_tasks.php';
 require_once dirname(__DIR__, 2) . '/app/platform.php';
+require_once dirname(__DIR__, 2) . '/app/notifications.php';
 require_once dirname(__DIR__, 2) . '/app/inventory.php';
 require_once dirname(__DIR__, 2) . '/app/admin_scenes.php';
 require_once dirname(__DIR__, 2) . '/app/reports.php';
@@ -518,6 +519,23 @@ try {
     if ($path === '/me/wallet' && $method === 'GET') {
         $session = app_auth_require($db, $tenant);
         app_wallet_customer_summary($db, $tenant, $session);
+    }
+
+    if ($path === '/me/notifications' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_notification_list($db, $tenant, $session);
+    }
+
+    if ($path === '/me/notifications/read-all' && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_notification_mark_all_read($db, $tenant, $session);
+    }
+
+    if (preg_match('#^/me/notifications/([1-9][0-9]*)/read$#', $path, $notificationReadMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_notification_mark_read($db, $tenant, $session, (int)$notificationReadMatch[1]);
     }
 
     if ($path === '/me/tasks' && $method === 'GET') {

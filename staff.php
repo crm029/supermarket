@@ -13,7 +13,7 @@ declare(strict_types=1);
 <body class="staff-body">
   <header class="topbar staff-topbar">
     <a class="brand" href="index.php"><span class="brand-mark">۳۶۰</span><span>سوپرمارکت<span class="brand-light"> ۳۶۰</span></span></a>
-    <a class="text-button" href="index.php">بازگشت به فروشگاه ←</a>
+    <div class="notifications-links"><a class="text-button" href="notifications.php">اعلان‌های من</a><a class="text-button" href="index.php">بازگشت به فروشگاه ←</a></div>
   </header>
   <main class="staff-shell">
     <section id="staffLogin" class="staff-login">

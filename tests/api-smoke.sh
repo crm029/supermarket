@@ -229,6 +229,35 @@ assert_json() {
       }
       exit(0);
     }
+    if ($check === "order-notification") {
+      $rows=$data["data"]??[];
+      foreach($rows as $row) if(($row["title"]??"")==="سفارش شما ثبت شد") exit(0);
+      exit(1);
+    }
+    if ($check === "notification-id") {
+      $id=(int)($data["data"][0]["id"]??0);
+      if($id<1)exit(1);
+      echo $id;exit(0);
+    }
+    if ($check === "assignment-notification") {
+      $rows=$data["data"]??[];
+      foreach($rows as $row) if(($row["notification_type"]??"")==="assignment") exit(0);
+      exit(1);
+    }
+    if ($check === "order-status-notification") {
+      $rows=$data["data"]??[];
+      foreach($rows as $row) if(str_contains((string)($row["body"]??""),"پذیرفته‌شده")) exit(0);
+      exit(1);
+    }
+    if ($check === "manager-task-notification") {
+      $rows=$data["data"]??[];
+      foreach($rows as $row) if(($row["title"]??"")==="وظیفه سفارش تکمیل شد") exit(0);
+      exit(1);
+    }
+    if ($check === "unread-empty") {
+      if((int)($data["unread_count"]??-1)!==0)exit(1);
+      exit(0);
+    }
     if ($check === "worker-tasks") {
       $tasks = $data["data"] ?? [];
       $picker = false; $courier = false;
@@ -391,6 +420,12 @@ request POST /admin/delivery-zones 409 '{"title":"محدوده تکراری","pr
 request PATCH "/admin/delivery-zones/$ZONE_ID" 200 '{"delivery_fee_rial":3000}' "$TOKEN" "$CSRF"
 request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}],"fulfillment":"delivery","address_id":'$ADDRESS_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 ORDER_ID="$(assert_json order-created)"
+request GET /me/notifications 200 "" "$CUSTOMER_TOKEN"
+assert_json order-notification
+NOTIFICATION_ID="$(assert_json notification-id)"
+request POST "/me/notifications/$NOTIFICATION_ID/read" 200 '{}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+request GET "/me/notifications?unread=1" 200 "" "$CUSTOMER_TOKEN"
+assert_json unread-empty
 ORDER_FEE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT delivery_fee_rial FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
 ORDER_TOTAL="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT total_rial FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
 ORDER_ZONE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT delivery_zone_id FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
@@ -422,10 +457,20 @@ request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/assignments" 201 '{"assignment_
 PICKER_ASSIGNMENT_ID="$(assert_json created-id)"
 request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/assignments" 201 '{"assignment_type":"courier","assignee_user_id":'$WORKER_ID'}' "$TOKEN" "$CSRF"
 COURIER_ASSIGNMENT_ID="$(assert_json created-id)"
+request GET "/me/notifications" 200 "" "$WORKER_TOKEN"
+assert_json assignment-notification
+request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/transition" 200 '{"status":"accepted"}' "$TOKEN" "$CSRF"
+request GET "/me/notifications" 200 "" "$CUSTOMER_TOKEN"
+assert_json order-status-notification
 request GET /me/tasks 200 "" "$WORKER_TOKEN"
 assert_json worker-tasks
 request POST "/me/tasks/$PICKER_ASSIGNMENT_ID/complete" 404 '{}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 request POST "/me/tasks/$PICKER_ASSIGNMENT_ID/complete" 200 '{}' "$WORKER_TOKEN" "$WORKER_CSRF"
+request GET /me/notifications 200 "" "$TOKEN"
+assert_json manager-task-notification
+request POST /me/notifications/read-all 200 '{}' "$TOKEN" "$CSRF"
+request GET "/me/notifications?unread=1" 200 "" "$TOKEN"
+assert_json unread-empty
 request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/assignments/$COURIER_ASSIGNMENT_ID/complete" 200 '{}' "$TOKEN" "$CSRF"
 request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/assignments" 422 '{"assignment_type":"courier","assignee_user_id":999999999}' "$TOKEN" "$CSRF"
 mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "UPDATE orders SET status='pending_payment' WHERE tenant_id=1 AND id=$ASSIGNMENT_ORDER_ID; UPDATE stock_reservations SET expires_at=DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 MINUTE) WHERE tenant_id=1 AND order_id=$ASSIGNMENT_ORDER_ID AND status='active'"

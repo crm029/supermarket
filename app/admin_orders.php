@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/notifications.php';
 require_once __DIR__ . '/policies.php';
 require_once __DIR__ . '/stock_batches.php';
 
@@ -53,7 +54,7 @@ function app_admin_order_transition(PDO $db, array $tenant, array $session, int 
     $next = trim((string)($body['status'] ?? ''));
     $db->beginTransaction();
     try {
-        $stmt = $db->prepare('SELECT id, status, fulfillment FROM orders WHERE tenant_id = ? AND id = ? FOR UPDATE');
+        $stmt = $db->prepare('SELECT id, user_id, order_number, status, fulfillment FROM orders WHERE tenant_id = ? AND id = ? FOR UPDATE');
         $stmt->execute([$tenant['id'], $orderId]);
         $order = $stmt->fetch();
         if (!$order) {
@@ -78,6 +79,17 @@ function app_admin_order_transition(PDO $db, array $tenant, array $session, int 
             'previous_status' => $order['status'],
             'next_status' => $next,
         ]);
+        $statusLabels=[
+            'accepted'=>'پذیرفته‌شده',
+            'picking'=>'در حال جمع‌آوری',
+            'packed'=>'بسته‌بندی‌شده',
+            'ready_pickup'=>'آماده تحویل حضوری',
+            'dispatched'=>'ارسال‌شده',
+            'delivered'=>'تحویل‌شده',
+        ];
+        $statusLabel=$statusLabels[$next]??$next;
+        app_notification_create($db,(int)$tenant['id'],(int)$order['user_id'],'order-status-'.$orderId.'-'.$next,'order',
+            'وضعیت سفارش به‌روزرسانی شد','سفارش '.$order['order_number'].' اکنون '.$statusLabel.' است.','order',$orderId);
         $db->commit();
         app_json(['data' => ['id' => $orderId, 'status' => $next], 'message' => 'وضعیت سفارش به‌روزرسانی شد.']);
     } catch (Throwable $e) {
@@ -118,7 +130,7 @@ function app_customer_cancel_order(PDO $db, array $tenant, array $session, int $
     $db->beginTransaction();
     try {
         $stmt = $db->prepare(
-            'SELECT id, status FROM orders WHERE tenant_id = ? AND user_id = ? AND id = ? FOR UPDATE'
+            'SELECT id, order_number, status FROM orders WHERE tenant_id = ? AND user_id = ? AND id = ? FOR UPDATE'
         );
         $stmt->execute([$tenant['id'], $session['id'], $orderId]);
         $order = $stmt->fetch();
@@ -152,6 +164,9 @@ function app_customer_cancel_order(PDO $db, array $tenant, array $session, int $
         }
         $update = $db->prepare("UPDATE orders SET status = 'cancelled' WHERE tenant_id = ? AND id = ? AND status = 'pending_payment'");
         $update->execute([$tenant['id'], $orderId]);
+        app_notification_notify_permission($db,(int)$tenant['id'],'orders.manage','order-cancelled-'.$orderId,'order',
+            'سفارش توسط مشتری لغو شد','سفارش '.$order['order_number'].' توسط مشتری لغو شد و موجودی رزروشده آزاد شد.',
+            'order',$orderId);
         $db->commit();
         app_json(['message' => 'سفارش لغو شد و موجودی رزروشده آزاد شد.']);
     } catch (Throwable $e) {

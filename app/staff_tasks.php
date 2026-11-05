@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/policies.php';
+require_once __DIR__ . '/notifications.php';
 
 function app_staff_task_list(PDO $db, array $tenant, array $session): never {
     $stmt=$db->prepare(
@@ -52,18 +53,20 @@ function app_staff_task_complete(PDO $db, array $tenant, array $session, int $as
     $db->beginTransaction();
     try{
         $assignment=$db->prepare(
-            'SELECT order_id FROM order_assignments
+            'SELECT order_id,assignment_type FROM order_assignments
              WHERE tenant_id=? AND assignee_user_id=? AND id=? AND status=\'active\' FOR UPDATE'
         );
         $assignment->execute([$tenant['id'],$session['id'],$assignmentId]);
-        $orderId=$assignment->fetchColumn();
+        $assignmentRow=$assignment->fetch(PDO::FETCH_ASSOC);
+        $orderId=$assignmentRow['order_id']??null;
         if(!$orderId){
             $db->rollBack();
             app_json(['error'=>'وظیفه فعال متعلق به حساب شما پیدا نشد.'],404);
         }
-        $order=$db->prepare('SELECT status FROM orders WHERE tenant_id=? AND id=? FOR UPDATE');
+        $order=$db->prepare('SELECT status,order_number FROM orders WHERE tenant_id=? AND id=? FOR UPDATE');
         $order->execute([$tenant['id'],$orderId]);
-        $orderStatus=$order->fetchColumn();
+        $orderRow=$order->fetch(PDO::FETCH_ASSOC);
+        $orderStatus=$orderRow['status']??false;
         if($orderStatus===false||in_array($orderStatus,['cancelled','refunded','delivered'],true)){
             $db->rollBack();
             app_json(['error'=>'این سفارش دیگر در وضعیت قابل انجام نیست.'],409);
@@ -80,6 +83,11 @@ function app_staff_task_complete(PDO $db, array $tenant, array $session, int $as
         app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'staff.task.completed','order',(int)$orderId,[
             'assignment_id'=>$assignmentId
         ]);
+        $taskLabel=($assignmentRow['assignment_type']??'')==='picker'?'جمع‌آوری اقلام':'ارسال و تحویل';
+        app_notification_notify_permission($db,(int)$tenant['id'],'orders.assign',
+            'staff-task-completed-'.$assignmentId,'assignment','وظیفه سفارش تکمیل شد',
+            $taskLabel.' سفارش '.$orderRow['order_number'].' توسط نیروی مسئول تکمیل شد.',
+            'order',(int)$orderId,(int)$session['id']);
         $db->commit();
         app_json(['message'=>'انجام وظیفه شما ثبت شد.']);
     }catch(Throwable $e){
