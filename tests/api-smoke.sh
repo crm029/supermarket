@@ -164,6 +164,7 @@ if [[ "$TOTAL_STOCK" != "12" ]]; then echo "Expected 12 total units after receip
 request POST /admin/scenes 201 '{"title":"راهرو تست","scene_type":"aisle_photo","is_published":false}' "$TOKEN" "$CSRF"
 SCENE_ID="$(assert_json created-id)"
 request POST "/admin/scenes/$SCENE_ID/hotspots" 201 '{"label":"کالای تست","action":"product","product_id":'$PRODUCT_ID',"x":0.4,"y":0.6}' "$TOKEN" "$CSRF"
+HOTSPOT_ID="$(assert_json created-id)"
 request GET "/admin/scenes/$SCENE_ID/hotspots" 200 "" "$TOKEN"
-request DELETE /admin/hotspots/1 204 "" "$TOKEN" "$CSRF"
+request DELETE "/admin/hotspots/$HOTSPOT_ID" 200 "" "$TOKEN" "$CSRF"
 echo "HTTP API and commerce smoke tests passed."
