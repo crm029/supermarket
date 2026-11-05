@@ -16,12 +16,22 @@ SELECT 1, @manager_role, id
 FROM permissions
 WHERE permission_key = 'catalog.products.manage' AND scope = 'tenant';
 
-INSERT INTO role_permissions (role_scope_id, role_id, permission_id)
-SELECT 1, @manager_role, id
-FROM permissions
-WHERE permission_key = 'platform.tenants.manage' AND scope = 'platform';
-
 DELIMITER //
+CREATE PROCEDURE assert_platform_permission_rejected()
+BEGIN
+  DECLARE rejected BOOLEAN DEFAULT FALSE;
+  BEGIN
+    DECLARE CONTINUE HANDLER FOR SQLSTATE '45000' SET rejected = TRUE;
+    INSERT INTO role_permissions (role_scope_id, role_id, permission_id)
+    SELECT 1, @manager_role, id
+    FROM permissions
+    WHERE permission_key = 'platform.tenants.manage' AND scope = 'platform';
+  END;
+  IF rejected = FALSE THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Tenant role accepted a platform permission';
+  END IF;
+END//
+
 CREATE PROCEDURE assert_tenant_permission_is_scoped()
 BEGIN
   DECLARE granted_count INT DEFAULT 0;
@@ -69,7 +79,9 @@ BEGIN
 END//
 DELIMITER ;
 
+CALL assert_platform_permission_rejected();
 CALL assert_tenant_permission_is_scoped();
+DROP PROCEDURE assert_platform_permission_rejected;
 DROP PROCEDURE assert_tenant_permission_is_scoped;
 
 SELECT 'permission model integration checks passed' AS result;
