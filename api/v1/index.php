@@ -9,6 +9,7 @@ require_once dirname(__DIR__, 2) . '/app/media.php';
 require_once dirname(__DIR__, 2) . '/app/commerce.php';
 require_once dirname(__DIR__, 2) . '/app/payments.php';
 require_once dirname(__DIR__, 2) . '/app/admin_orders.php';
+require_once dirname(__DIR__, 2) . '/app/order_assignments.php';
 require_once dirname(__DIR__, 2) . '/app/inventory.php';
 require_once dirname(__DIR__, 2) . '/app/admin_scenes.php';
 require_once dirname(__DIR__, 2) . '/app/reports.php';
@@ -295,6 +296,26 @@ try {
         app_auth_require_csrf($session);
         app_auth_require_permission($db, $tenant, $session, 'orders.manage');
         app_admin_order_transition($db, $tenant, $session, (int)$orderTransitionMatch[1]);
+    }
+
+    if (preg_match('#^/admin/orders/([1-9][0-9]*)/assignments$#', $path, $orderAssignmentMatch)) {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'orders.assign');
+        $orderId = (int)$orderAssignmentMatch[1];
+        if ($method === 'GET') app_admin_order_assignment_list($db, $tenant, $orderId);
+        if ($method === 'POST') {
+            app_auth_require_csrf($session);
+            app_admin_order_assignment_create($db, $tenant, $session, $orderId);
+        }
+        header('Allow: GET, POST');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if (preg_match('#^/admin/orders/([1-9][0-9]*)/assignments/([1-9][0-9]*)/complete$#', $path, $assignmentCompleteMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'orders.assign');
+        app_admin_order_assignment_complete($db, $tenant, $session, (int)$assignmentCompleteMatch[1], (int)$assignmentCompleteMatch[2]);
     }
 
     if (preg_match('#^/me/orders/([1-9][0-9]*)$#', $path, $customerOrderMatch) && $method === 'GET') {
