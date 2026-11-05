@@ -350,6 +350,13 @@ NEW_WAREHOUSE_ID="$(assert_json created-id)"
 request GET "/admin/products/$VARIANT_PARENT_ID/variants" 200 "" "$TOKEN"
 request POST /admin/stock/receipts 200 '{"warehouse_id":1,"product_id":'$VARIANT_1L_ID',"quantity":5,"reason":"موجودی تنوع یک لیتری"}' "$TOKEN" "$CSRF"
 request POST /admin/stock/receipts 200 '{"warehouse_id":1,"product_id":'$VARIANT_500_ID',"quantity":3,"reason":"موجودی تنوع نیم لیتری"}' "$TOKEN" "$CSRF"
+request GET /products 200
+assert_json variant-parent
+request GET "/products/$VARIANT_PARENT_ID" 200
+assert_json variant-detail
+request POST /cart/quote 409 '{"items":[{"product_id":'$VARIANT_PARENT_ID',"quantity":1}]}'
+request POST /cart/quote 200 '{"items":[{"product_id":'$VARIANT_1L_ID',"quantity":2}]}'
+assert_json variant-quote
 request POST /admin/stock/transfers 200 '{"from_warehouse_id":1,"to_warehouse_id":'$NEW_WAREHOUSE_ID',"product_id":'$PRODUCT_ID',"quantity":2}' "$TOKEN" "$CSRF"
 TOTAL_STOCK="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT SUM(on_hand) FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID")"
 if [[ "$TOTAL_STOCK" != "12" ]]; then echo "Expected 12 total units after receipt, adjustment and transfer; received $TOTAL_STOCK"; exit 1; fi
