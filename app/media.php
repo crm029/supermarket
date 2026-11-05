@@ -76,6 +76,141 @@ function app_admin_media_list(PDO $db, array $tenant): never {
     app_json(['data' => $items]);
 }
 
+function app_media_cleanup_mark(PDO $db, int $queueId, bool $completed, ?string $error = null): void {
+    $stmt = $db->prepare(
+        "UPDATE media_cleanup_queue
+         SET status=?,attempts=attempts+1,last_error=?,processed_at=?
+         WHERE id=?"
+    );
+    $stmt->execute([
+        $completed ? 'completed' : 'pending',
+        $completed ? null : $error,
+        $completed ? gmdate('Y-m-d H:i:s') : null,
+        $queueId,
+    ]);
+}
+
+function app_media_cleanup_process_one(PDO $db, array $item): bool {
+    $queueId = (int)$item['id'];
+    $tenantId = (int)$item['tenant_id'];
+    $key = (string)$item['storage_key'];
+    $root = trim((string)(app_env('MEDIA_STORAGE_PATH') ?? ''));
+    $isWindowsDrive = preg_match('/^[A-Za-z]:/', $root) === 1 &&
+        in_array(substr($root, 2, 1), ['/', '\\\\'], true);
+    if ($root === '' || !(str_starts_with($root, DIRECTORY_SEPARATOR) || $isWindowsDrive)) {
+        app_media_cleanup_mark($db,$queueId,false,'storage_path_not_configured');
+        return false;
+    }
+    $rootReal = realpath($root);
+    if ($rootReal === false || !is_dir($rootReal)) {
+        app_media_cleanup_mark($db,$queueId,false,'storage_root_unavailable');
+        return false;
+    }
+    $pattern = '#^tenant-' . $tenantId . '/(logo|hero|aisle|panorama|category|product|other)/([a-f0-9]{40}\\.(?:jpg|png|webp))$#';
+    if (!preg_match($pattern, $key, $matches)) {
+        app_media_cleanup_mark($db,$queueId,false,'invalid_storage_key');
+        return false;
+    }
+    $tenantDir = $rootReal . DIRECTORY_SEPARATOR . 'tenant-' . $tenantId;
+    $typeDir = $tenantDir . DIRECTORY_SEPARATOR . $matches[1];
+    if (is_link($tenantDir) || is_link($typeDir)) {
+        app_media_cleanup_mark($db,$queueId,false,'unsafe_storage_path');
+        return false;
+    }
+    if (!is_dir($typeDir)) {
+        app_media_cleanup_mark($db,$queueId,true);
+        return true;
+    }
+    $typeReal = realpath($typeDir);
+    if ($typeReal === false || $typeReal !== $typeDir) {
+        app_media_cleanup_mark($db,$queueId,false,'unsafe_storage_path');
+        return false;
+    }
+    $file = $typeReal . DIRECTORY_SEPARATOR . $matches[2];
+    if (is_link($file)) {
+        app_media_cleanup_mark($db,$queueId,false,'symlink_refused');
+        return false;
+    }
+    if (!file_exists($file)) {
+        app_media_cleanup_mark($db,$queueId,true);
+        return true;
+    }
+    $fileReal = realpath($file);
+    if ($fileReal === false || !is_file($fileReal) ||
+        !str_starts_with($fileReal, $typeReal . DIRECTORY_SEPARATOR)) {
+        app_media_cleanup_mark($db,$queueId,false,'unsafe_file_path');
+        return false;
+    }
+    if (!@unlink($fileReal)) {
+        app_media_cleanup_mark($db,$queueId,false,'file_delete_failed');
+        return false;
+    }
+    app_media_cleanup_mark($db,$queueId,true);
+    return true;
+}
+
+function app_media_cleanup_process_pending(PDO $db, int $limit = 100): array {
+    $limit = max(1, min(500, $limit));
+    $rows = $db->query(
+        "SELECT id,tenant_id,storage_key FROM media_cleanup_queue
+         WHERE status='pending' ORDER BY created_at,id LIMIT {$limit}"
+    )->fetchAll(PDO::FETCH_ASSOC);
+    $completed = 0;
+    foreach ($rows as $row) {
+        if (app_media_cleanup_process_one($db,$row)) $completed++;
+    }
+    return ['checked'=>count($rows),'completed'=>$completed,'pending'=>count($rows)-$completed];
+}
+
+function app_admin_media_delete(PDO $db, array $tenant, array $session, int $mediaId): never {
+    $db->beginTransaction();
+    try {
+        $find = $db->prepare('SELECT storage_key FROM media_assets WHERE tenant_id=? AND id=? LIMIT 1 FOR UPDATE');
+        $find->execute([$tenant['id'],$mediaId]);
+        $storageKey = $find->fetchColumn();
+        if (!$storageKey) {
+            $db->rollBack();
+            app_json(['error'=>'تصویر پیدا نشد.'],404);
+        }
+        $usage = $db->prepare(
+            "SELECT
+              (SELECT COUNT(*) FROM products WHERE tenant_id=? AND image_media_id=?) +
+              (SELECT COUNT(*) FROM categories WHERE tenant_id=? AND image_media_id=?) +
+              (SELECT COUNT(*) FROM store_scenes WHERE tenant_id=? AND (media_id=? OR fallback_media_id=?))"
+        );
+        $usage->execute([$tenant['id'],$mediaId,$tenant['id'],$mediaId,$tenant['id'],$mediaId,$mediaId]);
+        if ((int)$usage->fetchColumn() > 0) {
+            $db->rollBack();
+            app_json(['error'=>'این تصویر هنوز به محصول، دسته‌بندی یا صحنه‌ای متصل است و قابل حذف نیست.'],409);
+        }
+        $queue = $db->prepare(
+            "INSERT INTO media_cleanup_queue (tenant_id,storage_key,status,attempts,last_error,processed_at)
+             VALUES (?,?, 'pending',0,NULL,NULL)
+             ON DUPLICATE KEY UPDATE status='pending',attempts=0,last_error=NULL,processed_at=NULL"
+        );
+        $queue->execute([$tenant['id'],$storageKey]);
+        $queueFind = $db->prepare('SELECT id FROM media_cleanup_queue WHERE tenant_id=? AND storage_key=? LIMIT 1');
+        $queueFind->execute([$tenant['id'],$storageKey]);
+        $queueId = (int)$queueFind->fetchColumn();
+        $delete = $db->prepare('DELETE FROM media_assets WHERE tenant_id=? AND id=?');
+        $delete->execute([$tenant['id'],$mediaId]);
+        if ($delete->rowCount() !== 1) throw new RuntimeException('Media record changed during deletion.');
+        app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'media.deleted','media_asset',$mediaId,[
+            'cleanup_queue_id'=>$queueId
+        ]);
+        $db->commit();
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        throw $e;
+    }
+    $queueItem = ['id'=>$queueId,'tenant_id'=>(int)$tenant['id'],'storage_key'=>(string)$storageKey];
+    $cleaned = app_media_cleanup_process_one($db,$queueItem);
+    app_json([
+        'data'=>['id'=>$mediaId,'cleanup_pending'=>!$cleaned],
+        'message'=>$cleaned?'تصویر حذف شد.':'تصویر از کتابخانه حذف شد و پاک‌سازی فایل در صف باقی ماند.'
+    ]);
+}
+
 function app_media_upload(PDO $db, array $tenant, array $session): never {
     if (!isset($_FILES['file']) || !is_array($_FILES['file'])) {
         app_json(['error' => 'فایل تصویر ارسال نشده است.'], 422);
