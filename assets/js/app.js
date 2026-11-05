@@ -106,8 +106,9 @@ async function ensureAccount() {
     const csrf = await apiGet("auth/csrf");
     csrfToken = csrf?.csrf_token || "";
     document.getElementById("accountButton").textContent = currentUser?.full_name || "حساب کاربری";
+    document.getElementById("ordersButton").hidden = false;
     return Boolean(currentUser && csrfToken);
-  } catch (_) { currentUser = null; csrfToken = ""; return false; }
+  } catch (_) { currentUser = null; csrfToken = ""; document.getElementById("ordersButton").hidden = true; return false; }
 }
 function setFormMessage(id, message, type = "") {
   const node = document.getElementById(id);
@@ -272,6 +273,7 @@ document.getElementById("verifyOtpButton").addEventListener("click", async () =>
     csrfToken=result.data?.csrf_token||"";
     currentUser=result.data?.user||null;
     document.getElementById("accountButton").textContent=currentUser?.full_name||"حساب کاربری";
+    document.getElementById("ordersButton").hidden=false;
     setFormMessage("accountMessage","ورود با موفقیت انجام شد.","success");
     if(pendingCheckout){pendingCheckout=false;document.getElementById("accountDialog").close();startCheckout();}
   } catch(error){setFormMessage("accountMessage",error.message,"error");}
@@ -334,3 +336,34 @@ document.getElementById("placeOrderButton").addEventListener("click",async()=>{
   }finally{button.disabled=false;}
 });
 updateCart();
+
+// Customer order history and owner-only order detail/cancellation.
+async function loadCustomerOrders() {
+  const list=document.getElementById("customerOrdersList");
+  const detail=document.getElementById("customerOrderDetail");
+  detail.innerHTML="";
+  try {
+    const rows=await apiGet("me/orders");
+    const labels={pending_payment:"در انتظار پرداخت",paid:"پرداخت‌شده",accepted:"پذیرفته‌شده",picking:"در حال آماده‌سازی",packed:"بسته‌بندی‌شده",ready_pickup:"آماده تحویل",dispatched:"ارسال‌شده",delivered:"تحویل‌شده",cancelled:"لغوشده",refunded:"مستردشده"};
+    list.innerHTML=(rows||[]).map(o=>'<article class="customer-order"><div><strong>'+escapeHTML(o.order_number)+'</strong><small>'+escapeHTML(labels[o.status]||o.status)+' · '+money(Math.round(Number(o.total_rial)/10))+'</small></div><button data-order-detail="'+Number(o.id)+'">جزئیات</button>'+(o.status==="pending_payment"?'<button data-order-cancel="'+Number(o.id)+'">لغو</button>':"")+'</article>').join("")||'<p class="empty-cart">هنوز سفارشی ثبت نکرده‌اید.</p>';
+  } catch(error) { list.textContent=error.message; }
+}
+document.getElementById("ordersButton").addEventListener("click",async()=>{
+  if(!(await ensureAccount())){openAccountDialog();return;}
+  await loadCustomerOrders();
+  document.getElementById("ordersDialog").showModal();
+});
+document.getElementById("customerOrdersList").addEventListener("click",async e=>{
+  const detail=e.target.closest("[data-order-detail]");
+  const cancel=e.target.closest("[data-order-cancel]");
+  if(detail){
+    try{
+      const order=await apiGet("me/orders/"+detail.dataset.orderDetail);
+      document.getElementById("customerOrderDetail").innerHTML='<div class="customer-order-detail"><strong>جزئیات سفارش '+escapeHTML(order.order_number)+'</strong>'+order.items.map(item=>'<p>'+escapeHTML(item.title)+' × '+new Intl.NumberFormat("fa-IR").format(Number(item.quantity))+' — '+money(Math.round(Number(item.line_total_rial)/10))+'</p>').join("")+'</div>';
+    }catch(error){document.getElementById("customerOrderDetail").textContent=error.message;}
+  }
+  if(cancel&&confirm("این سفارش لغو شود؟")){
+    try{await apiPost("me/orders/"+cancel.dataset.orderCancel+"/cancel",{},true);await loadCustomerOrders();}
+    catch(error){document.getElementById("customerOrderDetail").textContent=error.message;}
+  }
+});
