@@ -21,6 +21,10 @@ Base path: `/api/v1`. JSON responses use UTF-8 and Persian user-facing messages.
 - `GET /payments/{id}` — payment state, never a substitute for provider verification.
 
 ## Store operations
+- `GET /admin/products` — tenant-scoped product list/search; requires `catalog.products.read`.
+- `POST /admin/products` — create a product; requires `catalog.products.manage`, session and CSRF token.
+- `PATCH /admin/products/{id}` — update a product; requires `catalog.products.manage`, session and CSRF token.
+- `DELETE /admin/products/{id}` — soft-deactivate a product; requires `catalog.products.manage`, session and CSRF token.
 - `GET /admin/dashboard`
 - `POST /admin/products`, `PATCH /admin/products/{id}`
 - `POST /admin/media` — tenant media upload with MIME/size validation.
@@ -53,3 +57,9 @@ Base path: `/api/v1`. JSON responses use UTF-8 and Persian user-facing messages.
 - Request and verification limits are tenant-scoped and bucketed by mobile/IP.
 - Session tokens are random opaque values; only SHA-256 hashes are stored. Cookies are HttpOnly and SameSite=Lax, and Secure in HTTPS production.
 - The included `SMS_PROVIDER=log` adapter is development-only. Production OTP delivery remains disabled until a real provider adapter and credentials are configured.
+
+## Permission model
+- Permission keys are stored in a global catalog and are explicitly scoped as `tenant` or `platform`.
+- Tenant sessions can only satisfy tenant-scoped permissions; platform permissions are excluded from tenant authorization checks.
+- Role grants are constrained by the role's scope key, and admin product operations are audited.
+- Role/permission management UI and platform authorization endpoints are not implemented yet.
