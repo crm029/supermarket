@@ -158,6 +158,8 @@ declare(strict_types=1);
         <button class="text-button" id="cancelAddressEdit" type="button">انصراف از ویرایش</button>
       </div>
     </div>
+    <label>کد تخفیف (اختیاری)<input id="couponCodeInput" maxlength="40" dir="ltr" autocomplete="off" autocapitalize="characters" placeholder="مثلاً WELCOME15"></label>
+    <small class="admin-hint">اعتبار و مبلغ تخفیف هنگام ثبت سفارش از سمت سرور بررسی می‌شود.</small>
     <label>توضیحات سفارش (اختیاری) <textarea id="orderNote" rows="2" maxlength="1000"></textarea></label>
     <p id="checkoutPolicyNote" class="admin-hint"></p>
     <button class="primary-button full" id="placeOrderButton" type="button">ثبت سفارش</button>
