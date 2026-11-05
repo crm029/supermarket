@@ -118,8 +118,11 @@ try {
         $where = ['tenant_id = :tenant', 'is_active = 1'];
         $params = ['tenant' => $tenant['id']];
         if ($query !== '') {
-            $where[] = '(title LIKE :q OR sku LIKE :q OR barcode LIKE :q)';
-            $params['q'] = '%' . mb_substr($query, 0, 80) . '%';
+            $where[] = '(title LIKE :q_title OR sku LIKE :q_sku OR barcode LIKE :q_barcode)';
+            $search = '%' . mb_substr($query, 0, 80) . '%';
+            $params['q_title'] = $search;
+            $params['q_sku'] = $search;
+            $params['q_barcode'] = $search;
         }
         if ($category) {
             $where[] = 'category_id = :category';
