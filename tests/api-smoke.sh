@@ -205,6 +205,9 @@ request PATCH "/me/addresses/$ADDRESS_ID" 419 "" "$CUSTOMER_TOKEN"
 request PATCH "/me/addresses/$ADDRESS_ID" 200 '{"title":"خانه ویرایش‌شده","city":"کرج"}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}],"fulfillment":"delivery","address_id":'$ADDRESS_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 ORDER_ID="$(assert_json order-created)"
+ORDER_FEE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT delivery_fee_rial FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
+ORDER_TOTAL="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT total_rial FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
+if [[ "$ORDER_FEE" != "1000" || "$ORDER_TOTAL" != "251000" ]]; then echo "Store checkout settings were not applied to the order."; exit 1; fi
 RESERVED="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT reserved FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID LIMIT 1")"
 if [[ "$RESERVED" != "2" ]]; then echo "Expected 2 reserved units, received $RESERVED"; exit 1; fi
 request POST "/me/orders/$ORDER_ID/cancel" 200 "" "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
