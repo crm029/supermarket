@@ -123,6 +123,7 @@ declare(strict_types=1);
       <select id="fulfillmentSelect"><option value="delivery">ارسال رایگان با پیک فروشگاه</option><option value="pickup">تحویل حضوری</option></select>
     </label>
     <label>نشانی ذخیره‌شده <select id="savedAddressSelect"><option value="new">ثبت نشانی جدید</option></select></label>
+    <div id="savedAddressManager" class="saved-address-manager" aria-live="polite"></div>
     <div id="deliveryAddressFields">
       <label>عنوان نشانی <input id="addressTitle" value="خانه" maxlength="80"></label>
       <label>تحویل‌گیرنده <input id="addressRecipient" autocomplete="name" maxlength="160"></label>
@@ -131,6 +132,10 @@ declare(strict_types=1);
       <label>شهر <input id="addressCity" maxlength="100"></label>
       <label>نشانی کامل <textarea id="addressText" rows="3" maxlength="2000"></textarea></label>
       <label>کد پستی <input id="addressPostal" inputmode="numeric" maxlength="10"></label>
+      <div id="addressEditActions" class="address-edit-actions" hidden>
+        <button class="primary-button" id="saveAddressChanges" type="button">ذخیره تغییرات نشانی</button>
+        <button class="text-button" id="cancelAddressEdit" type="button">انصراف از ویرایش</button>
+      </div>
     </div>
     <label>توضیحات سفارش (اختیاری) <textarea id="orderNote" rows="2" maxlength="1000"></textarea></label>
     <button class="primary-button full" id="placeOrderButton" type="button">ثبت سفارش</button>
