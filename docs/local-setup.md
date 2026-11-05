@@ -34,7 +34,7 @@ SELECT role_scope_id INTO @role_scope FROM roles WHERE id = @role_id;
 INSERT INTO user_roles (tenant_id, user_id, role_id) VALUES (1, (SELECT id FROM users WHERE tenant_id = 1 AND mobile = '09123456789'), @role_id);
 INSERT INTO role_permissions (role_scope_id, role_id, permission_id)
 SELECT @role_scope, @role_id, id FROM permissions
-WHERE permission_key IN ('catalog.products.read', 'catalog.products.manage');
+WHERE permission_key IN ('catalog.products.read', 'catalog.products.manage', 'catalog.categories.read', 'catalog.categories.manage');
 ```
 
 ## Authentication endpoints
@@ -45,7 +45,7 @@ WHERE permission_key IN ('catalog.products.read', 'catalog.products.manage');
 
 OTP login works only for an existing user whose status is `active`. The sample seed does not create customer accounts. Add a test account manually in a disposable local database. Production SMS delivery is disabled until a provider adapter and credentials are configured; never enable the log driver on a public server.
 
-## Admin product endpoints
+## Admin catalog endpoints\n- `GET /api/v1/admin/categories` — requires `catalog.categories.read`.\n- `POST /api/v1/admin/categories` — requires `catalog.categories.manage`, session cookie and `X-CSRF-Token`.\n- `PATCH /api/v1/admin/categories/{id}` — update category; requires the same permission and CSRF token.\n- `DELETE /api/v1/admin/categories/{id}` — soft-deactivate category; blocked while it has child categories or active products.\n\n## Admin product endpoints
 - `GET /api/v1/admin/products` — requires `catalog.products.read`.
 - `POST /api/v1/admin/products` — requires `catalog.products.manage`, session cookie and `X-CSRF-Token`.
 - `PATCH /api/v1/admin/products/{id}` — update product; requires the same permission and CSRF token.
