@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/notifications.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/stock_batches.php';
 
@@ -399,6 +400,11 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
                 app_json(['error' => 'موجودی یکی از کالاها هنگام ثبت سفارش تغییر کرد. دوباره تلاش کنید.'], 409);
             }
         }
+        app_notification_create($db,(int)$tenant['id'],(int)$session['id'],'order-created-'.$orderId,'order',
+            'سفارش شما ثبت شد','سفارش شماره '.$orderNumber.' ثبت شد و منتظر تأیید پرداخت است.','order',$orderId);
+        app_notification_notify_permission($db,(int)$tenant['id'],'orders.manage','new-order-'.$orderId,'order',
+            'سفارش جدید ثبت شد','سفارش '.$orderNumber.' برای بررسی و آماده‌سازی ثبت شده است.','order',$orderId);
+
         $db->commit();
         app_json(['data' => [
             'id' => $orderId, 'order_number' => $orderNumber, 'status' => 'pending_payment',
