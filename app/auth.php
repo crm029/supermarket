@@ -56,15 +56,54 @@ function app_auth_hit_limit(PDO $db, int $tenantId, string $action, string $buck
 
 function app_auth_sms_ready(): bool {
     $provider = strtolower(app_env('SMS_PROVIDER', app_auth_is_development() ? 'log' : 'disabled') ?? 'disabled');
-    return app_auth_is_development() && $provider === 'log';
+    if ($provider === 'log') return app_auth_is_development();
+    if ($provider === 'kavenegar') {
+        return trim((string)(app_env('KAVENEGAR_API_KEY') ?? '')) !== '' &&
+            trim((string)(app_env('KAVENEGAR_VERIFY_TEMPLATE') ?? '')) !== '';
+    }
+    return false;
 }
 
 function app_auth_send_otp(string $mobile, string $code, int $challengeId): void {
-    if (!app_auth_sms_ready()) {
-        throw new RuntimeException('SMS provider is not configured. Production OTP delivery is disabled.');
+    $provider = strtolower(app_env('SMS_PROVIDER', app_auth_is_development() ? 'log' : 'disabled') ?? 'disabled');
+    if ($provider === 'log' && app_auth_is_development()) {
+        $masked = substr($mobile, 0, 4) . '******' . substr($mobile, -2);
+        error_log('[supermarket360-dev-otp] challenge=' . $challengeId . ' mobile=' . $masked . ' code=' . $code);
+        return;
     }
-    $masked = substr($mobile, 0, 4) . '******' . substr($mobile, -2);
-    error_log('[supermarket360-dev-otp] challenge=' . $challengeId . ' mobile=' . $masked . ' code=' . $code);
+    if ($provider !== 'kavenegar' || !app_auth_sms_ready()) {
+        throw new RuntimeException('SMS provider is not configured.');
+    }
+    if (!function_exists('curl_init')) throw new RuntimeException('PHP cURL extension is required for SMS delivery.');
+    $apiKey = trim((string)app_env('KAVENEGAR_API_KEY'));
+    $template = trim((string)app_env('KAVENEGAR_VERIFY_TEMPLATE'));
+    $query = http_build_query([
+        'receptor' => $mobile,
+        'token' => $code,
+        'template' => $template,
+        'type' => 'sms',
+    ]);
+    $url = 'https://api.kavenegar.com/v1/' . rawurlencode($apiKey) . '/verify/lookup.json?' . $query;
+    $curl = curl_init($url);
+    curl_setopt_array($curl, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT => 12,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_SSL_VERIFYHOST => 2,
+        CURLOPT_HTTPHEADER => ['Accept: application/json'],
+    ]);
+    $response = curl_exec($curl);
+    $error = curl_error($curl);
+    $status = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    curl_close($curl);
+    if (!is_string($response) || $error !== '' || $status !== 200) {
+        throw new RuntimeException('SMS provider connection failed (HTTP ' . $status . ').');
+    }
+    $payload = json_decode($response, true);
+    if (!is_array($payload) || (int)($payload['return']['status'] ?? 0) !== 200) {
+        throw new RuntimeException('SMS provider rejected the verification message.');
+    }
 }
 
 function app_auth_request_body(): array {
