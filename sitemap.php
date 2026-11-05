@@ -10,18 +10,21 @@ if (!$seo) {
     echo '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>';
     exit;
 }
+$categories = app_seo_category_list($seo);
+// Sitemaps are limited to 50,000 URLs. Reserve one slot for the homepage.
+$maxProductUrls = max(1, 49999 - count($categories));
 $urls = [[
     'loc' => app_seo_url($seo),
     'lastmod' => gmdate('Y-m-d'),
 ]];
-foreach (app_seo_category_list($seo) as $category) {
+foreach ($categories as $category) {
     $slug = rawurlencode((string)$category['slug']);
     $urls[] = [
         'loc' => app_seo_url($seo,'category/'.$slug),
         'lastmod' => app_seo_lastmod($category['updated_at'] ?? null),
     ];
 }
-foreach (app_seo_product_list($seo) as $product) {
+foreach (app_seo_product_list($seo, $maxProductUrls) as $product) {
     $urls[] = [
         'loc' => app_seo_url($seo,app_seo_product_path($product)),
         'lastmod' => app_seo_lastmod($product['updated_at'] ?? $product['created_at'] ?? null),
