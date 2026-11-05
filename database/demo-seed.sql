@@ -26,3 +26,11 @@ INSERT INTO products (tenant_id,category_id,sku,title,brand,description,unit_lab
 
 INSERT INTO warehouses (tenant_id,title,warehouse_type,is_active)
 VALUES (1,'انبار اصلی نمونه','main',TRUE);
+
+
+-- Demo-only opening balances so seeded products are actually purchasable in the preview.
+INSERT INTO stock_levels (tenant_id,warehouse_id,product_id,on_hand,reserved)
+SELECT p.tenant_id, w.id, p.id, 20, 0
+FROM products p
+JOIN warehouses w ON w.tenant_id = p.tenant_id AND w.title = 'انبار اصلی نمونه'
+WHERE p.tenant_id = 1;
