@@ -51,6 +51,10 @@ check_page "/category.php?slug=dairy" "عنوان سئو دسته تست"
 check_page "/category.php?slug=dairy" "توضیحات متا دسته تست"
 check_page "/index.php" 'rel="canonical" href="http://localhost/"'
 check_page "/index.php" 'application/ld+json'
+check_page "/index.php" 'PostalAddress'
+check_page "/index.php" 'خیابان نمونه، پلاک ۱۰'
+check_page "/index.php" 'GeoCoordinates'
+check_page "/index.php" 'openingHours'
 check_page "/category.php?slug=dairy" 'application/ld+json'
 grep -Fq 'RewriteRule ^robots\.txt$ robots.php' .htaccess
 grep -Fq 'RewriteRule ^sitemap\.xml$ sitemap.php' .htaccess
