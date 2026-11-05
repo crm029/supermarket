@@ -32,8 +32,8 @@ check_page "/category.php?slug=dairy" "/product/1"
 check_page "/index.php" 'rel="canonical" href="http://localhost/"'
 check_page "/index.php" 'application/ld+json'
 check_page "/category.php?slug=dairy" 'application/ld+json'
-grep -Fq 'RewriteRule ^robots\\.txt$ robots.php' .htaccess
-grep -Fq 'RewriteRule ^sitemap\\.xml$ sitemap.php' .htaccess
+grep -Fq 'RewriteRule ^robots\.txt$ robots.php' .htaccess
+grep -Fq 'RewriteRule ^sitemap\.xml$ sitemap.php' .htaccess
 grep -Fq 'RewriteRule ^product/' .htaccess
 grep -Fq 'RewriteRule ^category/' .htaccess
 
