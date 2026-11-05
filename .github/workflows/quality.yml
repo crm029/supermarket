@@ -43,3 +43,39 @@ jobs:
 
       - name: Check patch whitespace
         run: git diff --check
+
+  tenant-isolation-mysql:
+    name: MySQL schema and tenant-isolation integration
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: supermarket360
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install MySQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y default-mysql-client
+
+      - name: Apply fresh schema and demo seed
+        run: |
+          mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/schema.sql
+          mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/demo-seed.sql
+
+      - name: Apply tenant isolation migration
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_05_tenant_isolation.sql
+
+      - name: Run cross-tenant negative tests
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/tenant-isolation.sql
