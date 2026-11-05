@@ -8,7 +8,7 @@ $slug = $_GET['slug'] ?? '';
 if (!is_string($slug) || $slug === '' || mb_strlen($slug)>140) { http_response_code(404); exit('دسته‌بندی پیدا نشد.'); }
 
 $stmt = $seo['db']->prepare(
-    'SELECT c.id,c.title,c.slug,c.image_media_id,m.storage_key,m.alt_text
+    'SELECT c.id,c.title,c.slug,c.description,c.seo_title,c.seo_description,c.updated_at,c.image_media_id,m.storage_key,m.alt_text
      FROM categories c
      LEFT JOIN media_assets m ON m.tenant_id=c.tenant_id AND m.id=c.image_media_id
      WHERE c.tenant_id=? AND c.slug=? AND c.is_active=1
@@ -41,7 +41,12 @@ $productsQuery->execute([(int)$seo['tenant']['id'],(int)$category['id']]);
 $products = $productsQuery->fetchAll(PDO::FETCH_ASSOC);
 $profile = app_seo_store_profile($seo);
 $storeName = (string)($profile['name'] ?? $seo['tenant']['name']);
-$description = 'مشاهده محصولات دسته '.$category['title'].' و بررسی قیمت و موجودی در '.$storeName.'.';
+$visibleDescription = trim(strip_tags((string)($category['description'] ?? '')));
+$defaultDescription = $visibleDescription !== '' ? $visibleDescription : ('مشاهده محصولات دسته '.$category['title'].' و بررسی قیمت و موجودی در '.$storeName.'.');
+$metaDescription = trim(strip_tags((string)($category['seo_description'] ?? '')));
+if ($metaDescription === '') $metaDescription = $defaultDescription;
+$description = mb_substr(preg_replace('/\s+/u',' ',$metaDescription) ?? $metaDescription,0,160);
+$pageTitle = trim((string)($category['seo_title'] ?? '')) ?: ((string)$category['title'].' | '.$storeName);
 $canonical = app_seo_url($seo,'category/'.rawurlencode((string)$category['slug']));
 $categoryImage = $category['storage_key'] ? app_media_public_url((string)$category['storage_key']) : null;
 $e = static fn(mixed $value): string => htmlspecialchars((string)$value,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');
@@ -58,7 +63,7 @@ $schema = [
     '@context'=>'https://schema.org',
     '@type'=>'CollectionPage',
     'name'=>(string)$category['title'],
-    'description'=>$description,
+    'description'=>$defaultDescription,
     'url'=>$canonical,
     'mainEntity'=>['@type'=>'ItemList','itemListElement'=>$listItems],
 ];
@@ -70,12 +75,12 @@ $jsonLd = json_encode($schema,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="index,follow,max-image-preview:large">
-  <title><?= $e($category['title'].' | '.$storeName) ?></title>
+  <title><?= $e($pageTitle) ?></title>
   <meta name="description" content="<?= $e($description) ?>">
   <link rel="canonical" href="<?= $e($canonical) ?>">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="<?= $e($storeName) ?>">
-  <meta property="og:title" content="<?= $e($category['title'].' | '.$storeName) ?>">
+  <meta property="og:title" content="<?= $e($pageTitle) ?>">
   <meta property="og:description" content="<?= $e($description) ?>">
   <meta property="og:url" content="<?= $e($canonical) ?>">
   <?php if ($categoryImage): ?><meta property="og:image" content="<?= $e($categoryImage) ?>"><?php endif; ?>
@@ -101,7 +106,7 @@ $jsonLd = json_encode($schema,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON
   <header class="seo-category-head">
     <p class="eyebrow"><?= $e($storeName) ?></p>
     <h1><?= $e($category['title']) ?></h1>
-    <p><?= $e($description) ?></p>
+    <p><?= $e($defaultDescription) ?></p>
     <p><?= number_format(count($products)) ?> محصول در این دسته‌بندی</p>
   </header>
   <section class="seo-category-grid" aria-label="محصولات دسته‌بندی">

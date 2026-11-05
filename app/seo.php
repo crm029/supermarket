@@ -54,7 +54,7 @@ function app_seo_store_profile(array $context): array {
 
 function app_seo_category_list(array $context): array {
     $stmt = $context['db']->prepare(
-        'SELECT id,title,slug,sort_order
+        'SELECT id,title,slug,sort_order,updated_at
          FROM categories
          WHERE tenant_id=? AND is_active=1
          ORDER BY sort_order,id

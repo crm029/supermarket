@@ -55,7 +55,7 @@ function app_admin_product_payload(array $body, bool $partial = false): array {
         }
     }
 
-    foreach (['barcode' => 80, 'brand' => 120, 'unit_label' => 80, 'description' => 10000] as $field => $max) {
+    foreach (['barcode' => 80, 'brand' => 120, 'unit_label' => 80, 'description' => 10000, 'seo_title' => 180, 'seo_description' => 160] as $field => $max) {
         if (!$partial || array_key_exists($field, $body)) {
             $value = trim((string)($body[$field] ?? ''));
             if (mb_strlen($value) > $max) {
@@ -134,6 +134,7 @@ function app_admin_product_list(PDO $db, array $tenant): never {
                      THEN COALESCE((SELECT MIN(v.price_rial) FROM products v WHERE v.tenant_id=p.tenant_id AND v.parent_product_id=p.id AND v.is_active=1),0)
                      ELSE p.price_rial END AS price_rial,
                 p.compare_at_rial, p.category_id, p.is_weighted, p.is_active, p.low_stock_threshold,
+                p.seo_title,p.seo_description,
                 p.product_kind,p.parent_product_id,p.variant_label,parent.title AS parent_title
          FROM products p
          LEFT JOIN products parent ON parent.tenant_id=p.tenant_id AND parent.id=p.parent_product_id
@@ -155,10 +156,10 @@ function app_admin_product_create(PDO $db, array $tenant, array $session): never
         app_admin_validate_product_category($db, (int)$tenant['id'], $data);
         $stmt = $db->prepare(
             "INSERT INTO products
-              (tenant_id, category_id, sku, barcode, title, brand, description,
+              (tenant_id, category_id, sku, barcode, title, brand, description, seo_title, seo_description,
                unit_label, price_rial, compare_at_rial, is_weighted, product_kind, is_active, low_stock_threshold)
              VALUES
-              (:tenant, :category_id, :sku, :barcode, :title, :brand, :description,
+              (:tenant, :category_id, :sku, :barcode, :title, :brand, :description, :seo_title, :seo_description,
                :unit_label, :price_rial, :compare_at_rial, :is_weighted, :product_kind, :is_active, :low_stock_threshold)"
         );
         $stmt->execute([
@@ -169,6 +170,8 @@ function app_admin_product_create(PDO $db, array $tenant, array $session): never
             'title' => $data['title'],
             'brand' => $data['brand'],
             'description' => $data['description'],
+            'seo_title' => $data['seo_title'],
+            'seo_description' => $data['seo_description'],
             'unit_label' => $data['unit_label'] ?? 'عدد',
             'price_rial' => $data['price_rial'],
             'compare_at_rial' => $data['compare_at_rial'],
@@ -200,7 +203,7 @@ function app_admin_product_update(PDO $db, array $tenant, array $session, int $i
     if ($data === []) app_json(['error' => 'هیچ فیلدی برای ویرایش ارسال نشده است.'], 422);
     $allowed = [
         'sku', 'title', 'price_rial', 'category_id', 'compare_at_rial',
-        'barcode', 'brand', 'unit_label', 'description', 'is_weighted', 'is_active', 'low_stock_threshold',
+        'barcode', 'brand', 'unit_label', 'description', 'seo_title', 'seo_description', 'is_weighted', 'is_active', 'low_stock_threshold',
     ];
     $sets = [];
     $params = ['tenant' => $tenant['id'], 'id' => $id];
@@ -433,6 +436,14 @@ function app_admin_category_payload(array $body, bool $partial = false): array {
         $data['slug'] = $slug;
     }
 
+    foreach (['description' => 2000, 'seo_title' => 180, 'seo_description' => 160] as $field => $max) {
+        if (!$partial || array_key_exists($field,$body)) {
+            $value = trim((string)($body[$field] ?? ''));
+            if (mb_strlen($value) > $max) app_json(['error'=>'طول یکی از توضیحات دسته‌بندی بیش از حد مجاز است.'],422);
+            $data[$field] = $value === '' ? null : $value;
+        }
+    }
+
     foreach (['parent_id', 'image_media_id'] as $field) {
         if (!$partial || array_key_exists($field, $body)) {
             $raw = $body[$field] ?? null;
@@ -509,7 +520,7 @@ function app_admin_validate_category_links(PDO $db, int $tenantId, array $data, 
 
 function app_admin_category_list(PDO $db, array $tenant): never {
     $stmt = $db->prepare(
-        "SELECT id, parent_id, title, slug, image_media_id, sort_order, is_active
+        "SELECT id, parent_id, title, slug, description, seo_title, seo_description, image_media_id, sort_order, is_active
          FROM categories WHERE tenant_id = ? ORDER BY sort_order, title"
     );
     $stmt->execute([$tenant['id']]);
@@ -523,14 +534,17 @@ function app_admin_category_create(PDO $db, array $tenant, array $session): neve
         app_admin_validate_category_links($db, (int)$tenant['id'], $data);
         $stmt = $db->prepare(
             "INSERT INTO categories
-              (tenant_id, parent_id, title, slug, image_media_id, sort_order, is_active)
-             VALUES (?, ?, ?, ?, ?, ?, ?)"
+              (tenant_id, parent_id, title, slug, description, seo_title, seo_description, image_media_id, sort_order, is_active)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
         $stmt->execute([
             $tenant['id'],
             $data['parent_id'],
             $data['title'],
             $data['slug'],
+            $data['description'],
+            $data['seo_title'],
+            $data['seo_description'],
             $data['image_media_id'],
             $data['sort_order'],
             $data['is_active'],
@@ -556,7 +570,7 @@ function app_admin_category_create(PDO $db, array $tenant, array $session): neve
 function app_admin_category_update(PDO $db, array $tenant, array $session, int $id): never {
     $data = app_admin_category_payload(app_auth_request_body(), true);
     if ($data === []) app_json(['error' => 'هیچ فیلدی برای ویرایش ارسال نشده است.'], 422);
-    $allowed = ['parent_id', 'title', 'slug', 'image_media_id', 'sort_order', 'is_active'];
+    $allowed = ['parent_id', 'title', 'slug', 'description', 'seo_title', 'seo_description', 'image_media_id', 'sort_order', 'is_active'];
     $sets = [];
     $params = ['tenant' => $tenant['id'], 'id' => $id];
     foreach ($allowed as $field) {

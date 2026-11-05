@@ -1,0 +1,9 @@
+ALTER TABLE products
+  ADD COLUMN seo_title VARCHAR(180) NULL AFTER description,
+  ADD COLUMN seo_description VARCHAR(320) NULL AFTER seo_title;
+
+ALTER TABLE categories
+  ADD COLUMN description TEXT NULL AFTER title,
+  ADD COLUMN seo_title VARCHAR(180) NULL AFTER description,
+  ADD COLUMN seo_description VARCHAR(320) NULL AFTER seo_title,
+  ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;

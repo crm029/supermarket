@@ -95,6 +95,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Crawlable product and category landing pages with Product, Offer, CollectionPage and ItemList structured data.
 - [x] Homepage title, description, canonical, social metadata, GroceryStore schema and crawlable category links.
 - [x] CI smoke tests for SEO pages, sitemap and robots output.
-- [ ] Merchant-managed product/category SEO titles, descriptions and stable slugs.
+- [x] Merchant-managed product/category SEO titles and descriptions in the seller dashboard.
+- [ ] Stable product slugs and permanent redirects.
 - [ ] Google Search Console verification, sitemap submission, GA4 and conversion tracking.
 - [ ] Production Core Web Vitals, image delivery, mobile and index coverage review.

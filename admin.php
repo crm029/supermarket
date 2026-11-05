@@ -59,7 +59,11 @@ declare(strict_types=1);
           <label>واحد فروش<input id="productUnit" maxlength="80" value="عدد"></label>
           <label>حد هشدار موجودی<input id="productLowStockThreshold" type="number" min="0" max="1000000" step="1" value="5" required></label>
         </div>
-        <label>توضیحات<textarea id="productDescription" rows="3" maxlength="10000"></textarea></label>
+        <label>توضیحات کامل محصول<textarea id="productDescription" rows="3" maxlength="10000"></textarea></label>
+        <div class="admin-form-grid">
+          <label>عنوان سئو (اختیاری)<input id="productSeoTitle" maxlength="180" placeholder="اگر خالی باشد از نام محصول استفاده می‌شود"></label>
+          <label>توضیحات متا (حداکثر ۳۲۰ نویسه)<textarea id="productSeoDescription" rows="2" maxlength="160" placeholder="متن کوتاه مخصوص نتیجه جست‌وجو"></textarea></label>
+        </div>
         <div class="admin-form-actions"><button class="primary-button" type="submit">ذخیره محصول</button><button class="text-button" id="cancelProductForm" type="button">انصراف</button></div>
       </form>
       <section id="variantManager" class="admin-form variant-manager" hidden>
@@ -86,9 +90,14 @@ declare(strict_types=1);
     <section class="admin-panel" id="panel-categories">
       <div class="admin-heading"><div><p class="eyebrow">ساختار فروشگاه</p><h2>دسته‌بندی‌ها</h2></div></div>
       <form id="categoryForm" class="admin-form admin-category-form">
-        <h3>افزودن دسته‌بندی</h3>
+        <h3 id="categoryFormTitle">افزودن دسته‌بندی</h3><input type="hidden" id="categoryId">
         <div class="admin-form-grid"><label>عنوان دسته<input id="categoryTitle" maxlength="120" required></label><label>شناسه انگلیسی (Slug)<input id="categorySlug" maxlength="140" required pattern="[a-z0-9]+(?:-[a-z0-9]+)*"></label><label>شناسه تصویر دسته<input id="categoryMediaId" type="number" min="1"></label></div>
-        <button class="primary-button" type="submit">افزودن دسته</button>
+        <label>توضیحات دسته‌بندی<textarea id="categoryDescription" rows="2" maxlength="2000" placeholder="توضیح مفید درباره محصولات این دسته"></textarea></label>
+        <div class="admin-form-grid">
+          <label>عنوان سئو (اختیاری)<input id="categorySeoTitle" maxlength="180" placeholder="عنوان نمایش در گوگل"></label>
+          <label>توضیحات متا<textarea id="categorySeoDescription" rows="2" maxlength="160" placeholder="خلاصه جذاب و دقیق دسته‌بندی"></textarea></label>
+        </div>
+        <div class="admin-form-actions"><button class="primary-button" id="categorySubmitButton" type="submit">افزودن دسته</button><button class="text-button" id="categoryCancelButton" type="button" hidden>انصراف از ویرایش</button></div>
       </form>
       <div id="categoryRows" class="admin-category-list"></div>
     </section>

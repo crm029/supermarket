@@ -9,7 +9,7 @@ if ($productId === false || $productId === null || $productId < 1) { http_respon
 
 $stmt = $seo['db']->prepare(
     "SELECT p.id,p.title,p.sku,p.brand,p.description,p.unit_label,p.price_rial,p.compare_at_rial,
-            p.image_media_id,p.product_kind,c.title AS category_title,c.slug AS category_slug,
+            p.image_media_id,p.product_kind,p.seo_title,p.seo_description,c.title AS category_title,c.slug AS category_slug,
             COALESCE((SELECT SUM(sl.on_hand-sl.reserved)
                       FROM stock_levels sl
                       JOIN warehouses w ON w.tenant_id=sl.tenant_id AND w.id=sl.warehouse_id
@@ -31,20 +31,22 @@ if (!$product) { http_response_code(404); exit('کالا پیدا نشد.'); }
 
 $profile = app_seo_store_profile($seo);
 $storeName = (string)($profile['name'] ?? $seo['tenant']['name']);
-$description = trim(strip_tags((string)($product['description'] ?? '')));
-if ($description === '') $description = $product['title'].'؛ مشاهده قیمت و جزئیات کالا در '.$storeName.'.';
-$description = mb_substr(preg_replace('/\s+/u',' ',$description) ?? $description,0,160);
+$visibleDescription = trim(strip_tags((string)($product['description'] ?? '')));
+if ($visibleDescription === '') $visibleDescription = $product['title'].'؛ مشاهده قیمت و جزئیات کالا در '.$storeName.'.';
+$metaDescription = trim(strip_tags((string)($product['seo_description'] ?? '')));
+if ($metaDescription === '') $metaDescription = $visibleDescription;
+$description = mb_substr(preg_replace('/\s+/u',' ',$metaDescription) ?? $metaDescription,0,160);
 $image = app_media_public_data($seo['db'],(int)$seo['tenant']['id'],$product['image_media_id'] === null ? null : (int)$product['image_media_id']);
 $canonical = app_seo_url($seo,'product/'.(int)$product['id']);
 $inStock = (int)$product['available_quantity'] > 0;
 $priceRial = (int)$product['price_rial'];
-$title = (string)$product['title'].' | '.$storeName;
+$title = trim((string)($product['seo_title'] ?? '')) ?: ((string)$product['title'].' | '.$storeName);
 $schema = [
     '@context'=>'https://schema.org',
     '@type'=>'Product',
     'name'=>(string)$product['title'],
     'sku'=>(string)$product['sku'],
-    'description'=>$description,
+    'description'=>$visibleDescription,
     'offers'=>[
         '@type'=>'Offer',
         'url'=>$canonical,
@@ -106,7 +108,7 @@ $compareToman = $product['compare_at_rial'] === null ? null : number_format((int
     <p class="eyebrow"><?= $e($storeName) ?></p>
     <?php if (!empty($product['brand'])): ?><p><?= $e($product['brand']) ?></p><?php endif; ?>
     <h1><?= $e($product['title']) ?></h1>
-    <p><?= nl2br($e($description)) ?></p>
+    <p><?= nl2br($e($visibleDescription)) ?></p>
     <p>واحد فروش: <?= $e($product['unit_label']) ?></p>
     <p><span class="seo-product-availability"><?= $inStock?'موجود در فروشگاه':'فعلاً ناموجود' ?></span></p>
     <p class="seo-product-price"><?= $priceToman ?> تومان<?php if ($product['product_kind']==='variant_parent'): ?> <small>به‌عنوان قیمت پایه</small><?php endif; ?></p>

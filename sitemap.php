@@ -18,6 +18,7 @@ foreach (app_seo_category_list($seo) as $category) {
     $slug = rawurlencode((string)$category['slug']);
     $urls[] = [
         'loc' => app_seo_url($seo,'category/'.$slug),
+        'lastmod' => app_seo_lastmod($category['updated_at'] ?? null),
     ];
 }
 foreach (app_seo_product_list($seo) as $product) {
