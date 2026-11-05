@@ -176,6 +176,7 @@ document.getElementById("productRows").addEventListener("click",async e=>{
     document.getElementById("productBrand").value=p.brand||"";
     document.getElementById("productUnit").value=p.unit_label||"عدد";
     document.getElementById("productDescription").value=p.description||"";
+    document.getElementById("productMediaId").value=p.media_id||"";
     document.getElementById("productFormTitle").textContent="ویرایش محصول";
     document.getElementById("productForm").hidden=false;
     document.getElementById("productForm").scrollIntoView({behavior:"smooth"});
@@ -196,6 +197,7 @@ document.getElementById("productForm").addEventListener("submit",async e=>{
     brand:document.getElementById("productBrand").value.trim(),
     unit_label:document.getElementById("productUnit").value.trim()||"عدد",
     description:document.getElementById("productDescription").value.trim(),
+    media_id:document.getElementById("productMediaId").value?Number(document.getElementById("productMediaId").value):null,
     is_weighted:false,is_active:true
   };
   try{
@@ -206,7 +208,7 @@ document.getElementById("productForm").addEventListener("submit",async e=>{
 document.getElementById("categoryForm").addEventListener("submit",async e=>{
   e.preventDefault();
   try{
-    await request("admin/categories",{method:"POST",body:JSON.stringify({title:document.getElementById("categoryTitle").value.trim(),slug:document.getElementById("categorySlug").value.trim(),sort_order:categories.length+1,is_active:true}),csrf:true});
+    await request("admin/categories",{method:"POST",body:JSON.stringify({title:document.getElementById("categoryTitle").value.trim(),slug:document.getElementById("categorySlug").value.trim(),sort_order:categories.length+1,is_active:true,media_id:document.getElementById("categoryMediaId").value?Number(document.getElementById("categoryMediaId").value):null}),csrf:true});
     e.target.reset();await loadAll();message("دسته‌بندی افزوده شد.","success");
   }catch(error){message(error.message,"error");}
 });
@@ -299,6 +301,8 @@ document.getElementById("mediaUploadForm").addEventListener("submit",async e=>{
     const payload=await response.json().catch(()=>({}));
     if(!response.ok)throw new Error(payload.error||"بارگذاری تصویر ناموفق بود.");
     document.getElementById("sceneMediaId").value=payload.data.id;
+    if(document.getElementById("mediaType").value==="product")document.getElementById("productMediaId").value=payload.data.id;
+    if(document.getElementById("mediaType").value==="category")document.getElementById("categoryMediaId").value=payload.data.id;
     document.getElementById("mediaUploadMessage").textContent="تصویر ذخیره شد؛ شناسه رسانه "+payload.data.id+" در فرم صحنه قرار گرفت.";
     document.getElementById("mediaUploadMessage").className="form-message success";
   }catch(error){document.getElementById("mediaUploadMessage").textContent=error.message;document.getElementById("mediaUploadMessage").className="form-message error";}
