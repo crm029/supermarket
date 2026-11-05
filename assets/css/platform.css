@@ -29,3 +29,10 @@
 .platform-tenant .danger{background:#fff;border:1px solid #e6c7c4;color:#9d3029;border-radius:10px;padding:8px 14px}
 .platform-empty{padding:30px;text-align:center;border:1px dashed #cbd8cd;border-radius:16px;background:#fff;color:#637469}
 @media(max-width:680px){.platform-shell{margin-top:22px}.platform-heading{align-items:flex-start;flex-direction:column}.platform-actions{width:100%}.platform-actions button{flex:1}.platform-form-grid{grid-template-columns:1fr}.platform-verify{grid-template-columns:1fr}.platform-tenant-head{flex-direction:column}}
+
+.platform-audit-list{display:grid;gap:10px}
+.platform-audit-row{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:14px 18px;border:1px solid #e3e9e3;border-radius:14px;background:#fff}
+.platform-audit-row strong,.platform-audit-row small{display:block}
+.platform-audit-row small{color:#68786d;margin-top:5px;overflow-wrap:anywhere}
+.platform-audit-row p{margin:0;color:#647469;white-space:nowrap}
+@media(max-width:600px){.platform-audit-row{flex-direction:column}.platform-audit-row p{white-space:normal}}
