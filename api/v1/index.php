@@ -67,6 +67,12 @@ try {
         app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
     }
 
+    if (preg_match('#^/admin/scenes/([1-9][0-9]*)/hotspots$#', $path, $hotspotListMatch) && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'media.manage');
+        app_admin_hotspot_list($db, $tenant, (int)$hotspotListMatch[1]);
+    }
+
     if (preg_match('#^/admin/scenes/([1-9][0-9]*)/hotspots$#', $path, $hotspotSceneMatch) && $method === 'POST') {
         $session = app_auth_require($db, $tenant);
         app_auth_require_csrf($session);
