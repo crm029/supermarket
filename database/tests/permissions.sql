@@ -16,8 +16,8 @@ SELECT 1, @manager_role, id
 FROM permissions
 WHERE permission_key = 'catalog.products.manage' AND scope = 'tenant';
 
-INSERT INTO role_permissions (role_id, permission_id)
-SELECT @manager_role, id
+INSERT INTO role_permissions (role_scope_id, role_id, permission_id)
+SELECT 1, @manager_role, id
 FROM permissions
 WHERE permission_key = 'platform.tenants.manage' AND scope = 'platform';
 
