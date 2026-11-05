@@ -95,3 +95,12 @@ Checkout intentionally does not mark an order paid. Reservations expire after 20
 - POST /admin/orders/{id}/transition — permission-checked fulfilment workflow; requires orders.manage and CSRF.
 - GET /me/orders/{id} — full order detail for its owning customer only.
 - POST /me/orders/{id}/cancel — cancel a pending-payment order and release active stock reservations; requires CSRF.
+
+
+## Inventory endpoints
+- GET /admin/warehouses — list active and inactive tenant warehouses; requires inventory.read.
+- POST /admin/warehouses — create a warehouse; requires inventory.manage and CSRF.
+- GET /admin/stock — tenant-scoped stock levels and available quantities; requires inventory.read.
+- POST /admin/stock/receipts — add stock and write a receipt movement; requires inventory.manage and CSRF.
+- POST /admin/stock/adjustments — signed stock correction with mandatory reason and reserved-stock protection.
+- POST /admin/stock/transfers — atomic transfer between two active warehouses; available stock only.
