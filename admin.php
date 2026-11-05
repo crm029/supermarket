@@ -25,6 +25,7 @@ declare(strict_types=1);
     <button class="admin-nav" data-panel="categories">دسته‌بندی‌ها</button>
     <button class="admin-nav" data-panel="orders">مدیریت سفارش‌ها</button>
     <button class="admin-nav" data-panel="inventory">انبار و موجودی</button>
+    <button class="admin-nav" data-panel="settings">تنظیمات و ظاهر فروشگاه</button>
     <button class="admin-nav" data-panel="scenes">طراحی فروشگاه مجازی</button>
     <div class="admin-sidebar-note">دسترسی‌ها بر اساس نقش و مجوز حساب شما از سمت سرور کنترل می‌شوند.</div>
   </aside>
@@ -82,6 +83,30 @@ declare(strict_types=1);
         <h3>انتقال بین انبارها</h3><div class="admin-form-grid"><label>از انبار<select id="transferFrom" required></select></label><label>به انبار<select id="transferTo" required></select></label><label>محصول<select id="transferProduct" required></select></label><label>تعداد انتقال<input id="transferQuantity" type="number" min="1" max="1000000" required></label></div><button class="primary-button" type="submit">ثبت انتقال</button>
       </form>
       <h3>موجودی فعلی</h3><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>محصول</th><th>انبار</th><th>موجودی</th><th>رزروشده</th><th>قابل فروش</th></tr></thead><tbody id="stockRows"><tr><td colspan="5">در حال بارگذاری...</td></tr></tbody></table></div>
+    </section>
+    <section class="admin-panel" id="panel-settings">
+      <div class="admin-heading"><div><p class="eyebrow">هویت و تجربه مشتری</p><h2>تنظیمات فروشگاه</h2></div><button class="text-button" id="reloadSettings" type="button">بارگذاری مجدد</button></div>
+      <form id="storeSettingsForm" class="admin-form">
+        <h3>اطلاعات و هویت بصری</h3>
+        <div class="admin-form-grid">
+          <label>نام فروشگاه<input id="settingStoreName" maxlength="120" required></label>
+          <label>شعار کوتاه<input id="settingTagline" maxlength="180"></label>
+          <label>تلفن پشتیبانی<input id="settingSupportPhone" maxlength="24" inputmode="tel"></label>
+          <label>رنگ اصلی فروشگاه<input id="settingPrimaryColor" type="color" value="#173D2D"></label>
+          <label>رنگ تأکیدی<input id="settingAccentColor" type="color" value="#E6A23C"></label>
+        </div>
+        <h3>روش‌های دریافت سفارش</h3>
+        <div class="admin-form-grid">
+          <label class="admin-check-label"><input id="settingDeliveryEnabled" type="checkbox"> ارسال با پیک فعال باشد</label>
+          <label class="admin-check-label"><input id="settingPickupEnabled" type="checkbox"> تحویل حضوری فعال باشد</label>
+          <label>هزینه ارسال (تومان)<input id="settingDeliveryFee" type="number" min="0" max="100000000" step="1" required></label>
+          <label>حداقل مبلغ سفارش (تومان)<input id="settingMinimumOrder" type="number" min="0" max="1000000000" step="1" required></label>
+          <label>مدت رزرو کالا برای پرداخت (دقیقه)<input id="settingReservationMinutes" type="number" min="5" max="120" step="1" required></label>
+        </div>
+        <p class="admin-hint">هزینه ارسال، حداقل خرید و زمان رزرو در سمت سرور کنترل می‌شوند؛ تغییرات فقط پس از ذخیره اعمال خواهند شد.</p>
+        <div class="admin-form-actions"><button class="primary-button" type="submit">ذخیره تنظیمات فروشگاه</button></div>
+        <p id="storeSettingsMessage" class="form-message" role="status"></p>
+      </form>
     </section>
     <section class="admin-panel" id="panel-scenes">
       <div class="admin-heading"><div><p class="eyebrow">تجربه خرید تعاملی</p><h2>طراحی فروشگاه مجازی</h2></div><button class="text-button" id="reloadScenes">به‌روزرسانی</button></div>
