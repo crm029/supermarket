@@ -36,7 +36,7 @@ function app_wallet_ensure_account(PDO $db, int $tenantId, int $userId): int {
 
 function app_wallet_balance(PDO $db, int $tenantId, int $walletId): int {
     $stmt = $db->prepare(
-        "SELECT COALESCE(SUM(CASE WHEN entry_type IN ('credit','reversal') THEN amount_rial ELSE -amount_rial END),0)
+        "SELECT COALESCE(SUM(CASE WHEN entry_type IN ('credit','reversal') THEN CAST(amount_rial AS SIGNED) ELSE -CAST(amount_rial AS SIGNED) END),0)
          FROM wallet_entries WHERE tenant_id = ? AND wallet_id = ?"
     );
     $stmt->execute([$tenantId, $walletId]);
