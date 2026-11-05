@@ -218,6 +218,13 @@ NEW_PRODUCT_ID="$(assert_json created-id)"
 
 request PATCH "/admin/products/$NEW_PRODUCT_ID" 200 '{"title":"کالای ویرایش‌شده"}' "$TOKEN" "$CSRF"
 request DELETE "/admin/products/$NEW_PRODUCT_ID" 200 "" "$TOKEN" "$CSRF"
+request POST /admin/products 201 '{"sku":"API-VARIANT-GROUP","title":"شیر پرچرب","price_rial":0,"category_id":'$CATEGORY_ID',"unit_label":"گزینه‌ها","product_kind":"variant_parent","is_weighted":false,"is_active":true}' "$TOKEN" "$CSRF"
+VARIANT_PARENT_ID="$(assert_json created-id)"
+request POST "/admin/products/$VARIANT_PARENT_ID/variants" 201 '{"sku":"API-VAR-1L","variant_label":"۱ لیتری","price_rial":100000,"unit_label":"بطری","low_stock_threshold":2,"is_weighted":false,"is_active":true}' "$TOKEN" "$CSRF"
+VARIANT_1L_ID="$(assert_json created-id)"
+request POST "/admin/products/$VARIANT_PARENT_ID/variants" 201 '{"sku":"API-VAR-500","variant_label":"۵۰۰ گرمی","price_rial":70000,"unit_label":"بطری","low_stock_threshold":2,"is_weighted":false,"is_active":true}' "$TOKEN" "$CSRF"
+VARIANT_500_ID="$(assert_json created-id)"
+request PATCH "/admin/products/$VARIANT_PARENT_ID/variants/$VARIANT_500_ID" 200 '{"price_rial":65000}' "$TOKEN" "$CSRF"
 
 request POST /admin/categories 201 '{"title":"دسته ساخته‌شده با تست","slug":"api-created-category","sort_order":100,"is_active":true}' "$TOKEN" "$CSRF"
 NEW_CATEGORY_ID="$(assert_json created-id)"
