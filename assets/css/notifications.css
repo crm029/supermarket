@@ -1,0 +1,23 @@
+.notifications-body{min-height:100vh;background:#f4f6f3;color:#183329}
+.notifications-topbar{padding-inline:clamp(18px,5vw,64px)}
+.notifications-links,.notifications-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.notifications-shell{width:min(100% - 32px,900px);margin:44px auto 80px}
+.notifications-login{width:min(100%,480px);margin:8vh auto 0;padding:30px;border:1px solid #dfe7e0;border-radius:22px;background:#fff;box-shadow:0 18px 55px rgba(16,37,29,.07)}
+.notifications-login h1,.notifications-heading h1{font-size:clamp(25px,4vw,35px);margin:8px 0 12px}
+.notifications-login>p:not(.eyebrow),.notifications-heading p{color:#637469;line-height:1.9}
+.notifications-login label{display:block;margin:16px 0 8px;font-weight:700}
+.notifications-login input{width:100%;min-height:48px;border:1px solid #d6dfd8;border-radius:12px;padding:10px 14px;font:inherit}
+.notifications-login .primary-button{width:100%;min-height:48px;margin-top:16px}
+.notifications-message{min-height:24px;margin-top:14px;color:#52665a}
+.notifications-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:22px}
+.notifications-summary{display:flex;align-items:center;gap:12px;padding:18px 22px;border-radius:18px;background:#e8f0e9;margin-bottom:16px}
+.notifications-summary strong{font-size:28px}
+.notifications-list{display:grid;gap:12px}
+.notification-card{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:18px 20px;border:1px solid #dfe7e0;border-radius:17px;background:#fff}
+.notification-card.unread{border-color:#b7cfbb;background:#fbfdfb}
+.notification-card h2{font-size:17px;margin:0 0 7px}
+.notification-card p{margin:0;color:#586b5e;line-height:1.8}
+.notification-card small{display:block;color:#7b897f;margin-top:8px}
+.notification-card button{flex:0 0 auto}
+.notification-empty{padding:34px 20px;text-align:center;border:1px dashed #cbd8cd;border-radius:17px;background:#fff;color:#637469}
+@media(max-width:650px){.notifications-shell{margin-top:22px}.notifications-heading{align-items:flex-start;flex-direction:column}.notifications-actions{width:100%}.notifications-actions button{flex:1}.notification-card{flex-direction:column}}
