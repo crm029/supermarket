@@ -40,3 +40,4 @@ Base path: `/api/v1`. JSON responses use UTF-8 and Persian user-facing messages.
 - Payment webhooks are signature/authority verified and idempotent.
 - Admin endpoints require explicit permissions; role names alone are not authorization.
 - Never return provider secrets, internal stack traces or another tenant's data.
+\n## Authentication implementation notes\n- OTP codes are stored only as keyed hashes, expire after five minutes, and allow at most five verification attempts.\n- Request and verification limits are tenant-scoped and bucketed by mobile/IP.\n- Session tokens are random opaque values; only SHA-256 hashes are stored. Cookies are HttpOnly and SameSite=Lax, and Secure in HTTPS production.\n- The included `SMS_PROVIDER=log` adapter is development-only. Production OTP delivery remains disabled until a real provider adapter and credentials are configured.\n
