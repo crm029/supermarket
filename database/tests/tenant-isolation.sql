@@ -21,6 +21,11 @@ VALUES (2,'tenant_manager','مدیر فروشگاه دوم');
 SET @tenant_two_role = LAST_INSERT_ID();
 INSERT INTO user_roles (tenant_id,user_id,role_id)
 VALUES (2,@tenant_two_user,@tenant_two_role);
+INSERT INTO roles (tenant_id,role_key,title)
+VALUES (NULL,'platform_support','پشتیبانی سراسری');
+SET @global_role = LAST_INSERT_ID();
+INSERT INTO user_roles (tenant_id,user_id,role_id)
+VALUES (1,@tenant_one_user,@global_role);
 
 DELIMITER //
 CREATE PROCEDURE assert_cross_tenant_product_rejected()
