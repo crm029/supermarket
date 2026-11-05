@@ -153,6 +153,7 @@ function resetCouponForm(){
   document.getElementById("couponMinimum").value="0";
   document.getElementById("couponFormTitle").textContent="ایجاد کد تخفیف";
   document.getElementById("couponValueLabel").firstChild.textContent="درصد تخفیف";
+  document.getElementById("couponType").dispatchEvent(new Event("change"));
 }
 document.getElementById("couponType").addEventListener("change",()=>{
   const fixed=document.getElementById("couponType").value==="fixed";
