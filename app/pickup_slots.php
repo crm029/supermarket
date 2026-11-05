@@ -56,7 +56,22 @@ function app_pickup_slot_payload(array $body, array $tenant): array {
 }
 
 function app_admin_pickup_slot_list(PDO $db, array $tenant): never {
-    $stmt=$db->prepare('SELECT id,title,starts_at,ends_at,capacity,is_active FROM pickup_slots WHERE tenant_id=? ORDER BY starts_at DESC LIMIT 200');
+    $stmt=$db->prepare(
+        "SELECT ps.id,ps.title,ps.starts_at,ps.ends_at,ps.capacity,ps.is_active,
+          ps.capacity-(
+            SELECT COUNT(*) FROM orders o
+            WHERE o.tenant_id=ps.tenant_id AND o.pickup_slot_id=ps.id
+              AND (
+                o.status IN ('paid','accepted','picking','packed','ready_pickup','dispatched','delivered')
+                OR (o.status='pending_payment' AND EXISTS (
+                  SELECT 1 FROM stock_reservations sr
+                  WHERE sr.tenant_id=o.tenant_id AND sr.order_id=o.id
+                    AND sr.status='active' AND sr.expires_at>UTC_TIMESTAMP()
+                ))
+              )
+          ) AS remaining_capacity
+         FROM pickup_slots ps WHERE ps.tenant_id=? ORDER BY ps.starts_at DESC LIMIT 200"
+    );
     $stmt->execute([$tenant['id']]);
     $rows=array_map(fn($row)=>app_pickup_slot_public_row($row,app_pickup_timezone($tenant)),$stmt->fetchAll(PDO::FETCH_ASSOC));
     app_json(['data'=>$rows]);
