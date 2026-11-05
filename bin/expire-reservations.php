@@ -40,6 +40,9 @@ try {
          SET reserved = reserved - ?
          WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ? AND reserved >= ?'
     );
+    $movement = $db->prepare(
+        "INSERT INTO stock_movements (tenant_id,warehouse_id,product_id,movement_type,quantity,reference_type,reference_id,reason) VALUES (?,?,?,'release',?,'order',?,'انقضای مهلت پرداخت')"
+    );
     $expire = $db->prepare(
         "UPDATE stock_reservations SET status = 'expired'
          WHERE id = ? AND status = 'active' AND expires_at <= UTC_TIMESTAMP()"
@@ -72,6 +75,7 @@ try {
             if ($expire->rowCount() !== 1) {
                 throw new RuntimeException('Reservation state changed while processing expiry.');
             }
+            $movement->execute([$candidate['tenant_id'],$row['warehouse_id'],$row['product_id'],-$quantity,$candidate['order_id']]);
             $released++;
         }
         $cancelOrder->execute([$candidate['tenant_id'], $candidate['order_id']]);
