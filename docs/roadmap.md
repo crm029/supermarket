@@ -33,7 +33,8 @@ Status is intentionally conservative: a checklist item is complete only when imp
 ## Phase 2 — catalog and commerce
 - [x] Basic tenant-scoped product list/create/update/deactivate API with permission checks.
 - [x] Basic tenant-scoped category list/create/update/deactivate API with parent-cycle and media ownership checks.
-- [ ] Product variants, barcode uniqueness, promotions and advanced search.
+- [x] Tenant-local unique product barcodes and product-level low-stock thresholds.
+- [ ] Product variants, promotions and advanced search.
 - [x] Server-side cart quote validation against live prices and available stock.
 - [x] Tenant-scoped persistent customer cart across devices, with guest-cart merge and server-side replacement.
 - [x] Customer address book API (list/create, tenant and owner scoped).
@@ -55,7 +56,8 @@ Status is intentionally conservative: a checklist item is complete only when imp
 
 ## Phase 4 — store operations
 - [x] Multi-warehouse stock receipt, transfer and adjustment services with tenant checks, reserved-stock protection and audit trail.
-- [ ] Supplier purchase orders, stock returns, expiry/batch tracking and low-stock alerts.
+- [x] Per-product low-stock warnings in inventory and threshold-based dashboard counts.
+- [ ] Supplier purchase orders, stock returns, expiry/batch tracking and alert notifications.
 - [x] Transactional reservations, expiry/release and paid-order stock commit.
 - [x] Customer cancellation for pending-payment orders with transactional stock release.
 - [x] Tenant-scoped order queue and guarded fulfilment transitions (accept, picking, packing, pickup/dispatch, delivery).
