@@ -50,6 +50,7 @@ declare(strict_types=1);
           <label>کد کالا (SKU)<input id="productSku" maxlength="80" required></label>
           <label>بارکد<input id="productBarcode" maxlength="80" inputmode="numeric"></label>
           <label>نام محصول<input id="productTitle" maxlength="180" required></label>
+          <label>نوع محصول<select id="productKind"><option value="simple">محصول معمولی</option><option value="variant_parent">محصول دارای تنوع</option></select></label>
           <label>قیمت (تومان)<input id="productPrice" type="number" min="0" step="1" required></label>
           <label>دسته‌بندی<select id="productCategory"><option value="">بدون دسته‌بندی</option></select></label>
           <label>برند<input id="productBrand" maxlength="120"></label>
@@ -60,6 +61,26 @@ declare(strict_types=1);
         <label>توضیحات<textarea id="productDescription" rows="3" maxlength="10000"></textarea></label>
         <div class="admin-form-actions"><button class="primary-button" type="submit">ذخیره محصول</button><button class="text-button" id="cancelProductForm" type="button">انصراف</button></div>
       </form>
+      <section id="variantManager" class="admin-form variant-manager" hidden>
+        <div class="admin-heading"><div><p class="eyebrow">مدیریت گزینه‌های فروش</p><h3 id="variantManagerTitle">تنوع‌های محصول</h3></div><button type="button" class="text-button" id="closeVariantManager">بستن</button></div>
+        <form id="variantForm">
+          <input type="hidden" id="variantId">
+          <div class="admin-form-grid">
+            <label>عنوان تنوع<input id="variantLabel" maxlength="120" required placeholder="مثلاً ۵۰۰ گرمی"></label>
+            <label>کد کالا (SKU)<input id="variantSku" maxlength="80" required></label>
+            <label>بارکد<input id="variantBarcode" maxlength="80" inputmode="numeric"></label>
+            <label>قیمت (تومان)<input id="variantPrice" type="number" min="1" step="1" required></label>
+            <label>قیمت قبل از تخفیف (تومان)<input id="variantCompareAt" type="number" min="1" step="1"></label>
+            <label>واحد فروش<input id="variantUnit" maxlength="80" value="عدد" required></label>
+            <label>حد هشدار موجودی<input id="variantLowStock" type="number" min="0" max="1000000" value="5" required></label>
+            <label class="admin-check-label"><input id="variantWeighted" type="checkbox"> کالای وزنی</label>
+            <label class="admin-check-label"><input id="variantActive" type="checkbox" checked> تنوع فعال باشد</label>
+          </div>
+          <div class="admin-form-actions"><button class="primary-button" type="submit">ذخیره تنوع</button><button class="text-button" id="resetVariantForm" type="button">تنوع جدید</button></div>
+          <p id="variantMessage" class="form-message" role="status"></p>
+        </form>
+        <div id="variantRows" class="admin-row-list"><p>در حال بارگذاری...</p></div>
+      </section>
     </section>
     <section class="admin-panel" id="panel-categories">
       <div class="admin-heading"><div><p class="eyebrow">ساختار فروشگاه</p><h2>دسته‌بندی‌ها</h2></div></div>
