@@ -215,12 +215,12 @@ function app_payment_callback(PDO $db, array $tenant): never {
         $reservations = $db->prepare(
             "SELECT id, warehouse_id, product_id, quantity
              FROM stock_reservations
-             WHERE tenant_id = ? AND order_id = ? AND status = 'active'
+             WHERE tenant_id = ? AND order_id = ? AND status = 'active' AND expires_at > UTC_TIMESTAMP()
              ORDER BY id FOR UPDATE"
         );
         $reservations->execute([$tenant['id'], $order['id']]);
         $active = $reservations->fetchAll();
-        $expiredCountQuery = $db->prepare("SELECT COUNT(*) FROM stock_reservations WHERE tenant_id = ? AND order_id = ? AND status = 'expired'");
+        $expiredCountQuery = $db->prepare("SELECT COUNT(*) FROM stock_reservations WHERE tenant_id = ? AND order_id = ? AND (status = 'expired' OR (status = 'active' AND expires_at <= UTC_TIMESTAMP()))");
         $expiredCountQuery->execute([$tenant['id'], $order['id']]);
         $hasExpired = (int)$expiredCountQuery->fetchColumn() > 0;
         if ($active !== [] && !$hasExpired) {
