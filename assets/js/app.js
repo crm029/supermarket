@@ -275,9 +275,7 @@ async function loadPickupSlots() {
     pickupSlotsConfigured=Boolean(result?.configured);
     availablePickupSlots=Array.isArray(result?.slots)?result.slots:[];
     select.innerHTML='<option value="">انتخاب بازه زمانی</option>'+availablePickupSlots.map(slot=>{
-      const start=new Date(slot.starts_at),end=new Date(slot.ends_at);
-      const fmt=value=>value.toLocaleString("fa-IR",{weekday:"short",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});
-      return '<option value="'+Number(slot.id)+'">'+escapeHTML(slot.title)+' · '+fmt(start)+' تا '+fmt(end)+' · ظرفیت '+Number(slot.remaining_capacity)+'</option>';
+      return '<option value="'+Number(slot.id)+'">'+escapeHTML(slot.title)+' · '+escapeHTML(slot.starts_at_label||slot.starts_at)+' تا '+escapeHTML(slot.ends_at_label||slot.ends_at)+' · ظرفیت '+Number(slot.remaining_capacity)+'</option>';
     }).join("");
     note.textContent=!pickupSlotsConfigured?"تحویل حضوری بدون نیاز به انتخاب زمان انجام می‌شود.":availablePickupSlots.length?"یکی از بازه‌های دارای ظرفیت را انتخاب کنید.":"در حال حاضر بازه خالی برای تحویل حضوری وجود ندارد.";
   }catch(error){
