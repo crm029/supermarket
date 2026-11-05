@@ -17,3 +17,8 @@ It verifies:
 - Presence of the reservation-expiry worker.
 
 A passing result is a configuration preflight, not production approval. It does not prove that live SMS delivery or payment settlement works, nor replace sandbox/live payment acceptance, refund/reconciliation testing, backup restoration, security review, load testing, accessibility checks, real-device testing, Search Console validation or Core Web Vitals measurement. Keep checkout disabled until the full `docs/production-readiness.md` checklist is complete.
+
+
+## Regression test
+
+Run `bash tests/production-preflight-fail-closed.sh` from the repository root to verify that incomplete production configuration is rejected and that a sample database secret is not printed. The test uses deliberately invalid local database settings and does not modify a database.
