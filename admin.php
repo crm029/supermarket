@@ -158,6 +158,21 @@ declare(strict_types=1);
         <button class="primary-button" type="submit">ثبت رسید و افزایش موجودی</button>
         <p id="purchaseReceiveMessage" class="form-message" role="status"></p>
       </form>
+      <div class="admin-heading"><div><h3>مرجوعی به تأمین‌کننده</h3><p class="admin-hint">فقط از رسیدهای واقعی همان تأمین‌کننده و همان انبار قابل انتخاب است.</p></div></div>
+      <form id="supplierReturnForm" class="admin-form">
+        <div class="admin-form-grid">
+          <label>تأمین‌کننده<select id="returnSupplier" required></select></label>
+          <label>انبار مبدأ<select id="returnWarehouse" required></select></label>
+          <label>قلم رسید قابل مرجوعی<select id="returnReceiptItem" required></select></label>
+          <label>تعداد مرجوعی<input id="returnQuantity" type="number" min="1" max="1000000" required></label>
+          <label>علت مرجوعی<input id="returnReason" maxlength="255" required placeholder="آسیب‌دیدگی، مغایرت یا..."></label>
+          <label>توضیحات<input id="returnNotes" maxlength="1000"></label>
+        </div>
+        <button class="primary-button" type="submit">ثبت مرجوعی و کسر موجودی</button>
+        <p id="supplierReturnMessage" class="form-message" role="status"></p>
+      </form>
+      <div class="admin-heading"><div><h3>سوابق مرجوعی</h3></div></div>
+      <div id="supplierReturnRows" class="admin-row-list"><p>در حال بارگذاری...</p></div>
     </section>
     <section class="admin-panel" id="panel-staff">
       <div class="admin-heading"><div><p class="eyebrow">مدیریت تیم فروشگاه</p><h2>کارکنان و سطح دسترسی</h2></div><button class="text-button" id="reloadStaff" type="button">به‌روزرسانی</button></div>
