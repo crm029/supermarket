@@ -27,12 +27,12 @@ async function openProduct(id){
     if(detail){
       p={...p,name:detail.title||p.name,brand:detail.brand||p.brand,
         unit:detail.unit_label||p.unit,price:Math.round((Number(detail.price_rial)||0)/10),
-        image:detail.image?.url||p.image,description:detail.description||p.description};
+        image:detail.image?.url||p.image,description:detail.description||p.description,inStock:detail.in_stock!==false};
       stockLabel=detail.in_stock?"موجود در فروشگاه":"فعلاً ناموجود";
     }
   } catch (_) {}
   const image=safeImageURL(p.image);
-  document.getElementById("productDetail").innerHTML=`${image?`<img class="detail-image" src="${escapeHTML(image)}" alt="${escapeHTML(p.name)}" referrerpolicy="no-referrer">`:""}<p class="eyebrow">${escapeHTML(p.brand)}</p><h2>${escapeHTML(p.name)}</h2><p class="detail-description">${escapeHTML(p.description)}</p><p>${escapeHTML(p.unit)}</p>${stockLabel?`<p class="stock-label">${stockLabel}</p>`:""}<h3>${money(Number(p.price)||0)}</h3><button class="primary-button full" id="detailAdd" ${stockLabel==="فعلاً ناموجود"?"disabled":""}>افزودن به سبد خرید</button>`;
+  document.getElementById("productDetail").innerHTML=`${image?`<img class="detail-image" src="${escapeHTML(image)}" alt="${escapeHTML(p.name)}" referrerpolicy="no-referrer">`:""}<p class="eyebrow">${escapeHTML(p.brand)}</p><h2>${escapeHTML(p.name)}</h2><p class="detail-description">${escapeHTML(p.description)}</p><p>${escapeHTML(p.unit)}</p>${stockLabel?`<p class="stock-label">${stockLabel}</p>`:""}<h3>${money(Number(p.price)||0)}</h3><button class="primary-button full" id="detailAdd" ${p.inStock===false||stockLabel==="فعلاً ناموجود"?"disabled":""}>افزودن به سبد خرید</button>`;
   document.getElementById("detailAdd").onclick=()=>{addToCart(id);document.getElementById("productDialog").close();};
   document.getElementById("productDialog").showModal();
 }
