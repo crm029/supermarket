@@ -54,7 +54,7 @@ CREATE PROCEDURE assert_role_scope_change_rejected()
 BEGIN
   DECLARE rejected BOOLEAN DEFAULT FALSE;
   BEGIN
-    DECLARE CONTINUE HANDLER FOR SQLSTATE '45000' SET rejected = TRUE;
+    DECLARE CONTINUE HANDLER FOR SQLSTATE '23000' SET rejected = TRUE;
     UPDATE roles SET tenant_id = 1 WHERE id = @tenant_two_role;
   END;
   IF rejected = FALSE THEN
@@ -66,7 +66,7 @@ CREATE PROCEDURE assert_cross_tenant_audit_actor_rejected()
 BEGIN
   DECLARE rejected BOOLEAN DEFAULT FALSE;
   BEGIN
-    DECLARE CONTINUE HANDLER FOR SQLSTATE '45000' SET rejected = TRUE;
+    DECLARE CONTINUE HANDLER FOR SQLSTATE '23000' SET rejected = TRUE;
     INSERT INTO audit_logs
       (tenant_id,actor_user_id,action,entity_type,entity_id)
     VALUES
