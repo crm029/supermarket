@@ -398,7 +398,7 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
 function app_commerce_order_history(PDO $db, array $tenant, array $session): never {
     $stmt = $db->prepare(
         'SELECT o.id, o.order_number, o.status, o.fulfillment, o.subtotal_rial, o.discount_rial,
-                o.delivery_fee_rial, o.total_rial, o.discount_rial, o.created_at, cp.code AS coupon_code,
+                o.delivery_fee_rial, o.total_rial, o.created_at, cp.code AS coupon_code,
                 ps.title AS pickup_slot_title, ps.starts_at AS pickup_slot_starts_at, ps.ends_at AS pickup_slot_ends_at
          FROM orders o
          LEFT JOIN pickup_slots ps ON ps.tenant_id=o.tenant_id AND ps.id=o.pickup_slot_id
