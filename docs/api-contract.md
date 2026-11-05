@@ -21,6 +21,10 @@ Base path: `/api/v1`. JSON responses use UTF-8 and Persian user-facing messages.
 - `GET /payments/{id}` — payment state, never a substitute for provider verification.
 
 ## Store operations
+- `GET /admin/categories` — tenant-scoped category list; requires `catalog.categories.read`.
+- `POST /admin/categories` — create a category; requires `catalog.categories.manage`, session and CSRF token.
+- `PATCH /admin/categories/{id}` — update a category; requires `catalog.categories.manage`, session and CSRF token.
+- `DELETE /admin/categories/{id}` — soft-deactivate a category; requires `catalog.categories.manage`, session and CSRF token.
 - `GET /admin/products` — tenant-scoped product list/search; requires `catalog.products.read`.
 - `POST /admin/products` — create a product; requires `catalog.products.manage`, session and CSRF token.
 - `PATCH /admin/products/{id}` — update a product; requires `catalog.products.manage`, session and CSRF token.
