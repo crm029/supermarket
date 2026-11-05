@@ -1,13 +1,40 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/app/seo.php';
+$seoContext = app_seo_context();
+$seoProfile = $seoContext ? app_seo_store_profile($seoContext) : [];
+$seoStoreName = (string)($seoProfile['name'] ?? ($seoContext['tenant']['name'] ?? 'سوپرمارکت ۳۶۰'));
+$seoDescription = trim((string)($seoProfile['tagline'] ?? ''));
+if ($seoDescription === '') $seoDescription = 'خرید آنلاین از '.$seoStoreName.'؛ مشاهده محصولات، قیمت‌ها و ثبت سفارش در فروشگاه.';
+$seoTitle = $seoStoreName.' | خرید آنلاین سوپرمارکت';
+$seoCanonical = $seoContext ? app_seo_url($seoContext) : null;
+$seoCategories = $seoContext ? app_seo_category_list($seoContext) : [];
+$seoStructuredData = [
+    '@context'=>'https://schema.org',
+    '@type'=>'GroceryStore',
+    'name'=>$seoStoreName,
+    'url'=>$seoCanonical ?: '',
+    'description'=>$seoDescription,
+];
+if (!empty($seoProfile['support_phone'])) $seoStructuredData['telephone'] = $seoProfile['support_phone'];
+$seoJsonLd = json_encode($seoStructuredData,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT);
 ?><!doctype html>
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#10251d">
-  <meta name="description" content="سوپرمارکت ۳۶۰؛ تجربه خرید در یک فروشگاه مجازی تعاملی.">
-  <title>سوپرمارکت ۳۶۰ | خرید متفاوت</title>
+  <meta name="theme-color" content="<?= htmlspecialchars((string)($seoProfile['primary_color'] ?? '#10251d'),ENT_QUOTES,'UTF-8') ?>">
+  <meta name="description" content="<?= htmlspecialchars($seoDescription,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?>">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <title><?= htmlspecialchars($seoTitle,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?></title>
+  <?php if ($seoCanonical): ?><link rel="canonical" href="<?= htmlspecialchars($seoCanonical,ENT_QUOTES,'UTF-8') ?>"><?php endif; ?>
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="<?= htmlspecialchars($seoStoreName,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?>">
+  <meta property="og:title" content="<?= htmlspecialchars($seoTitle,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?>">
+  <meta property="og:description" content="<?= htmlspecialchars($seoDescription,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?>">
+  <?php if ($seoCanonical): ?><meta property="og:url" content="<?= htmlspecialchars($seoCanonical,ENT_QUOTES,'UTF-8') ?>"><?php endif; ?>
+  <meta name="twitter:card" content="summary">
+  <script type="application/ld+json"><?= $seoJsonLd ?: '{}' ?></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -95,7 +122,7 @@ declare(strict_types=1);
     <article><span>03</span><h3>حساب و کیف پول</h3><p>سفارش‌ها، اعتبار و کد معرفت یک‌جا.</p></article>
   </section>
 </main>
-<footer><div class="brand"><span class="brand-mark">۳۶۰</span><span>مارکت‌پلاس</span></div><div class="footer-links"><a href="#about">درباره ما</a><a href="#contact">تماس با ما</a><a href="admin.php">مدیریت فروشگاه</a><a href="#policies">قوانین و مقررات</a></div><small>© نسخه نمایشی پلتفرم سوپرمارکت ۳۶۰</small></footer>
+<footer><div class="brand"><span class="brand-mark">۳۶۰</span><span><?= htmlspecialchars($seoStoreName,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?></span></div><div class="footer-links"><a href="#about">درباره ما</a><a href="#contact">تماس با ما</a><a href="admin.php">مدیریت فروشگاه</a><a href="#policies">قوانین و مقررات</a></div><?php if ($seoCategories): ?><nav class="footer-links" aria-label="دسته‌بندی‌های فروشگاه"><strong>دسته‌ها:</strong><?php foreach ($seoCategories as $seoCategory): ?><a href="/category/<?= htmlspecialchars(rawurlencode((string)$seoCategory['slug']),ENT_QUOTES,'UTF-8') ?>"><?= htmlspecialchars((string)$seoCategory['title'],ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?></a><?php endforeach; ?></nav><?php endif; ?><small>© <?= date('Y') ?> <?= htmlspecialchars($seoStoreName,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?></small></footer>
 
 <dialog id="productDialog" class="product-dialog"><button class="dialog-close" data-close="productDialog" aria-label="بستن">×</button><div id="productDetail"></div></dialog>
 <dialog id="cartDialog" class="cart-dialog"><button class="dialog-close" data-close="cartDialog" aria-label="بستن">×</button><small class="eyebrow">انتخاب‌های خوشمزه‌ات</small><h2>سبد خرید</h2><div id="cartItems"></div><div class="cart-total"><span>جمع کل</span><strong id="cartTotal">۰ تومان</strong></div><button class="primary-button full" id="checkoutButton" type="button">ادامه و ثبت سفارش</button><p class="demo-note">این نسخه نمایشی است؛ پرداخت و ثبت سفارش در مراحل بعدی فعال می‌شود.</p></dialog>
