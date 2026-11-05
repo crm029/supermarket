@@ -122,6 +122,6 @@ NEW_CATEGORY_ID="$(assert_json created-id)"
 request PATCH "/admin/categories/$NEW_CATEGORY_ID" 200 '{"title":"دسته ویرایش‌شده"}' "$TOKEN" "$CSRF"
 request DELETE "/admin/categories/$NEW_CATEGORY_ID" 200 "" "$TOKEN" "$CSRF"
 
-request GET "/products/$PRODUCT_ID" 404 "" "" "tenant-two.localhost"
+request GET "/products/$PRODUCT_ID" 404 "" "" "" "tenant-two.localhost"
 
 echo "HTTP API smoke tests passed."
