@@ -18,19 +18,32 @@ function app_admin_orders_list(PDO $db, array $tenant): never {
         "SELECT o.id, o.order_number, o.status, o.fulfillment, o.subtotal_rial, o.delivery_fee_rial,
                 o.total_rial, o.created_at, o.customer_note, u.full_name AS customer_name, u.mobile AS customer_mobile,
                 ca.recipient AS delivery_recipient, ca.mobile AS delivery_mobile, ca.province, ca.city, ca.address AS delivery_address, ca.postal_code,
+                ps.title AS pickup_slot_title, ps.starts_at AS pickup_slot_starts_at, ps.ends_at AS pickup_slot_ends_at,
                 COUNT(oi.id) AS item_count
          FROM orders o
          JOIN users u ON u.tenant_id = o.tenant_id AND u.id = o.user_id
          LEFT JOIN customer_addresses ca ON ca.tenant_id = o.tenant_id AND ca.id = o.address_id
+         LEFT JOIN pickup_slots ps ON ps.tenant_id = o.tenant_id AND ps.id = o.pickup_slot_id
          LEFT JOIN order_items oi ON oi.tenant_id = o.tenant_id AND oi.order_id = o.id
          WHERE {$where}
          GROUP BY o.id, o.order_number, o.status, o.fulfillment, o.subtotal_rial,
                   o.delivery_fee_rial, o.total_rial, o.created_at, o.customer_note, u.full_name, u.mobile,
-                  ca.recipient, ca.mobile, ca.province, ca.city, ca.address, ca.postal_code
+                  ca.recipient, ca.mobile, ca.province, ca.city, ca.address, ca.postal_code,
+                  ps.title, ps.starts_at, ps.ends_at
          ORDER BY o.id DESC LIMIT 200"
     );
     $stmt->execute($params);
-    app_json(['data' => $stmt->fetchAll()]);
+    $rows = $stmt->fetchAll();
+    $timezone = app_pickup_timezone($tenant);
+    $utc = new DateTimeZone('UTC');
+    foreach ($rows as &$row) {
+        if (!empty($row['pickup_slot_starts_at'])) {
+            $row['pickup_slot_starts_at_label'] = (new DateTimeImmutable((string)$row['pickup_slot_starts_at'], $utc))->setTimezone($timezone)->format('Y/m/d H:i');
+            $row['pickup_slot_ends_at_label'] = (new DateTimeImmutable((string)$row['pickup_slot_ends_at'], $utc))->setTimezone($timezone)->format('Y/m/d H:i');
+        }
+    }
+    unset($row);
+    app_json(['data' => $rows]);
 }
 
 function app_admin_order_transition(PDO $db, array $tenant, array $session, int $orderId): never {
@@ -73,13 +86,22 @@ function app_admin_order_transition(PDO $db, array $tenant, array $session, int 
 
 function app_customer_order_detail(PDO $db, array $tenant, array $session, int $orderId): never {
     $stmt = $db->prepare(
-        'SELECT id, order_number, status, fulfillment, subtotal_rial, discount_rial,
-                delivery_fee_rial, total_rial, customer_note, created_at
-         FROM orders WHERE tenant_id = ? AND user_id = ? AND id = ? LIMIT 1'
+        'SELECT o.id, o.order_number, o.status, o.fulfillment, o.subtotal_rial, o.discount_rial,
+                o.delivery_fee_rial, o.total_rial, o.customer_note, o.created_at,
+                ps.title AS pickup_slot_title, ps.starts_at AS pickup_slot_starts_at, ps.ends_at AS pickup_slot_ends_at
+         FROM orders o
+         LEFT JOIN pickup_slots ps ON ps.tenant_id=o.tenant_id AND ps.id=o.pickup_slot_id
+         WHERE o.tenant_id = ? AND o.user_id = ? AND o.id = ? LIMIT 1'
     );
     $stmt->execute([$tenant['id'], $session['id'], $orderId]);
     $order = $stmt->fetch();
     if (!$order) app_json(['error' => 'سفارش پیدا نشد.'], 404);
+    if (!empty($order['pickup_slot_starts_at'])) {
+        $timezone = app_pickup_timezone($tenant);
+        $utc = new DateTimeZone('UTC');
+        $order['pickup_slot_starts_at_label'] = (new DateTimeImmutable((string)$order['pickup_slot_starts_at'], $utc))->setTimezone($timezone)->format('Y/m/d H:i');
+        $order['pickup_slot_ends_at_label'] = (new DateTimeImmutable((string)$order['pickup_slot_ends_at'], $utc))->setTimezone($timezone)->format('Y/m/d H:i');
+    }
     $items = $db->prepare(
         'SELECT product_title_snapshot AS title, unit_price_rial, quantity, line_total_rial
          FROM order_items WHERE tenant_id = ? AND order_id = ? ORDER BY id'
