@@ -87,9 +87,10 @@ function app_admin_order_transition(PDO $db, array $tenant, array $session, int 
 function app_customer_order_detail(PDO $db, array $tenant, array $session, int $orderId): never {
     $stmt = $db->prepare(
         'SELECT o.id, o.order_number, o.status, o.fulfillment, o.subtotal_rial, o.discount_rial,
-                o.delivery_fee_rial, o.total_rial, o.customer_note, o.created_at,
+                o.delivery_fee_rial, o.total_rial, o.customer_note, o.created_at, cp.code AS coupon_code,
                 ps.title AS pickup_slot_title, ps.starts_at AS pickup_slot_starts_at, ps.ends_at AS pickup_slot_ends_at
          FROM orders o
+         LEFT JOIN coupons cp ON cp.tenant_id=o.tenant_id AND cp.id=o.coupon_id
          LEFT JOIN pickup_slots ps ON ps.tenant_id=o.tenant_id AND ps.id=o.pickup_slot_id
          WHERE o.tenant_id = ? AND o.user_id = ? AND o.id = ? LIMIT 1'
     );
