@@ -94,6 +94,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Per-tenant robots.txt and XML sitemap generation.
 - [x] Crawlable product and category landing pages with Product, Offer, CollectionPage and ItemList structured data.
 - [x] Homepage title, description, canonical, social metadata, GroceryStore schema and crawlable category links.
+- [x] Merchant-editable store address, postal address, coordinates and opening hours in the GroceryStore structured data, with input validation and CI coverage.
 - [x] CI smoke tests for SEO pages, sitemap and robots output.
 - [x] Merchant-managed product/category SEO titles and descriptions in the seller dashboard.
 - [x] Merchant-managed unique product slugs, canonical slug URLs, legacy ID-only redirects and permanent redirects from outdated slug variants.

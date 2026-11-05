@@ -299,6 +299,18 @@ declare(strict_types=1);
           <label>رنگ اصلی فروشگاه<input id="settingPrimaryColor" type="color" value="#173D2D"></label>
           <label>رنگ تأکیدی<input id="settingAccentColor" type="color" value="#E6A23C"></label>
         </div>
+        <h3>اطلاعات سئوی محلی و نشانی فروشگاه</h3>
+        <div class="admin-form-grid">
+          <label>نشانی کامل فروشگاه<textarea id="settingStreetAddress" rows="2" maxlength="500" placeholder="خیابان، کوچه، پلاک و واحد"></textarea></label>
+          <label>شهر<input id="settingCity" maxlength="100"></label>
+          <label>استان / منطقه<input id="settingRegion" maxlength="100"></label>
+          <label>کد پستی<input id="settingPostalCode" maxlength="20" inputmode="numeric"></label>
+          <label>کد کشور دوحرفی<input id="settingCountryCode" maxlength="2" pattern="[A-Za-z]{2}" value="IR"></label>
+          <label>عرض جغرافیایی<input id="settingLatitude" type="number" min="-90" max="90" step="0.000001" placeholder="مثلاً 35.6892"></label>
+          <label>طول جغرافیایی<input id="settingLongitude" type="number" min="-180" max="180" step="0.000001" placeholder="مثلاً 51.3890"></label>
+          <label>ساعات کاری (مثال: Mo-Su 08:00-22:00)<input id="settingOpeningHours" maxlength="180" placeholder="Mo-Su 08:00-22:00"></label>
+        </div>
+        <p class="admin-hint">این اطلاعات در داده‌های ساختاریافته فروشگاه برای جست‌وجوی محلی استفاده می‌شوند. فقط نشانی و موقعیت واقعی و قابل‌تأیید را ثبت کنید.</p>
         <h3>روش‌های دریافت سفارش</h3>
         <div class="admin-form-grid">
           <label class="admin-check-label"><input id="settingDeliveryEnabled" type="checkbox"> ارسال با پیک فعال باشد</label>
