@@ -55,7 +55,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Merchant scene create/update/unpublish and hotspot authoring APIs.
 - [x] Merchant scene editor and hotspot authoring workflow with image upload and click-to-place hotspots.
 - [x] Category/product/navigation hotspots connect scenes to the live catalogue.
-- [x] Procedural WebGL supermarket aisle with keyboard/touch movement, clickable category shelves, drag-to-look and guided/photo-tour fallback (PHP/JS and integration CI passed; physical-device visual acceptance remains a launch check).
+- [x] Procedural WebGL supermarket with three connected aisles, cross-aisle movement, keyboard/touch controls, clickable category shelves, drag-to-look and guided/photo-tour fallback (PHP/JS and integration CI passed; physical-device visual acceptance remains a launch check).
 - [ ] Real-store media onboarding and responsive image delivery.
 
 ## Phase 4 — store operations

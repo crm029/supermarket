@@ -19,8 +19,13 @@ let freeAnimationFrame=0;
 const freeMovementKeys=new Set();
 let freePointerLook=null;
 const freeCategoryPositions={
-  dairy:{side:-1,z:-1},grocery:{side:-1,z:-6.2},snacks:{side:-1,z:-11.4},drinks:{side:-1,z:-16.6},
-  cleaning:{side:1,z:-1},frozen:{side:1,z:-6.2},fruit:{side:1,z:-11.4}
+  dairy:{laneX:-3.5,shelfX:-2.4,side:1,z:-1},
+  grocery:{laneX:-3.5,shelfX:-2.4,side:1,z:-6.2},
+  snacks:{laneX:0,shelfX:-1.2,side:-1,z:-1},
+  drinks:{laneX:0,shelfX:1.2,side:1,z:-6.2},
+  frozen:{laneX:0,shelfX:-1.2,side:-1,z:-11.4},
+  cleaning:{laneX:3.5,shelfX:2.4,side:-1,z:-1},
+  fruit:{laneX:3.5,shelfX:2.4,side:-1,z:-6.2}
 };
 
 const grid=document.getElementById("productGrid");
@@ -53,10 +58,15 @@ function buildFreeMovementWorld(){
   ceiling.rotation.x=Math.PI/2;ceiling.position.set(0,4,-9);scene.add(ceiling);
   const wallMaterial=new THREE.MeshStandardMaterial({color:0xe7e3d8,roughness:1});
   for(const x of [-5.5,5.5]){const wall=new THREE.Mesh(new THREE.BoxGeometry(.18,4,42),wallMaterial);wall.position.set(x,2,-9);scene.add(wall);}
+  [-3.5,0,3.5].forEach((lane,index)=>{
+    const sign=makeFreeLabel(THREE,"راهروی "+["۱","۲","۳"][index]);
+    sign.position.set(lane,3.35,2.1);sign.scale.set(2.0,.5,1);scene.add(sign);
+  });
   const colors={dairy:[0xe8f1ee,0x9bc7b7,0xf1d8a8],grocery:[0xc59a58,0xe0c58c,0x9e7341],snacks:[0xd96b3b,0xe8b34c,0x8e4d37],drinks:[0x4e9cbe,0x77bd83,0xd1a4d8],cleaning:[0x68a9cf,0x8cc6ad,0xe7e6d8],frozen:[0x91c7e3,0xc6e5ef,0x719bc7],fruit:[0x6eaa5b,0xe6a44a,0xc95c4b]};
   const clickables=[],shelfPositions={};
   Object.entries(freeCategoryPositions).forEach(([category,position])=>{
-    const side=position.side,centerX=side*2.85,z=position.z;shelfPositions[category]={side,z};
+    const side=position.side,centerX=position.shelfX,z=position.z,laneX=position.laneX;
+    shelfPositions[category]={side,z,laneX,shelfX:centerX};
     const rack=new THREE.Group();rack.position.set(centerX,0,z);scene.add(rack);
     const wood=new THREE.MeshStandardMaterial({color:0x8b6747,roughness:.82}),dark=new THREE.MeshStandardMaterial({color:0x594331,roughness:.9});
     const back=new THREE.Mesh(new THREE.BoxGeometry(.12,2.25,3.75),dark);back.position.set(0,1.13,0);rack.add(back);
@@ -79,9 +89,10 @@ function buildFreeMovementWorld(){
 }
 function focusFreeCategory(category){
   const position=freeWorld&&freeWorld.shelfPositions[category];if(!position)return;
-  freeWorld.camera.position.set(0,1.62,position.z+2.4);
-  freeWorld.yaw=position.side === -1 ? 0.62 : -0.62;freeWorld.camera.rotation.set(0,freeWorld.yaw,0);
-  document.getElementById("freeMovementStatus").textContent="راهرو: "+(categoryNames[category]||"فروشگاه");
+  freeWorld.camera.position.set(position.laneX,1.62,position.z+2.4);
+  freeWorld.yaw=position.side === 1 ? 0.62 : -0.62;freeWorld.camera.rotation.set(0,freeWorld.yaw,0);
+  const aisleNumber=position.laneX< -1?1:(position.laneX>1?3:2);
+  document.getElementById("freeMovementStatus").textContent="راهروی "+["","۱","۲","۳"][aisleNumber]+" · "+(categoryNames[category]||"فروشگاه");
 }
 function startFreeMovement(){
   const view=document.getElementById("aisleScene"),controls=document.getElementById("freeMovementControls");
@@ -122,10 +133,18 @@ function startFreeMovement(){
       const speed=.075,yaw=freeWorld.yaw;let dx=0,dz=0;
       if(freeMovementKeys.has("w")||freeMovementKeys.has("arrowup")){dx-=Math.sin(yaw)*speed;dz-=Math.cos(yaw)*speed;}
       if(freeMovementKeys.has("s")||freeMovementKeys.has("arrowdown")){dx+=Math.sin(yaw)*speed;dz+=Math.cos(yaw)*speed;}
-      if(freeMovementKeys.has("a")||freeMovementKeys.has("arrowleft")){dx-=Math.cos(yaw)*speed;dz+=Math.sin(yaw)*speed;}
-      if(freeMovementKeys.has("d")||freeMovementKeys.has("arrowright")){dx+=Math.cos(yaw)*speed;dz-=Math.sin(yaw)*speed;}
-      freeWorld.camera.position.x=clampNumber(freeWorld.camera.position.x+dx,-1.55,1.55);
-      freeWorld.camera.position.z=clampNumber(freeWorld.camera.position.z+dz,-20,4.4);
+      if(freeMovementKeys.has("a")||freeMovementKeys.has("arrowleft"))dx-=speed;
+      if(freeMovementKeys.has("d")||freeMovementKeys.has("arrowright"))dx+=speed;
+      const nextZ=clampNumber(freeWorld.camera.position.z+dz,-20,4.4);
+      let nextX=clampNumber(freeWorld.camera.position.x+dx,-4.5,4.5);
+      const inCrossAisle=nextZ>2.5||nextZ< -19;
+      if(!inCrossAisle){
+        const lanes=[-3.5,0,3.5];
+        const lane=lanes.reduce((best,value)=>Math.abs(value-nextX)<Math.abs(best-nextX)?value:best,lanes[0]);
+        nextX=clampNumber(nextX,lane-.58,lane+.58);
+      }
+      freeWorld.camera.position.x=nextX;
+      freeWorld.camera.position.z=nextZ;
       freeWorld.renderer.render(freeWorld.scene,freeWorld.camera);
     };
     animate();
@@ -203,7 +222,7 @@ document.getElementById("nextAisle").addEventListener("click",()=>{if(publicScen
 function setMovementMode(mode){
   movementMode=mode;
   document.querySelectorAll("[data-mode]").forEach(button=>button.classList.toggle("active",button.dataset.mode===mode));
-  const hints={guided:"با انتخاب هر دسته، به قفسه مربوط هدایت می‌شی.",tour:"با کشیدن تصویر می‌تونی محیط واقعی فروشگاه رو تماشا کنی و نقاط راهنما رو انتخاب کنی.",free:"در محیط سه‌بعدی با کلیدهای جهت‌دار یا دکمه‌های لمسی بین قفسه‌ها حرکت کن."};
+  const hints={guided:"با انتخاب هر دسته، به قفسه مربوط هدایت می‌شی.",tour:"با کشیدن تصویر می‌تونی محیط واقعی فروشگاه رو تماشا کنی و نقاط راهنما رو انتخاب کنی.",free:"در سه راهروی متصل حرکت کن؛ برای رفتن به راهروی کناری از مسیر عرضی ابتدا یا انتهای فروشگاه عبور کن."};
   document.getElementById("modeHint").textContent=hints[mode];
   if(mode==="free")startFreeMovement();else stopFreeMovement();
 }
