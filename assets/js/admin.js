@@ -872,7 +872,7 @@ function renderProducts() {
 }
 function renderCategories() {
   document.getElementById("productCategory").innerHTML='<option value="">بدون دسته‌بندی</option>'+categories.filter(c=>Number(c.is_active)).map(c=>'<option value="'+Number(c.id)+'">'+escapeText(c.title)+'</option>').join("");
-  document.getElementById("categoryRows").innerHTML=categories.map(c=>'<article><div><strong>'+escapeText(c.title)+'</strong><small>'+escapeText(c.slug)+'</small></div><span class="admin-status '+(Number(c.is_active)?"active":"inactive")+'">'+(Number(c.is_active)?"فعال":"غیرفعال")+'</span>'+(Number(c.is_active)?'<button class="admin-row-action danger" data-disable-category="'+Number(c.id)+'">غیرفعال‌سازی</button>':"")+'</article>').join("")||'<p>هنوز دسته‌بندی ثبت نشده است.</p>';
+  document.getElementById("categoryRows").innerHTML=categories.map(c=>'<article><div><strong>'+escapeText(c.title)+'</strong><small>'+escapeText(c.slug)+'</small><small>'+escapeText(c.seo_title||"بدون عنوان سئو")+'</small></div><span class="admin-status '+(Number(c.is_active)?"active":"inactive")+'">'+(Number(c.is_active)?"فعال":"غیرفعال")+'</span><button class="admin-row-action" data-edit-category="'+Number(c.id)+'">ویرایش</button>'+(Number(c.is_active)?'<button class="admin-row-action danger" data-disable-category="'+Number(c.id)+'">غیرفعال‌سازی</button>':"")+'</article>').join("")||'<p>هنوز دسته‌بندی ثبت نشده است.</p>';
 }
 function escapeText(value) {
   return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -1018,6 +1018,8 @@ document.getElementById("productRows").addEventListener("click",async e=>{
     syncProductKindFields();
     document.getElementById("productLowStockThreshold").value=Number(p.low_stock_threshold??5);
     document.getElementById("productDescription").value=p.description||"";
+    document.getElementById("productSeoTitle").value=p.seo_title||"";
+    document.getElementById("productSeoDescription").value=p.seo_description||"";
     document.getElementById("productMediaId").value=p.media_id||"";
     document.getElementById("productFormTitle").textContent="ویرایش محصول";
     document.getElementById("productForm").hidden=false;
@@ -1042,6 +1044,8 @@ document.getElementById("productForm").addEventListener("submit",async e=>{
     brand:document.getElementById("productBrand").value.trim(),
     unit_label:document.getElementById("productUnit").value.trim()||"عدد",
     description:document.getElementById("productDescription").value.trim(),
+    seo_title:document.getElementById("productSeoTitle").value.trim(),
+    seo_description:document.getElementById("productSeoDescription").value.trim(),
     media_id:document.getElementById("productMediaId").value?Number(document.getElementById("productMediaId").value):null,
     is_weighted:false,is_active:true
   };
@@ -1050,15 +1054,52 @@ document.getElementById("productForm").addEventListener("submit",async e=>{
     resetProductForm();await loadAll();message("اطلاعات محصول ذخیره شد.","success");
   }catch(error){message(error.message,"error");}
 });
+function resetCategoryForm(){
+  document.getElementById("categoryForm").reset();
+  document.getElementById("categoryId").value="";
+  document.getElementById("categoryFormTitle").textContent="افزودن دسته‌بندی";
+  document.getElementById("categorySubmitButton").textContent="افزودن دسته";
+  document.getElementById("categoryCancelButton").hidden=true;
+}
+document.getElementById("categoryCancelButton").addEventListener("click",resetCategoryForm);
 document.getElementById("categoryForm").addEventListener("submit",async e=>{
   e.preventDefault();
+  const id=document.getElementById("categoryId").value;
+  const payload={
+    title:document.getElementById("categoryTitle").value.trim(),
+    slug:document.getElementById("categorySlug").value.trim(),
+    description:document.getElementById("categoryDescription").value.trim(),
+    seo_title:document.getElementById("categorySeoTitle").value.trim(),
+    seo_description:document.getElementById("categorySeoDescription").value.trim(),
+    sort_order:categories.find(c=>Number(c.id)===Number(id))?.sort_order??(categories.length+1),
+    is_active:true,
+    media_id:document.getElementById("categoryMediaId").value?Number(document.getElementById("categoryMediaId").value):null
+  };
   try{
-    await request("admin/categories",{method:"POST",body:JSON.stringify({title:document.getElementById("categoryTitle").value.trim(),slug:document.getElementById("categorySlug").value.trim(),sort_order:categories.length+1,is_active:true,media_id:document.getElementById("categoryMediaId").value?Number(document.getElementById("categoryMediaId").value):null}),csrf:true});
-    e.target.reset();await loadAll();message("دسته‌بندی افزوده شد.","success");
+    await request(id?"admin/categories/"+id:"admin/categories",{method:id?"PATCH":"POST",body:JSON.stringify(payload),csrf:true});
+    resetCategoryForm();await loadAll();message(id?"دسته‌بندی و اطلاعات سئوی آن به‌روزرسانی شد.":"دسته‌بندی افزوده شد.","success");
   }catch(error){message(error.message,"error");}
 });
 document.getElementById("categoryRows").addEventListener("click",async e=>{
-  const b=e.target.closest("[data-disable-category]");if(!b||!confirm("این دسته‌بندی غیرفعال شود؟"))return;
+  const edit=e.target.closest("[data-edit-category]");
+  if(edit){
+    const category=categories.find(item=>Number(item.id)===Number(edit.dataset.editCategory));
+    if(!category)return;
+    document.getElementById("categoryId").value=category.id;
+    document.getElementById("categoryTitle").value=category.title||"";
+    document.getElementById("categorySlug").value=category.slug||"";
+    document.getElementById("categoryDescription").value=category.description||"";
+    document.getElementById("categorySeoTitle").value=category.seo_title||"";
+    document.getElementById("categorySeoDescription").value=category.seo_description||"";
+    document.getElementById("categoryMediaId").value=category.image_media_id||"";
+    document.getElementById("categoryFormTitle").textContent="ویرایش دسته‌بندی و سئو";
+    document.getElementById("categorySubmitButton").textContent="ذخیره تغییرات";
+    document.getElementById("categoryCancelButton").hidden=false;
+    document.getElementById("categoryForm").scrollIntoView({behavior:"smooth"});
+    return;
+  }
+  const b=e.target.closest("[data-disable-category]");
+  if(!b||!confirm("این دسته‌بندی غیرفعال شود؟"))return;
   try{await request("admin/categories/"+b.dataset.disableCategory,{method:"DELETE",csrf:true});await loadAll();message("دسته‌بندی غیرفعال شد.","success");}
   catch(error){message(error.message,"error");}
 });
