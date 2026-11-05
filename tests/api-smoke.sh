@@ -63,6 +63,23 @@ assert_json() {
           ($rows[0]["in_stock"] ?? null) !== true) exit(1);
       exit(0);
     }
+    if ($check === "variant-parent") {
+      foreach (($data["data"] ?? []) as $row) {
+        if (($row["sku"] ?? "") === "API-VARIANT-GROUP") {
+          if (($row["has_variants"] ?? null) !== true || (int)($row["price_rial"] ?? 0) !== 65000) exit(1);
+          exit(0);
+        }
+      }
+      exit(1);
+    }
+    if ($check === "variant-detail") {
+      if (($data["data"]["has_variants"] ?? null) !== true || count($data["data"]["variants"] ?? []) !== 2) exit(1);
+      exit(0);
+    }
+    if ($check === "variant-quote") {
+      if (count($data["data"]["items"] ?? []) !== 1 || (int)($data["data"]["items"][0]["quantity"] ?? 0) !== 2) exit(1);
+      exit(0);
+    }
     if ($check === "product-detail") {
       if (($data["data"]["in_stock"] ?? null) !== true ||
           ($data["data"]["image"]["url"] ?? null) !== "https://cdn.example.test/assets/products/ci%20milk%20bottle.jpg") exit(1);
@@ -218,6 +235,13 @@ NEW_PRODUCT_ID="$(assert_json created-id)"
 
 request PATCH "/admin/products/$NEW_PRODUCT_ID" 200 '{"title":"کالای ویرایش‌شده"}' "$TOKEN" "$CSRF"
 request DELETE "/admin/products/$NEW_PRODUCT_ID" 200 "" "$TOKEN" "$CSRF"
+request POST /admin/products 201 '{"sku":"API-VARIANT-GROUP","title":"شیر پرچرب","price_rial":0,"category_id":'$CATEGORY_ID',"unit_label":"گزینه‌ها","product_kind":"variant_parent","is_weighted":false,"is_active":true}' "$TOKEN" "$CSRF"
+VARIANT_PARENT_ID="$(assert_json created-id)"
+request POST "/admin/products/$VARIANT_PARENT_ID/variants" 201 '{"sku":"API-VAR-1L","variant_label":"۱ لیتری","price_rial":100000,"unit_label":"بطری","low_stock_threshold":2,"is_weighted":false,"is_active":true}' "$TOKEN" "$CSRF"
+VARIANT_1L_ID="$(assert_json created-id)"
+request POST "/admin/products/$VARIANT_PARENT_ID/variants" 201 '{"sku":"API-VAR-500","variant_label":"۵۰۰ گرمی","price_rial":70000,"unit_label":"بطری","low_stock_threshold":2,"is_weighted":false,"is_active":true}' "$TOKEN" "$CSRF"
+VARIANT_500_ID="$(assert_json created-id)"
+request PATCH "/admin/products/$VARIANT_PARENT_ID/variants/$VARIANT_500_ID" 200 '{"price_rial":65000}' "$TOKEN" "$CSRF"
 
 request POST /admin/categories 201 '{"title":"دسته ساخته‌شده با تست","slug":"api-created-category","sort_order":100,"is_active":true}' "$TOKEN" "$CSRF"
 NEW_CATEGORY_ID="$(assert_json created-id)"
@@ -323,6 +347,23 @@ request POST /admin/stock/receipts 200 '{"warehouse_id":1,"product_id":'$PRODUCT
 request POST /admin/stock/adjustments 200 '{"warehouse_id":1,"product_id":'$PRODUCT_ID',"quantity":-1,"reason":"اصلاح تست"}' "$TOKEN" "$CSRF"
 request POST /admin/warehouses 201 '{"title":"انبار انتقال تست","warehouse_type":"other"}' "$TOKEN" "$CSRF"
 NEW_WAREHOUSE_ID="$(assert_json created-id)"
+request GET "/admin/products/$VARIANT_PARENT_ID/variants" 200 "" "$TOKEN"
+request POST /admin/stock/receipts 200 '{"warehouse_id":1,"product_id":'$VARIANT_1L_ID',"quantity":5,"reason":"موجودی تنوع یک لیتری"}' "$TOKEN" "$CSRF"
+request POST /admin/stock/receipts 200 '{"warehouse_id":1,"product_id":'$VARIANT_500_ID',"quantity":3,"reason":"موجودی تنوع نیم لیتری"}' "$TOKEN" "$CSRF"
+request GET /products 200
+assert_json variant-parent
+request GET "/products/$VARIANT_PARENT_ID" 200
+assert_json variant-detail
+request POST /cart/quote 409 '{"items":[{"product_id":'$VARIANT_PARENT_ID',"quantity":1}]}'
+request POST /cart/quote 200 '{"items":[{"product_id":'$VARIANT_1L_ID',"quantity":2}]}'
+assert_json variant-quote
+request POST /checkout 201 '{"items":[{"product_id":'$VARIANT_1L_ID',"quantity":2}],"fulfillment":"delivery","address_id":'$ADDRESS_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+VARIANT_ORDER_ID="$(assert_json order-created)"
+request POST "/me/orders/$VARIANT_ORDER_ID/cancel" 200 "" "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+request DELETE "/admin/products/$VARIANT_PARENT_ID/variants/$VARIANT_500_ID" 200 "" "$TOKEN" "$CSRF"
+request DELETE "/admin/products/$VARIANT_PARENT_ID" 200 "" "$TOKEN" "$CSRF"
+request POST /cart/quote 409 '{"items":[{"product_id":'$VARIANT_1L_ID',"quantity":1}]}'
+request PATCH "/admin/products/$VARIANT_PARENT_ID" 200 '{"is_active":true}' "$TOKEN" "$CSRF"
 request POST /admin/stock/transfers 200 '{"from_warehouse_id":1,"to_warehouse_id":'$NEW_WAREHOUSE_ID',"product_id":'$PRODUCT_ID',"quantity":2}' "$TOKEN" "$CSRF"
 TOTAL_STOCK="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT SUM(on_hand) FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID")"
 if [[ "$TOTAL_STOCK" != "12" ]]; then echo "Expected 12 total units after receipt, adjustment and transfer; received $TOTAL_STOCK"; exit 1; fi
@@ -343,3 +384,5 @@ REGISTERED_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-c
 REFERRAL_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM referral_events re JOIN users u ON u.id=re.referred_user_id WHERE u.tenant_id=1 AND u.mobile='09120000004'")"
 if [[ "$REGISTERED_STATUS" != "active" || "$REFERRAL_COUNT" != "1" ]]; then echo "OTP registration or referral activation failed"; exit 1; fi
 echo "HTTP API and commerce smoke tests passed."
+
+# Product variant integration coverage follows the same tenant-scoped checkout fixtures.

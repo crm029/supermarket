@@ -98,3 +98,8 @@
   .free-movement-pad{left:10px;bottom:10px}
   .free-movement-pad button{width:36px;height:33px}
 }
+
+
+.variant-manager{margin-top:18px;border:1px solid var(--line,#ddd);border-radius:14px;padding:16px}
+.variant-select-label{display:flex;flex-direction:column;gap:8px;margin:14px 0;font-size:13px;font-weight:700}
+.variant-select-label select{width:100%;min-height:44px;border:1px solid #d6d9d4;border-radius:10px;padding:8px 12px;background:#fff;color:#1d2b24;font:inherit}

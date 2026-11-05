@@ -193,3 +193,10 @@ Checkout intentionally does not mark an order paid. Reservations expire after 20
 - Coupon codes are normalized to uppercase and unique per tenant. Percentage discounts use whole percentage points (1–100); fixed discounts and all minimum/cap amounts are stored in rial.
 - Checkout accepts optional `coupon_code`. The server locks the coupon row, checks active dates, minimum basket value, global usage and per-customer usage, then snapshots `coupon_id` and `discount_rial` on the order. Percentage caps are supported; discounts apply to merchandise subtotal, not delivery fees.
 - Pending-payment orders reserve a coupon use while their stock reservation is active. Paid/fulfilled/refunded orders consume a use. Customer cancellation or reservation expiry releases the use; historical redemption rows remain for audit.
+
+
+## Product variants
+- Products may be simple items or variant parents. A variant parent is a non-sellable catalogue group; each sellable variant is a child product with its own SKU, barcode, unit, price, low-stock threshold and stock balance.
+- `GET /admin/products/{id}/variants` lists a parent’s variants; `POST` creates one; `PATCH /admin/products/{id}/variants/{variantId}` updates; `DELETE` deactivates. All variant administration requires `catalog.products.manage` and CSRF on mutations.
+- Public product lists show parent groups with the minimum active-variant price and aggregated available stock. Product detail returns active variants and each variant’s availability. Cart/checkout must use a sellable variant ID, never the parent ID.
+- Inventory receipts and movements operate on the child variant product ID. Order-line title snapshots include the parent title and selected variant label. Deactivating a parent makes all its variants unavailable for sale without deleting their stock or history.

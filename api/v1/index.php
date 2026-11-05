@@ -228,6 +228,36 @@ try {
         app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
     }
 
+    if (preg_match('#^/admin/products/([1-9][0-9]*)/variants$#', $path, $variantParentMatch)) {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'catalog.products.manage');
+        $parentId = (int)$variantParentMatch[1];
+        if ($method === 'GET') app_admin_product_variant_list($db, $tenant, $parentId);
+        if ($method === 'POST') {
+            app_auth_require_csrf($session);
+            app_admin_product_variant_create($db, $tenant, $session, $parentId);
+        }
+        header('Allow: GET, POST');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if (preg_match('#^/admin/products/([1-9][0-9]*)/variants/([1-9][0-9]*)$#', $path, $variantMatch)) {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'catalog.products.manage');
+        $parentId = (int)$variantMatch[1];
+        $variantId = (int)$variantMatch[2];
+        if ($method === 'PATCH') {
+            app_auth_require_csrf($session);
+            app_admin_product_variant_update($db, $tenant, $session, $parentId, $variantId);
+        }
+        if ($method === 'DELETE') {
+            app_auth_require_csrf($session);
+            app_admin_product_variant_deactivate($db, $tenant, $session, $parentId, $variantId);
+        }
+        header('Allow: PATCH, DELETE');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
     if (preg_match('#^/admin/products/([1-9][0-9]*)$#', $path, $productMatch)) {
         $productId = (int)$productMatch[1];
         $session = app_auth_require($db, $tenant);
@@ -529,8 +559,14 @@ try {
             app_json(['error' => 'فیلترهای جست‌وجوی محصولات معتبر نیستند.'], 422);
         }
 
-        $where = ['p.tenant_id = :tenant', 'p.is_active = 1'];
+        $where = [
+            'p.tenant_id = :tenant',
+            'p.is_active = 1',
+            "p.product_kind <> 'variant'",
+            "(p.product_kind <> 'variant_parent' OR EXISTS (SELECT 1 FROM products active_variant WHERE active_variant.tenant_id=p.tenant_id AND active_variant.parent_product_id=p.id AND active_variant.product_kind='variant' AND active_variant.is_active=1))"
+        ];
         $params = ['tenant' => $tenant['id']];
+        $effectivePriceSql = "CASE WHEN p.product_kind='variant_parent' THEN COALESCE((SELECT MIN(v.price_rial) FROM products v WHERE v.tenant_id=p.tenant_id AND v.parent_product_id=p.id AND v.product_kind='variant' AND v.is_active=1),0) ELSE p.price_rial END";
         if ($query !== '') {
             $where[] = '(p.title LIKE :q_title OR p.sku LIKE :q_sku OR p.barcode LIKE :q_barcode)';
             $search = '%' . $query . '%';
@@ -547,23 +583,31 @@ try {
             $params['category'] = $category;
         }
         if ($minimum !== null && $minimum !== false) {
-            $where[] = 'p.price_rial >= :minimum_price';
+            $where[] = $effectivePriceSql . ' >= :minimum_price';
             $params['minimum_price'] = $minimum;
         }
         if ($maximum !== null && $maximum !== false) {
-            $where[] = 'p.price_rial <= :maximum_price';
+            $where[] = $effectivePriceSql . ' <= :maximum_price';
             $params['maximum_price'] = $maximum;
         }
         if ($inStock !== '') {
-            $stockExists = "EXISTS (
-                SELECT 1 FROM stock_levels filter_stock
-                JOIN warehouses filter_warehouse
-                  ON filter_warehouse.tenant_id=filter_stock.tenant_id
-                 AND filter_warehouse.id=filter_stock.warehouse_id
-                WHERE filter_stock.tenant_id=p.tenant_id
-                  AND filter_stock.product_id=p.id
-                  AND filter_warehouse.is_active=1
-                  AND filter_stock.on_hand > filter_stock.reserved
+            $stockExists = "(
+                EXISTS (
+                  SELECT 1 FROM stock_levels filter_stock
+                  JOIN warehouses filter_warehouse
+                    ON filter_warehouse.tenant_id=filter_stock.tenant_id
+                   AND filter_warehouse.id=filter_stock.warehouse_id
+                  WHERE filter_stock.tenant_id=p.tenant_id AND filter_stock.product_id=p.id
+                    AND filter_warehouse.is_active=1 AND filter_stock.on_hand > filter_stock.reserved
+                )
+                OR EXISTS (
+                  SELECT 1 FROM products filter_variant
+                  JOIN stock_levels filter_stock ON filter_stock.tenant_id=filter_variant.tenant_id AND filter_stock.product_id=filter_variant.id
+                  JOIN warehouses filter_warehouse ON filter_warehouse.tenant_id=filter_stock.tenant_id AND filter_warehouse.id=filter_stock.warehouse_id
+                  WHERE filter_variant.tenant_id=p.tenant_id AND filter_variant.parent_product_id=p.id
+                    AND filter_variant.product_kind='variant' AND filter_variant.is_active=1
+                    AND filter_warehouse.is_active=1 AND filter_stock.on_hand > filter_stock.reserved
+                )
             )";
             $where[] = $inStock === '1' ? $stockExists : 'NOT ' . $stockExists;
         }
@@ -571,19 +615,27 @@ try {
         $sqlWhere = implode(' AND ', $where);
         $sortSql = [
             'title_asc' => 'p.title ASC,p.id DESC',
-            'price_asc' => 'p.price_rial ASC,p.id DESC',
-            'price_desc' => 'p.price_rial DESC,p.id DESC',
+            'price_asc' => $effectivePriceSql . ' ASC,p.id DESC',
+            'price_desc' => $effectivePriceSql . ' DESC,p.id DESC',
             'newest' => 'p.id DESC',
         ][$sort];
         $count = $db->prepare("SELECT COUNT(*) FROM products p WHERE {$sqlWhere}");
         $count->execute($params);
         $stmt = $db->prepare(
-            "SELECT p.id, p.sku, p.barcode, p.title, p.brand, p.description, p.unit_label, p.price_rial,
-                    p.compare_at_rial, p.image_media_id, p.is_weighted, c.slug AS category_slug,
-                    COALESCE((SELECT SUM(sl.on_hand-sl.reserved)
-                              FROM stock_levels sl
-                              JOIN warehouses w ON w.tenant_id=sl.tenant_id AND w.id=sl.warehouse_id
-                              WHERE sl.tenant_id=p.tenant_id AND sl.product_id=p.id AND w.is_active=1),0) AS available_quantity,
+            "SELECT p.id, p.sku, p.barcode, p.title, p.brand, p.description, p.unit_label,
+                    {$effectivePriceSql} AS price_rial,
+                    p.compare_at_rial, p.image_media_id, p.is_weighted, p.product_kind,
+                    (p.product_kind='variant_parent') AS has_variants, c.slug AS category_slug,
+                    (COALESCE((SELECT SUM(sl.on_hand-sl.reserved)
+                               FROM stock_levels sl
+                               JOIN warehouses w ON w.tenant_id=sl.tenant_id AND w.id=sl.warehouse_id
+                               WHERE sl.tenant_id=p.tenant_id AND sl.product_id=p.id AND w.is_active=1),0)
+                     + COALESCE((SELECT SUM(vsl.on_hand-vsl.reserved)
+                                 FROM products v
+                                 JOIN stock_levels vsl ON vsl.tenant_id=v.tenant_id AND vsl.product_id=v.id
+                                 JOIN warehouses vw ON vw.tenant_id=vsl.tenant_id AND vw.id=vsl.warehouse_id
+                                 WHERE v.tenant_id=p.tenant_id AND v.parent_product_id=p.id AND v.product_kind='variant'
+                                   AND v.is_active=1 AND vw.is_active=1),0)) AS available_quantity,
                     m.storage_key AS media_storage_key, m.alt_text AS media_alt_text,
                     m.width AS media_width, m.height AS media_height
              FROM products p
@@ -604,7 +656,8 @@ try {
             $productRow['available_quantity'] = (int)$productRow['available_quantity'];
             $productRow['in_stock'] = $productRow['available_quantity'] > 0;
             $productRow['is_weighted'] = (bool)$productRow['is_weighted'];
-            unset($productRow['image_media_id'], $productRow['media_storage_key'],
+            $productRow['has_variants'] = (bool)$productRow['has_variants'];
+            unset($productRow['product_kind'], $productRow['image_media_id'], $productRow['media_storage_key'],
                 $productRow['media_alt_text'], $productRow['media_width'], $productRow['media_height']);
         }
         unset($productRow);
@@ -618,16 +671,26 @@ try {
         $productId = (int)$productMatch[1];
         $stmt = $db->prepare(
             "SELECT p.id, p.sku, p.barcode, p.title, p.brand, p.description,
-                    p.unit_label, p.price_rial, p.compare_at_rial, p.image_media_id,
-                    p.is_weighted, c.id AS category_id, c.title AS category_title, c.slug AS category_slug,
+                    p.unit_label,
+                    CASE WHEN p.product_kind='variant_parent'
+                         THEN COALESCE((SELECT MIN(v.price_rial) FROM products v WHERE v.tenant_id=p.tenant_id AND v.parent_product_id=p.id AND v.product_kind='variant' AND v.is_active=1),0)
+                         ELSE p.price_rial END AS price_rial,
+                    p.compare_at_rial, p.image_media_id,
+                    p.is_weighted, p.product_kind, c.id AS category_id, c.title AS category_title, c.slug AS category_slug,
                     (SELECT COALESCE(SUM(sl.on_hand - sl.reserved), 0)
                      FROM stock_levels sl
                      JOIN warehouses w ON w.id = sl.warehouse_id AND w.tenant_id = sl.tenant_id
-                     WHERE sl.tenant_id = p.tenant_id AND sl.product_id = p.id AND w.is_active = 1) AS available_quantity
+                     WHERE sl.tenant_id = p.tenant_id AND sl.product_id = p.id AND w.is_active = 1)
+                    + (SELECT COALESCE(SUM(vsl.on_hand-vsl.reserved),0)
+                       FROM products v
+                       JOIN stock_levels vsl ON vsl.tenant_id=v.tenant_id AND vsl.product_id=v.id
+                       JOIN warehouses vw ON vw.tenant_id=vsl.tenant_id AND vw.id=vsl.warehouse_id
+                       WHERE v.tenant_id=p.tenant_id AND v.parent_product_id=p.id AND v.product_kind='variant'
+                         AND v.is_active=1 AND vw.is_active=1) AS available_quantity
              FROM products p
              LEFT JOIN categories c
                ON c.tenant_id = p.tenant_id AND c.id = p.category_id AND c.is_active = 1
-             WHERE p.tenant_id = ? AND p.id = ? AND p.is_active = 1
+             WHERE p.tenant_id = ? AND p.id = ? AND p.is_active = 1 AND p.product_kind <> 'variant'
              LIMIT 1"
         );
         $stmt->execute([$tenant['id'], $productId]);
@@ -645,6 +708,33 @@ try {
         unset($product['image_media_id'], $product['category_id'], $product['category_title'],
             $product['category_slug'], $product['available_quantity']);
         $product['is_weighted'] = (bool)$product['is_weighted'];
+        $product['has_variants'] = $product['product_kind'] === 'variant_parent';
+        $product['variants'] = [];
+        if ($product['has_variants']) {
+            $variantsQuery=$db->prepare(
+                "SELECT v.id,v.sku,v.barcode,v.variant_label,v.unit_label,v.price_rial,v.compare_at_rial,
+                        v.is_weighted,v.image_media_id,
+                        COALESCE((SELECT SUM(sl.on_hand-sl.reserved)
+                                  FROM stock_levels sl
+                                  JOIN warehouses w ON w.tenant_id=sl.tenant_id AND w.id=sl.warehouse_id
+                                  WHERE sl.tenant_id=v.tenant_id AND sl.product_id=v.id AND w.is_active=1),0) AS available_quantity
+                 FROM products v
+                 WHERE v.tenant_id=? AND v.parent_product_id=? AND v.product_kind='variant' AND v.is_active=1
+                 ORDER BY v.id"
+            );
+            $variantsQuery->execute([$tenant['id'],$productId]);
+            $variants=$variantsQuery->fetchAll(PDO::FETCH_ASSOC);
+            foreach($variants as &$variant){
+                $variant['image']=$variant['image_media_id']===null?$product['image']:app_media_public_data($db,(int)$tenant['id'],(int)$variant['image_media_id']);
+                $variant['available_quantity']=(int)$variant['available_quantity'];
+                $variant['in_stock']=$variant['available_quantity']>0;
+                $variant['is_weighted']=(bool)$variant['is_weighted'];
+                unset($variant['image_media_id']);
+            }
+            unset($variant);
+            $product['variants']=$variants;
+        }
+        unset($product['product_kind']);
         app_json(['data' => $product]);
     }
 

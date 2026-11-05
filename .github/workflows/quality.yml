@@ -124,6 +124,11 @@ jobs:
       - name: Apply coupon migration
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_05_coupons.sql
 
+      - name: Apply product variants migration
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_05_product_variants.sql
+
+
+
       - name: Test initial store owner bootstrap
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/bootstrap-store-owner.sql
 
