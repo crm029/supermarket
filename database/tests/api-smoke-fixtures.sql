@@ -31,6 +31,14 @@ VALUES
    'شرح محصول تست','عدد',125000,150000,@api_media_id,FALSE,TRUE);
 SET @api_product_id = LAST_INSERT_ID();
 
+-- A product with no stock_levels row must still appear in low-stock alerts.
+INSERT INTO products
+  (tenant_id,category_id,sku,title,brand,description,unit_label,price_rial,
+   compare_at_rial,image_media_id,is_weighted,is_active,low_stock_threshold)
+VALUES
+  (1,@api_category_id,'API-SMOKE-LOW-001','محصول بدون موجودی تست','برند تست',
+   'کالای بدون رکورد موجودی','عدد',25000,NULL,@api_media_id,FALSE,TRUE,4);
+
 INSERT INTO store_scenes
   (tenant_id,title,scene_type,media_id,fallback_media_id,sort_order,is_published,metadata)
 VALUES
