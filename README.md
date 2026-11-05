@@ -20,14 +20,14 @@ Implemented and covered by repository tests:
 - OTP registration/login foundation, rate limiting, hashed challenges, database-backed sessions, HttpOnly cookies and CSRF protection; Kavenegar Verify Lookup adapter is available when real credentials are configured.
 - Deny-by-default tenant permission checks and audited product/category administration.
 - Seller dashboard, merchant branding and checkout settings, staff roles and permission management, tenant media library, media uploads, scene/hotspot authoring, multi-warehouse receipts/transfers/adjustments, stock reservation and expiry worker.
-- Server-validated cart quotes, persistent cross-device customer carts, customer addresses, tenant postal-code delivery zones, capacity-controlled scheduled pickup, transactional pending checkout, customer order history/cancellation and fulfilment transitions.
+- Server-validated cart quotes, persistent cross-device customer carts, customer addresses, tenant postal-code delivery zones, capacity-controlled scheduled pickup, tenant-scoped percentage/fixed coupons with usage limits, transactional pending checkout, customer order history/cancellation and fulfilment transitions.
 - ZarinPal v4 request/verification adapter with idempotent callbacks and stock commit after server-side verification.
 - Append-only wallet credit ledger, customer balance/history API and configurable first-paid-order referral rewards.
 - GitHub Actions PHP/JavaScript validation and MySQL-backed schema, tenant isolation and HTTP API integration checks.
 
 Still in progress:
 - Platform super-admin authorization and tenant/domain provisioning.
-- Product variants and promotion/coupon engine, plus supplier purchase orders, stock returns and batch/expiry workflows.
+- Product variants and variant-level stock/pricing, plus supplier purchase orders, stock returns and batch/expiry workflows.
 - Wallet spending, refunds/reversals, advanced referral fraud controls and reward policy approval for each merchant.
 - Cashier/picker/courier assignment, courier tracking, notifications, configurable stock alerts and report exports.
 - Real-store photography/onboarding and responsive image delivery.
