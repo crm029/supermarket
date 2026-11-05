@@ -6,8 +6,8 @@ Base path: `/api/v1`. JSON responses use UTF-8 and Persian user-facing messages.
 - `GET /store` — store profile, branding, opening hours and fulfillment options.
 - `GET /categories` — active category tree.
 - `GET /products?category=&q=&page=` — searchable, paginated catalog.
-- `GET /products/{id}` — product details and available stock status.
-- `GET /scenes` — published photo-tour nodes and hotspots.
+- `GET /products/{id}` — tenant-scoped product details, active stock availability and optional public image metadata.
+- `GET /scenes` — published photo-tour nodes and hotspots, with tenant-safe media URLs when `MEDIA_BASE_URL` is configured.
 - `POST /cart/quote` — server-side price and availability recalculation.
 
 ## Customer
@@ -66,3 +66,8 @@ Base path: `/api/v1`. JSON responses use UTF-8 and Persian user-facing messages.
 - Tenant sessions can only satisfy tenant-scoped permissions; platform permissions are excluded from tenant authorization checks.
 - Role grants are constrained by the role's scope key, and admin product operations are audited.
 - Role/permission management UI and platform authorization endpoints are not implemented yet.
+
+## Public media
+- Public image URLs are built only from the configured `MEDIA_BASE_URL` and a tenant-owned media record. Storage keys are never returned to clients.
+- Production media URLs must use HTTPS. Unsafe path segments are rejected.
+- Media upload and editing are not implemented yet; assets must already exist in the tenant media table and storage.
