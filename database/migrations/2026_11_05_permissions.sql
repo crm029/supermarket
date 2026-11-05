@@ -45,7 +45,15 @@ BEFORE INSERT ON role_permissions
 FOR EACH ROW
 BEGIN
   DECLARE current_scope BIGINT UNSIGNED DEFAULT NULL;
-  SELECT role_scope_id INTO current_scope FROM roles WHERE id = NEW.role_id LIMIT 1;
+  DECLARE role_tenant BIGINT UNSIGNED DEFAULT NULL;
+  DECLARE permission_scope VARCHAR(20) DEFAULT NULL;
+  SELECT role_scope_id, tenant_id INTO current_scope, role_tenant
+    FROM roles WHERE id = NEW.role_id LIMIT 1;
+  SELECT scope INTO permission_scope FROM permissions WHERE id = NEW.permission_id LIMIT 1;
+  IF permission_scope = 'platform' AND role_tenant IS NOT NULL THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Platform permissions can only be granted to global roles';
+  END IF;
   SET NEW.role_scope_id = current_scope;
 END//
 
@@ -54,7 +62,15 @@ BEFORE UPDATE ON role_permissions
 FOR EACH ROW
 BEGIN
   DECLARE current_scope BIGINT UNSIGNED DEFAULT NULL;
-  SELECT role_scope_id INTO current_scope FROM roles WHERE id = NEW.role_id LIMIT 1;
+  DECLARE role_tenant BIGINT UNSIGNED DEFAULT NULL;
+  DECLARE permission_scope VARCHAR(20) DEFAULT NULL;
+  SELECT role_scope_id, tenant_id INTO current_scope, role_tenant
+    FROM roles WHERE id = NEW.role_id LIMIT 1;
+  SELECT scope INTO permission_scope FROM permissions WHERE id = NEW.permission_id LIMIT 1;
+  IF permission_scope = 'platform' AND role_tenant IS NOT NULL THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Platform permissions can only be granted to global roles';
+  END IF;
   SET NEW.role_scope_id = current_scope;
 END//
 DELIMITER ;
