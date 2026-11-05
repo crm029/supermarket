@@ -87,6 +87,7 @@ const apiBase = new URL("api/v1/", document.baseURI).toString();
 let csrfToken = "";
 let currentUser = null;
 let pendingCheckout = false;
+let pendingPaymentOrderId = null;
 let publicScenes = [];
 let currentScene = 0;
 
@@ -274,8 +275,16 @@ document.getElementById("fulfillmentSelect").addEventListener("change",e=>{
 });
 document.getElementById("placeOrderButton").addEventListener("click",async()=>{
   const button=document.getElementById("placeOrderButton");
-  button.disabled=true;setFormMessage("checkoutMessage","در حال اعتبارسنجی قیمت و موجودی...");
+  button.disabled=true;
   try{
+    if(pendingPaymentOrderId){
+      setFormMessage("checkoutMessage","در حال اتصال به درگاه پرداخت...");
+      const payment=await apiPost("payments/zarinpal/request",{order_id:pendingPaymentOrderId},true);
+      if(payment.data?.redirect_url){window.location.assign(payment.data.redirect_url);return;}
+      if(payment.data?.already_paid){window.location.assign("payment-result.php?status=success");return;}
+      throw new Error("درگاه پرداخت هنوز آماده نیست.");
+    }
+    setFormMessage("checkoutMessage","در حال اعتبارسنجی قیمت و موجودی...");
     let addressId=null;
     const fulfillment=document.getElementById("fulfillmentSelect").value;
     if(fulfillment==="delivery"){
@@ -295,12 +304,17 @@ document.getElementById("placeOrderButton").addEventListener("click",async()=>{
       fulfillment,address_id:addressId,
       customer_note:document.getElementById("orderNote").value.trim()
     },true);
+    pendingPaymentOrderId=Number(order.data.id);
     cart.clear();updateCart();
-    document.getElementById("cartItems").innerHTML='<p class="empty-cart">سفارش با موفقیت ثبت اولیه شد.</p>';
+    document.getElementById("cartItems").innerHTML='<p class="empty-cart">سفارش با موفقیت ثبت شد.</p>';
     document.getElementById("cartTotal").textContent=money(0);
-    setFormMessage("checkoutMessage","شماره سفارش: "+order.data.order_number+" — سفارش تا تأیید پرداخت در انتظار پرداخت است.","success");
-    button.textContent="سفارش ثبت شد";
-  }catch(error){setFormMessage("checkoutMessage",error.message,"error");}
-  finally{button.disabled=false;}
+    setFormMessage("checkoutMessage","سفارش "+order.data.order_number+" ثبت شد؛ در حال انتقال به درگاه پرداخت...","success");
+    const payment=await apiPost("payments/zarinpal/request",{order_id:pendingPaymentOrderId},true);
+    if(payment.data?.redirect_url){window.location.assign(payment.data.redirect_url);return;}
+    throw new Error("درگاه پرداخت هنوز پیکربندی نشده است. سفارش ثبت شده و می‌توانید بعداً پرداخت را دوباره امتحان کنید.");
+  }catch(error){
+    setFormMessage("checkoutMessage",error.message,"error");
+    if(pendingPaymentOrderId)button.textContent="تلاش دوباره برای پرداخت";
+  }finally{button.disabled=false;}
 });
 updateCart();
