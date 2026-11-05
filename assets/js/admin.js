@@ -275,7 +275,7 @@ async function loadInventory() {
     warehouses=w.data||[];stockRows=s.data||[];
     renderInventory();
   } catch(error) {
-    document.getElementById("stockRows").innerHTML='<tr><td colspan="5">'+escapeText(error.message)+'</td></tr>';
+    document.getElementById("stockRows").innerHTML='<tr><td colspan="6">'+escapeText(error.message)+'</td></tr>';
   }
 }
 function renderInventory() {
@@ -289,7 +289,7 @@ function renderInventory() {
     const select=document.getElementById(id);const previous=select.value;
     select.innerHTML=productOptions;if(previous)select.value=previous;
   });
-  document.getElementById("stockRows").innerHTML=stockRows.map(s=>'<tr><td><strong>'+escapeText(s.product_title)+'</strong><small>'+escapeText(s.sku)+'</small></td><td>'+escapeText(s.warehouse_title)+'</td><td>'+new Intl.NumberFormat("fa-IR").format(Number(s.on_hand))+'</td><td>'+new Intl.NumberFormat("fa-IR").format(Number(s.reserved))+'</td><td><strong>'+new Intl.NumberFormat("fa-IR").format(Number(s.available_quantity))+'</strong></td></tr>').join("")||'<tr><td colspan="5">هنوز موجودی ثبت نشده است.</td></tr>';
+  document.getElementById("stockRows").innerHTML=stockRows.map(s=>'<tr><td><strong>'+escapeText(s.product_title)+'</strong><small>'+escapeText(s.sku)+'</small></td><td>'+escapeText(s.warehouse_title)+'</td><td>'+new Intl.NumberFormat("fa-IR").format(Number(s.on_hand))+'</td><td>'+new Intl.NumberFormat("fa-IR").format(Number(s.reserved))+'</td><td><strong>'+new Intl.NumberFormat("fa-IR").format(Number(s.available_quantity))+'</strong></td><td><span class="admin-status '+(Number(s.is_low_stock)?"inactive":"active")+'">'+new Intl.NumberFormat("fa-IR").format(Number(s.low_stock_threshold))+(Number(s.is_low_stock)?" · هشدار":"")+'</span></td></tr>').join("")||'<tr><td colspan="6">هنوز موجودی ثبت نشده است.</td></tr>';
 }
 async function loadOrders() {
   try {
@@ -315,7 +315,7 @@ function renderProducts() {
   const query=document.getElementById("productSearch").value.trim().toLocaleLowerCase();
   const rows=products.filter(p=>!query||String(p.title+" "+p.sku).toLocaleLowerCase().includes(query));
   document.getElementById("productRows").innerHTML=rows.map(p=>
-    '<tr><td><strong>'+escapeText(p.title)+'</strong><small>'+escapeText(p.brand||"")+'</small></td><td>'+escapeText(p.sku)+'</td><td>'+money(Number(p.price_rial)/10)+'</td><td><span class="admin-status '+(Number(p.is_active)?"active":"inactive")+'">'+(Number(p.is_active)?"فعال":"غیرفعال")+'</span></td><td><button class="admin-row-action" data-edit-product="'+Number(p.id)+'">ویرایش</button>'+(Number(p.is_active)?'<button class="admin-row-action danger" data-disable-product="'+Number(p.id)+'">غیرفعال‌سازی</button>':"")+'</td></tr>'
+    '<tr><td><strong>'+escapeText(p.title)+'</strong><small>'+escapeText(p.brand||"")+'</small></td><td>'+escapeText(p.sku)+'<small>'+escapeText(p.barcode||"بدون بارکد")+'</small></td><td>'+money(Number(p.price_rial)/10)+'</td><td><span class="admin-status '+(Number(p.is_active)?"active":"inactive")+'">'+(Number(p.is_active)?"فعال":"غیرفعال")+'</span></td><td><button class="admin-row-action" data-edit-product="'+Number(p.id)+'">ویرایش</button>'+(Number(p.is_active)?'<button class="admin-row-action danger" data-disable-product="'+Number(p.id)+'">غیرفعال‌سازی</button>':"")+'</td></tr>'
   ).join("")||'<tr><td colspan="5">محصولی پیدا نشد.</td></tr>';
 }
 function renderCategories() {
@@ -346,12 +346,14 @@ document.getElementById("productRows").addEventListener("click",async e=>{
     const p=products.find(x=>Number(x.id)===Number(edit.dataset.editProduct));if(!p)return;
     document.getElementById("productId").value=p.id;
     document.getElementById("productSku").value=p.sku;
+    document.getElementById("productBarcode").value=p.barcode||"";
     document.getElementById("productSku").readOnly=true;
     document.getElementById("productTitle").value=p.title;
     document.getElementById("productPrice").value=Math.round(Number(p.price_rial)/10);
     document.getElementById("productCategory").value=p.category_id||"";
     document.getElementById("productBrand").value=p.brand||"";
     document.getElementById("productUnit").value=p.unit_label||"عدد";
+    document.getElementById("productLowStockThreshold").value=Number(p.low_stock_threshold??5);
     document.getElementById("productDescription").value=p.description||"";
     document.getElementById("productMediaId").value=p.media_id||"";
     document.getElementById("productFormTitle").textContent="ویرایش محصول";
@@ -368,6 +370,8 @@ document.getElementById("productForm").addEventListener("submit",async e=>{
   const id=document.getElementById("productId").value;
   const payload={
     sku:document.getElementById("productSku").value.trim(),
+    barcode:document.getElementById("productBarcode").value.trim(),
+    low_stock_threshold:Number(document.getElementById("productLowStockThreshold").value),
     title:document.getElementById("productTitle").value.trim(),
     price_rial:Math.round(Number(document.getElementById("productPrice").value)*10),
     category_id:document.getElementById("productCategory").value||null,
