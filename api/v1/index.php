@@ -20,6 +20,7 @@ require_once dirname(__DIR__, 2) . '/app/delivery_zones.php';
 require_once dirname(__DIR__, 2) . '/app/pickup_slots.php';
 require_once dirname(__DIR__, 2) . '/app/coupons.php';
 require_once dirname(__DIR__, 2) . '/app/purchasing.php';
+require_once dirname(__DIR__, 2) . '/app/supplier_returns.php';
 
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
@@ -148,6 +149,21 @@ try {
         app_auth_require_csrf($session);
         app_auth_require_permission($db, $tenant, $session, 'inventory.manage');
         app_inventory_transfer($db, $tenant, $session);
+    }
+
+    if ($path === '/admin/supplier-returns') {
+        $session = app_auth_require($db, $tenant);
+        if ($method === 'GET') {
+            app_auth_require_permission($db, $tenant, $session, 'inventory.read');
+            app_admin_supplier_return_list($db, $tenant);
+        }
+        if ($method === 'POST') {
+            app_auth_require_csrf($session);
+            app_auth_require_permission($db, $tenant, $session, 'inventory.manage');
+            app_admin_supplier_return_create($db, $tenant, $session);
+        }
+        header('Allow: GET, POST');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
     }
 
     if ($path === '/admin/suppliers') {
