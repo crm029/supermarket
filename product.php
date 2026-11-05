@@ -66,6 +66,19 @@ $schema = [
 if (!empty($product['brand'])) $schema['brand']=['@type'=>'Brand','name'=>(string)$product['brand']];
 if (!empty($image['url'])) $schema['image']=[$image['url']];
 $jsonLd = json_encode($schema,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT);
+$analyticsViewItem = [
+    'currency'=>'IRR',
+    'value'=>$priceRial,
+    'items'=>[[
+        'item_id'=>(string)$product['id'],
+        'item_name'=>(string)$product['title'],
+        'item_brand'=>(string)($product['brand'] ?? ''),
+        'item_category'=>(string)($product['category_title'] ?? ''),
+        'price'=>$priceRial,
+        'quantity'=>1,
+    ]],
+];
+$analyticsViewItemJson = json_encode($analyticsViewItem,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT);
 $e = static fn(mixed $value): string => htmlspecialchars((string)$value,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');
 $priceToman = number_format((int)round($priceRial/10));
 $compareToman = $product['compare_at_rial'] === null ? null : number_format((int)round((int)$product['compare_at_rial']/10));
@@ -89,6 +102,11 @@ $compareToman = $product['compare_at_rial'] === null ? null : number_format((int
   <meta name="twitter:card" content="<?= !empty($image['url'])?'summary_large_image':'summary' ?>">
   <link rel="stylesheet" href="/assets/css/app.css">
   <script type="application/ld+json"><?= $jsonLd ?: '{}' ?></script>
+  <script>
+    document.addEventListener('sm360:analytics-ready',function(){
+      window.sm360Track('view_item',<?= $analyticsViewItemJson ?: '{}' ?>);
+    },{once:true});
+  </script>
   <style>
     .seo-product-page{max-width:1100px;margin:40px auto;padding:24px;background:var(--paper);border:1px solid var(--line);border-radius:22px;display:grid;grid-template-columns:minmax(260px, .9fr) 1.1fr;gap:34px}
     .seo-product-image{width:100%;aspect-ratio:1/1;object-fit:contain;background:#f5f3eb;border-radius:16px}
