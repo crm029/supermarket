@@ -63,6 +63,31 @@ function app_inventory_stock_list(PDO $db, array $tenant): never {
     app_json(['data'=>$stmt->fetchAll()]);
 }
 
+function app_inventory_low_stock_list(PDO $db, array $tenant): never {
+    $warehouse = filter_input(INPUT_GET, 'warehouse_id', FILTER_VALIDATE_INT);
+    $sql = "SELECT w.id AS warehouse_id,w.title AS warehouse_title,p.id AS product_id,p.sku,
+                   CASE WHEN p.product_kind='variant' THEN CONCAT(parent.title,' · ',p.variant_label) ELSE p.title END AS product_title,
+                   p.unit_label,COALESCE(sl.on_hand,0) AS on_hand,COALESCE(sl.reserved,0) AS reserved,
+                   GREATEST(COALESCE(sl.on_hand,0)-COALESCE(sl.reserved,0),0) AS available_quantity,
+                   p.low_stock_threshold,
+                   GREATEST(p.low_stock_threshold-GREATEST(COALESCE(sl.on_hand,0)-COALESCE(sl.reserved,0),0),0) AS shortage_quantity
+            FROM warehouses w
+            JOIN products p ON p.tenant_id=w.tenant_id AND p.is_active=1 AND p.product_kind<>'variant_parent'
+            LEFT JOIN products parent ON parent.tenant_id=p.tenant_id AND parent.id=p.parent_product_id
+            LEFT JOIN stock_levels sl ON sl.tenant_id=w.tenant_id AND sl.warehouse_id=w.id AND sl.product_id=p.id
+            WHERE w.tenant_id=? AND w.is_active=1 AND p.low_stock_threshold>0
+              AND COALESCE(sl.on_hand,0)-COALESCE(sl.reserved,0)<=p.low_stock_threshold";
+    $params = [(int)$tenant['id']];
+    if ($warehouse !== null && $warehouse !== false && $warehouse > 0) {
+        $sql .= " AND w.id=?";
+        $params[] = $warehouse;
+    }
+    $sql .= " ORDER BY shortage_quantity DESC,p.title,w.id LIMIT 500";
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+    app_json(['data'=>$stmt->fetchAll()]);
+}
+
 function app_inventory_validate_refs(PDO $db, int $tenantId, int $warehouseId, int $productId): void {
     $stmt=$db->prepare(
         "SELECT 1 FROM warehouses w JOIN products p ON p.tenant_id=w.tenant_id
