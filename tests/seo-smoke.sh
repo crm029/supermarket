@@ -53,6 +53,13 @@ check_redirect "/category/api-created-category" "/category/api-updated-category"
 check_page "/category/api-updated-category" "دسته ویرایش‌شده"
 check_page "/index.php" 'rel="canonical" href="http://localhost/"'
 check_page "/index.php" 'application/ld+json'
+check_page "/index.php" 'property="og:locale" content="fa_IR"'
+check_page "/index.php" 'name="twitter:title"'
+check_page "/index.php" 'name="twitter:description"'
+check_page "/product/1/test-product" 'name="twitter:title"'
+check_page "/product/1/test-product" 'name="twitter:description"'
+check_page "/category.php?slug=dairy" 'name="twitter:title"'
+check_page "/category.php?slug=dairy" 'name="twitter:description"'
 check_page "/index.php" 'name="google-site-verification" content="testverificationtoken123"'
 check_page "/index.php" 'data-ga4-measurement="G-ABC1234567"'
 check_page "/product/1/test-product" 'data-ga4-measurement="G-ABC1234567"'
