@@ -142,6 +142,11 @@ jobs:
       - name: Apply merchant SEO content fields migration
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_05_seo_content_fields.sql
 
+      - name: Verify merchant SEO content fields
+        run: |
+          result="$(mysql --batch --skip-column-names --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/seo-fields.sql)"
+          test "$result" = "2 4"
+
       - name: Test stock batch reservation integrity
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/stock-batches.sql
 
