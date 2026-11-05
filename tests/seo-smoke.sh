@@ -49,6 +49,8 @@ check_redirect "/product.php?id=1" "/product/1/test-product"
 check_page "/category.php?slug=dairy" "/product/1/test-product"
 check_page "/category.php?slug=dairy" "عنوان سئو دسته تست"
 check_page "/category.php?slug=dairy" "توضیحات متا دسته تست"
+check_redirect "/category/api-created-category" "/category/api-updated-category"
+check_page "/category/api-updated-category" "دسته ویرایش‌شده"
 check_page "/index.php" 'rel="canonical" href="http://localhost/"'
 check_page "/index.php" 'application/ld+json'
 check_page "/index.php" 'name="google-site-verification" content="testverificationtoken123"'
