@@ -25,7 +25,8 @@ Status is intentionally conservative: a checklist item is complete only when imp
 
 ## Phase 2 — catalog and commerce
 - [x] Basic tenant-scoped product list/create/update/deactivate API with permission checks.
-- [ ] Category CRUD, variants, barcode uniqueness, promotions and advanced search.
+- [x] Basic tenant-scoped category list/create/update/deactivate API with parent-cycle and media ownership checks.
+- [ ] Product variants, barcode uniqueness, promotions and advanced search.
 - [ ] Persistent cart and server-side quote validation.
 - [ ] Address book, delivery zones, pickup scheduling and fees.
 - [ ] Transactional checkout, order state machine and customer order tracking.
