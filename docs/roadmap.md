@@ -61,7 +61,8 @@ Status is intentionally conservative: a checklist item is complete only when imp
 ## Phase 4 — store operations
 - [x] Multi-warehouse stock receipt, transfer and adjustment services with tenant checks, reserved-stock protection and audit trail.
 - [x] Per-product low-stock warnings in inventory and threshold-based dashboard counts.
-- [ ] Supplier purchase orders, stock returns, expiry/batch tracking and alert notifications.
+- [x] Tenant-scoped supplier directory, purchase orders, partial receiving, inventory posting and audit trail (MySQL CI verified; management UI and full API smoke coverage remain).
+- [ ] Supplier returns, expiry/batch tracking and alert notifications.
 - [x] Transactional reservations, expiry/release and paid-order stock commit.
 - [x] Customer cancellation for pending-payment orders with transactional stock release.
 - [x] Tenant-scoped order queue and guarded fulfilment transitions (accept, picking, packing, pickup/dispatch, delivery).
