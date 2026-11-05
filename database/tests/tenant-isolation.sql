@@ -67,6 +67,7 @@ BEGIN
   DECLARE rejected BOOLEAN DEFAULT FALSE;
   BEGIN
     DECLARE CONTINUE HANDLER FOR SQLSTATE '23000' SET rejected = TRUE;
+    DECLARE CONTINUE HANDLER FOR SQLSTATE '45000' SET rejected = TRUE;
     INSERT INTO audit_logs
       (tenant_id,actor_user_id,action,entity_type,entity_id)
     VALUES
