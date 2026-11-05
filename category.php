@@ -62,6 +62,12 @@ if ($metaDescription === '') $metaDescription = $defaultDescription;
 $description = mb_substr(preg_replace('/\s+/u',' ',$metaDescription) ?? $metaDescription,0,160);
 $pageTitle = trim((string)($category['seo_title'] ?? '')) ?: ((string)$category['title'].' | '.$storeName);
 $canonical = app_seo_url($seo,'category/'.rawurlencode((string)$category['slug']));
+$currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '',PHP_URL_PATH) ?: '';
+$expectedPath = '/category/'.rawurlencode((string)$category['slug']);
+if ($currentPath !== $expectedPath || (string)$seo['request_host'] !== (string)$seo['host']) {
+    header('Location: '.$canonical,true,301);
+    exit;
+}
 $categoryImage = $category['storage_key'] ? app_media_public_url((string)$category['storage_key']) : null;
 $e = static fn(mixed $value): string => htmlspecialchars((string)$value,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');
 $listItems = [];
