@@ -74,7 +74,7 @@ Real merchant photography, production domains, SMS credentials and payment-gatew
 - Storefront: index.php
 - Seller dashboard: admin.php (catalog, orders and inventory screens require the matching server-side permissions)
 - Platform dashboard: platform.php; grant global access only to an active OTP-verified account using database/bootstrap-platform-admin.sql after all migrations.
-- New tenants remain pending until a platform administrator manually records domain-ownership verification. The current workflow records the operator's attestation; it does not run an automated DNS/HTTP challenge.
+- New tenants remain pending until the platform DNS TXT challenge at _supermarket360-verification.<domain> is resolved to the one-time token. Tokens expire after 24 hours and can be reissued; the backend verifies the TXT value before activation.
 - Payment result: payment-result.php
 - Customer registration uses mobile OTP; the development-only log provider is not a production SMS service.
 - Checkout validates the cart on the server, saves the customer's delivery address, creates a pending-payment order and reserves stock for 20 minutes.
