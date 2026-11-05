@@ -43,3 +43,8 @@ A feature is not considered complete until it passes its relevant gates.
 - Request/verification limits are applied per tenant, phone and IP.
 - Session cookies are HttpOnly, SameSite=Lax and Secure in production; only token hashes are stored.
 - Session rows enforce tenant/user composite ownership, and logout revokes the server-side session.
+
+## Authorization and catalog administration
+- Admin product reads and writes require an explicit tenant-scoped permission; missing grants deny access.
+- A role grant cannot cross its tenant/global role scope. Platform permissions are not accepted by tenant-scoped checks.
+- Product category references are validated against the active tenant, and product changes write an audit event in the same transaction.
