@@ -38,6 +38,17 @@ assert_json() {
     $data = json_decode(file_get_contents($argv[1]), true);
     if (!is_array($data)) { fwrite(STDERR, "Invalid JSON response\n"); exit(1); }
     $check = $argv[2];
+    if ($check === "low-stock-zero") {
+      foreach (($data["data"] ?? []) as $row) {
+        if (($row["sku"] ?? "") === "API-SMOKE-LOW-001") {
+          if ((int)($row["available_quantity"] ?? -1) !== 0 ||
+              (int)($row["shortage_quantity"] ?? -1) !== 4 ||
+              (int)($row["warehouse_id"] ?? 0) < 1) exit(1);
+          exit(0);
+        }
+      }
+      exit(1);
+    }
     if ($check === "product-image") {
       foreach (($data["data"] ?? []) as $row) {
         if (($row["sku"] ?? "") === "API-SMOKE-001") {
@@ -208,6 +219,7 @@ request GET /admin/reports/overview 200 "" "$TOKEN"
 request GET /admin/warehouses 200 "" "$TOKEN"
 request GET /admin/stock 200 "" "$TOKEN"
 request GET /admin/stock/low 200 "" "$TOKEN"
+assert_json low-stock-zero
 request GET /admin/scenes 200 "" "$TOKEN"
 request GET /admin/media 200 "" "$TOKEN"
 assert_json media-library
