@@ -120,6 +120,8 @@ assert_json scene-hotspots
 request GET /admin/products 200 "" "$TOKEN"
 request GET /admin/categories 200 "" "$TOKEN"
 request GET /admin/orders 200 "" "$TOKEN"
+request GET /admin/warehouses 200 "" "$TOKEN"
+request GET /admin/stock 200 "" "$TOKEN"
 request GET /admin/products 403 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
 request POST /admin/products 419 '{"sku":"NO-CSRF-1","title":"نباید ثبت شود","price_rial":1000}' "$TOKEN"
 
@@ -149,5 +151,13 @@ request POST "/me/orders/$ORDER_ID/cancel" 200 "" "$CUSTOMER_TOKEN" "$CUSTOMER_C
 RESERVED="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT reserved FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID LIMIT 1")"
 ORDER_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
 if [[ "$RESERVED" != "0" || "$ORDER_STATUS" != "cancelled" ]]; then echo "Customer cancellation did not release stock or update order"; exit 1; fi
+
+request POST /admin/stock/receipts 200 '{"warehouse_id":1,"product_id":'$PRODUCT_ID',"quantity":3,"reason":"رسید تست"}' "$TOKEN" "$CSRF"
+request POST /admin/stock/adjustments 200 '{"warehouse_id":1,"product_id":'$PRODUCT_ID',"quantity":-1,"reason":"اصلاح تست"}' "$TOKEN" "$CSRF"
+request POST /admin/warehouses 201 '{"title":"انبار انتقال تست","warehouse_type":"other"}' "$TOKEN" "$CSRF"
+NEW_WAREHOUSE_ID="$(assert_json created-id)"
+request POST /admin/stock/transfers 200 '{"from_warehouse_id":1,"to_warehouse_id":'$NEW_WAREHOUSE_ID',"product_id":'$PRODUCT_ID',"quantity":2}' "$TOKEN" "$CSRF"
+TOTAL_STOCK="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT SUM(on_hand) FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID")"
+if [[ "$TOTAL_STOCK" != "12" ]]; then echo "Expected 12 total units after receipt, adjustment and transfer; received $TOTAL_STOCK"; exit 1; fi
 
 echo "HTTP API and commerce smoke tests passed."
