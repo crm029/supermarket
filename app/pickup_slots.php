@@ -26,6 +26,8 @@ function app_pickup_slot_public_row(array $row, DateTimeZone $timezone): array {
         'title'=>$row['title'],
         'starts_at'=>$start->setTimezone($timezone)->format('Y-m-d\\TH:i:sP'),
         'ends_at'=>$end->setTimezone($timezone)->format('Y-m-d\\TH:i:sP'),
+        'starts_at_label'=>$start->setTimezone($timezone)->format('Y/m/d H:i'),
+        'ends_at_label'=>$end->setTimezone($timezone)->format('Y/m/d H:i'),
         'capacity'=>(int)$row['capacity'],
         'remaining_capacity'=>isset($row['remaining_capacity'])?(int)$row['remaining_capacity']:null,
         'is_active'=>(bool)$row['is_active'],
