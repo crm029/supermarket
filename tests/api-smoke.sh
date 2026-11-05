@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BASE_URL="http://127.0.0.1:8099/api/v1"
+OUT="/tmp/supermarket-api-response.json"
+TOKEN="$(printf 'S%.0s' {1..43})"
+CSRF="$(printf 'C%.0s' {1..43})"
+UNPRIVILEGED_TOKEN="$(printf 'T%.0s' {1..43})"
+
+request() {
+  local method="$1"
+  local path="$2"
+  local expected="$3"
+  local body="${4:-}"
+  local token="${5:-}"
+  local csrf="${6:-}"
+  local host="${7:-localhost}"
+  local args=(--silent --show-error --output "$OUT" --write-out "%{http_code}" -X "$method"
+    -H "Host: $host" -H "Accept: application/json")
+  if [[ -n "$body" ]]; then
+    args+=(-H "Content-Type: application/json" --data "$body")
+  fi
+  if [[ -n "$token" ]]; then args+=(-H "Cookie: sm_session=$token"); fi
+  if [[ -n "$csrf" ]]; then args+=(-H "X-CSRF-Token: $csrf"); fi
+  local status
+  status="$(curl "${args[@]}" "$BASE_URL$path")"
+  if [[ "$status" != "$expected" ]]; then
+    echo "Expected HTTP $expected for $method $path; received $status"
+    cat "$OUT"
+    exit 1
+  fi
+}
+
+assert_json() {
+  php -r '
+    $data = json_decode(file_get_contents($argv[1]), true);
+    if (!is_array($data)) { fwrite(STDERR, "Invalid JSON response\n"); exit(1); }
+    $check = $argv[2];
+    if ($check === "product-image") {
+      foreach (($data["data"] ?? []) as $row) {
+        if (($row["sku"] ?? "") === "API-SMOKE-001") {
+          if (($row["image"]["url"] ?? null) !== "https://cdn.example.test/assets/products/ci%20milk%20bottle.jpg") exit(1);
+          exit(0);
+        }
+      }
+      exit(1);
+    }
+    if ($check === "product-detail") {
+      if (($data["data"]["in_stock"] ?? null) !== false ||
+          ($data["data"]["image"]["url"] ?? null) !== "https://cdn.example.test/assets/products/ci%20milk%20bottle.jpg") exit(1);
+      exit(0);
+    }
+    if ($check === "category-image") {
+      foreach (($data["data"] ?? []) as $row) {
+        if (($row["slug"] ?? "") === "api-smoke-category") {
+          if (($row["image"]["url"] ?? null) !== "https://cdn.example.test/assets/products/ci%20milk%20bottle.jpg") exit(1);
+          exit(0);
+        }
+      }
+      exit(1);
+    }
+    if ($check === "scene-hotspots") {
+      $scene = ($data["data"] ?? [])[0] ?? null;
+      if (!$scene || ($scene["media"]["url"] ?? null) !== "https://cdn.example.test/assets/products/ci%20milk%20bottle.jpg") exit(1);
+      $product = false; $category = false;
+      foreach (($scene["hotspots"] ?? []) as $hotspot) {
+        if (($hotspot["product"]["id"] ?? null) !== null) $product = true;
+        if (($hotspot["category"]["slug"] ?? "") === "api-smoke-category") $category = true;
+      }
+      if (!$product || !$category) exit(1);
+      exit(0);
+    }
+    if ($check === "created-id") {
+      $id = (int)($data["data"]["id"] ?? 0);
+      if ($id < 1) exit(1);
+      echo $id;
+      exit(0);
+    }
+    exit(0);
+  ' "$OUT" "$1"
+}
+
+for _ in $(seq 1 20); do
+  status="$(curl --silent --output /dev/null --write-out "%{http_code}" -H 'Host: localhost' "$BASE_URL/store" || true)"
+  [[ "$status" == "200" ]] && break
+  sleep 1
+done
+
+request GET /categories 200
+assert_json category-image
+request GET /products 200
+assert_json product-image
+
+PRODUCT_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM products WHERE tenant_id=1 AND sku='API-SMOKE-001' LIMIT 1")"
+CATEGORY_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM categories WHERE tenant_id=1 AND slug='api-smoke-category' LIMIT 1")"
+
+request GET "/products/$PRODUCT_ID" 200
+assert_json product-detail
+request GET /scenes 200
+assert_json scene-hotspots
+
+request GET /admin/products 200 "" "$TOKEN"
+request GET /admin/categories 200 "" "$TOKEN"
+request GET /admin/products 403 "" "$UNPRIVILEGED_TOKEN"
+request POST /admin/products 419 '{"sku":"NO-CSRF-1","title":"نباید ثبت شود","price_rial":1000}' "$TOKEN"
+
+request POST /admin/products 201 "{\"sku\":\"API-CREATED-001\",\"title\":\"کالای ساخته‌شده با تست\",\"price_rial\":120000,\"category_id\":$CATEGORY_ID,\"unit_label\":\"عدد\",\"is_weighted\":false,\"is_active\":true}" "$TOKEN" "$CSRF"
+NEW_PRODUCT_ID="$(assert_json created-id)"
+
+request PATCH "/admin/products/$NEW_PRODUCT_ID" 200 '{"title":"کالای ویرایش‌شده"}' "$TOKEN" "$CSRF"
+request DELETE "/admin/products/$NEW_PRODUCT_ID" 200 "" "$TOKEN" "$CSRF"
+
+request POST /admin/categories 201 '{"title":"دسته ساخته‌شده با تست","slug":"api-created-category","sort_order":100,"is_active":true}' "$TOKEN" "$CSRF"
+NEW_CATEGORY_ID="$(assert_json created-id)"
+request PATCH "/admin/categories/$NEW_CATEGORY_ID" 200 '{"title":"دسته ویرایش‌شده"}' "$TOKEN" "$CSRF"
+request DELETE "/admin/categories/$NEW_CATEGORY_ID" 200 "" "$TOKEN" "$CSRF"
+
+request GET "/products/$PRODUCT_ID" 404 "" "" "tenant-two.localhost"
+
+echo "HTTP API smoke tests passed."
