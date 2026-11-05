@@ -33,6 +33,7 @@ jobs:
             php -l "$file"
           done
           php tests/auth-input.php
+          php tests/admin-catalog-input.php
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
