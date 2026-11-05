@@ -17,17 +17,24 @@ $db = app_db();
 $batchSize = 100;
 $db->beginTransaction();
 try {
-    $stmt = $db->prepare(
-        "SELECT id, tenant_id, order_id, warehouse_id, product_id, quantity
+    // Lock orders before reservations, matching customer cancellation and payment callback lock order.
+    $pending = $db->prepare(
+        "SELECT DISTINCT tenant_id, order_id
          FROM stock_reservations
          WHERE status = 'active' AND expires_at <= UTC_TIMESTAMP()
-         ORDER BY id
-         LIMIT {$batchSize}
-         FOR UPDATE"
+         ORDER BY tenant_id, order_id
+         LIMIT {$batchSize}"
     );
-    $stmt->execute();
-    $rows = $stmt->fetchAll();
+    $pending->execute();
+    $orders = $pending->fetchAll();
 
+    $lockOrder = $db->prepare('SELECT id, status FROM orders WHERE tenant_id = ? AND id = ? FOR UPDATE');
+    $lockRows = $db->prepare(
+        "SELECT id, warehouse_id, product_id, quantity
+         FROM stock_reservations
+         WHERE tenant_id = ? AND order_id = ? AND status = 'active' AND expires_at <= UTC_TIMESTAMP()
+         ORDER BY id FOR UPDATE"
+    );
     $release = $db->prepare(
         'UPDATE stock_levels
          SET reserved = reserved - ?
@@ -48,20 +55,26 @@ try {
     );
 
     $released = 0;
-    foreach ($rows as $row) {
-        $quantity = (int)$row['quantity'];
-        $release->execute([
-            $quantity, $row['tenant_id'], $row['warehouse_id'], $row['product_id'], $quantity,
-        ]);
-        if ($release->rowCount() !== 1) {
-            throw new RuntimeException('Reservation stock counter is inconsistent; refusing partial release.');
+    foreach ($orders as $candidate) {
+        $lockOrder->execute([$candidate['tenant_id'], $candidate['order_id']]);
+        if (!$lockOrder->fetch()) continue;
+
+        $lockRows->execute([$candidate['tenant_id'], $candidate['order_id']]);
+        foreach ($lockRows->fetchAll() as $row) {
+            $quantity = (int)$row['quantity'];
+            $release->execute([
+                $quantity, $candidate['tenant_id'], $row['warehouse_id'], $row['product_id'], $quantity,
+            ]);
+            if ($release->rowCount() !== 1) {
+                throw new RuntimeException('Reservation stock counter is inconsistent; refusing partial release.');
+            }
+            $expire->execute([$row['id']]);
+            if ($expire->rowCount() !== 1) {
+                throw new RuntimeException('Reservation state changed while processing expiry.');
+            }
+            $released++;
         }
-        $expire->execute([$row['id']]);
-        if ($expire->rowCount() !== 1) {
-            throw new RuntimeException('Reservation state changed while processing expiry.');
-        }
-        $cancelOrder->execute([$row['tenant_id'], $row['order_id']]);
-        $released++;
+        $cancelOrder->execute([$candidate['tenant_id'], $candidate['order_id']]);
     }
 
     $db->commit();
