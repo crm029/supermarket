@@ -52,10 +52,10 @@ assert_json() {
       exit(1);
     }
     if ($check === "category-seo-fields" || $check === "category-seo-update") {
+      $expectedTitle = $check === "category-seo-fields" ? "عنوان سئو دسته API" : "عنوان سئو ویرایش‌شده";
+      $expectedSlug = $check === "category-seo-fields" ? "api-created-category" : "api-updated-category";
       foreach (($data["data"] ?? []) as $row) {
-        if (($row["slug"] ?? "") === "api-created-category") {
-          $expectedTitle = $check === "category-seo-fields" ? "عنوان سئو دسته API" : "عنوان سئو ویرایش‌شده";
-          $expectedSlug = $check === "category-seo-fields" ? "api-created-category" : "api-updated-category";
+        if (($row["slug"] ?? "") === $expectedSlug) {
           if (($row["slug"] ?? "") !== $expectedSlug ||
               ($row["description"] ?? "") !== "توضیح دسته API" ||
               ($row["seo_title"] ?? "") !== $expectedTitle ||
