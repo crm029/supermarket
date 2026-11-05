@@ -606,6 +606,14 @@ async function loadSettings() {
     document.getElementById("settingStoreName").value=profile.name||"";
     document.getElementById("settingTagline").value=profile.tagline||"";
     document.getElementById("settingSupportPhone").value=profile.support_phone||"";
+    document.getElementById("settingStreetAddress").value=profile.street_address||"";
+    document.getElementById("settingCity").value=profile.city||"";
+    document.getElementById("settingRegion").value=profile.region||"";
+    document.getElementById("settingPostalCode").value=profile.postal_code||"";
+    document.getElementById("settingCountryCode").value=profile.country_code||"IR";
+    document.getElementById("settingLatitude").value=profile.latitude??"";
+    document.getElementById("settingLongitude").value=profile.longitude??"";
+    document.getElementById("settingOpeningHours").value=profile.opening_hours||"";
     document.getElementById("settingPrimaryColor").value=profile.primary_color||"#173D2D";
     document.getElementById("settingAccentColor").value=profile.accent_color||"#E6A23C";
     document.getElementById("settingDeliveryEnabled").checked=checkout.delivery_enabled!==false;
@@ -633,6 +641,14 @@ document.getElementById("storeSettingsForm").addEventListener("submit",async eve
         name:document.getElementById("settingStoreName").value.trim(),
         tagline:document.getElementById("settingTagline").value.trim(),
         support_phone:document.getElementById("settingSupportPhone").value.trim(),
+        street_address:document.getElementById("settingStreetAddress").value.trim(),
+        city:document.getElementById("settingCity").value.trim(),
+        region:document.getElementById("settingRegion").value.trim(),
+        postal_code:document.getElementById("settingPostalCode").value.trim(),
+        country_code:document.getElementById("settingCountryCode").value.trim().toUpperCase(),
+        latitude:document.getElementById("settingLatitude").value.trim()===""?null:Number(document.getElementById("settingLatitude").value),
+        longitude:document.getElementById("settingLongitude").value.trim()===""?null:Number(document.getElementById("settingLongitude").value),
+        opening_hours:document.getElementById("settingOpeningHours").value.trim(),
         primary_color:document.getElementById("settingPrimaryColor").value,
         accent_color:document.getElementById("settingAccentColor").value
       },
