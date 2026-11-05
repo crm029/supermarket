@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__, 2) . '/app/bootstrap.php';
+require_once dirname(__DIR__, 2) . '/app/auth.php';
 
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
@@ -18,9 +19,33 @@ try {
     $method = app_method();
     $db = app_db();
 
+    if ($path === '/auth/request-otp' && $method === 'POST') {
+        app_auth_request_otp($db, $tenant);
+    }
+
+    if ($path === '/auth/verify-otp' && $method === 'POST') {
+        app_auth_verify_otp($db, $tenant);
+    }
+
+    if ($path === '/auth/logout' && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_logout($db, $session);
+    }
+
+    if ($path === '/me' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_json(['data' => [
+            'id' => (int)$session['id'],
+            'full_name' => $session['full_name'],
+            'mobile' => $session['mobile'],
+            'referral_code' => $session['referral_code'],
+        ]]);
+    }
+
     if ($method !== 'GET') {
-        header('Allow: GET');
-        app_json(['error' => 'این مسیر فعلاً فقط درخواست GET می‌پذیرد.'], 405);
+        header('Allow: GET, POST');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
     }
 
     if ($path === '/store' || $path === '/') {
