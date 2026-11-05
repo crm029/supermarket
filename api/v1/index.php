@@ -38,11 +38,16 @@ try {
     $method = app_method();
     $db = app_db();
 
-    if ($path === '/admin/media' && $method === 'POST') {
+    if ($path === '/admin/media') {
         $session = app_auth_require($db, $tenant);
-        app_auth_require_csrf($session);
         app_auth_require_permission($db, $tenant, $session, 'media.manage');
-        app_media_upload($db, $tenant, $session);
+        if ($method === 'GET') app_admin_media_list($db, $tenant);
+        if ($method === 'POST') {
+            app_auth_require_csrf($session);
+            app_media_upload($db, $tenant, $session);
+        }
+        header('Allow: GET, POST');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
     }
 
     if ($path === '/admin/scenes') {
