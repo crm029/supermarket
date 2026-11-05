@@ -85,11 +85,6 @@ function renderScenePreview(scene) {
   if(!scene||!scene.media?.url){preview.innerHTML='<p>این صحنه تصویر ندارد. ابتدا تصویر بارگذاری و به صحنه متصل کنید.</p>';return;}
   preview.innerHTML='<img src="'+escapeText(scene.media.url)+'" alt="'+escapeText(scene.title)+'">'+(hotspots||[]).map(h=>'<span class="scene-preview-hotspot" style="left:'+(Number(h.x)*100)+'%;top:'+(Number(h.y)*100)+'%">'+escapeText(h.label)+'</span>').join("");
 }
-function renderScenePreview(scene) {
-  const preview=document.getElementById("scenePreview");
-  if(!scene||!scene.media?.url){preview.innerHTML='<p>این صحنه تصویر ندارد. ابتدا تصویر بارگذاری و به صحنه متصل کنید.</p>';return;}
-  preview.innerHTML='<img src="'+escapeText(scene.media.url)+'" alt="'+escapeText(scene.title)+'">'+(hotspots||[]).map(h=>'<span class="scene-preview-hotspot" style="left:'+(Number(h.x)*100)+'%;top:'+(Number(h.y)*100)+'%">'+escapeText(h.label)+'</span>').join("");
-}
 async function loadHotspots(sceneId) {
   try {
     const result=await request("admin/scenes/"+sceneId+"/hotspots");
