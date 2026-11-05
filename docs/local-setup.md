@@ -18,12 +18,16 @@ The root `index.php` provides a local storefront preview; live tenant catalogue,
 12. Apply `database/migrations/2026_11_05_pickup_slots.sql` to enable scheduled pickup slots and order-slot references.
 13. Apply `database/migrations/2026_11_05_coupons.sql` to enable tenant promotion coupons and order redemption snapshots.
 14. Apply `database/migrations/2026_11_05_product_variants.sql` to enable parent/child product variants with independent stock.
-15. For an existing database, review and repair inconsistent tenant references before applying migrations. Never run schema or demo seed imports over a live production database.
-16. Create one tenant and one verified domain matching the Host header, then set the tenant status to `active`. The demo seed configures `localhost`.
-17. Configure `DB_HOST`, `DB_DATABASE`, `DB_USERNAME` and `DB_PASSWORD` in the PHP server environment. Set a unique `APP_KEY` of at least 32 characters. Keep all secrets out of Git.
-18. For local OTP testing, set `APP_ENV=local` and `SMS_PROVIDER=log`. The one-time code is written only to the PHP error log. This development driver is forbidden in production.
-19. Optionally set `MEDIA_BASE_URL` to the HTTPS base URL of your public media storage. Without it, media metadata is returned but image URLs are `null`.
-20. Route `/api/v1/*` to `api/v1/index.php` using the web server rewrite configuration, or call the PHP entry point directly while developing.
+15. Apply `database/migrations/2026_11_06_order_assignments.sql` to enable tenant-safe picker and courier assignments.
+16. Apply `database/migrations/2026_11_06_notifications.sql` to enable customer, staff and manager notification inboxes.
+17. Apply `database/migrations/2026_11_06_order_wallet_refunds.sql` to enable audited full-order wallet-credit refunds and referral reward reversals.
+18. Apply `database/migrations/2026_11_06_domain_verification_challenge.sql` to enable expiring DNS TXT domain ownership challenges.
+19. For an existing database, review and repair inconsistent tenant references before applying migrations. Never run schema or demo seed imports over a live production database.
+20. The demo seed configures the `localhost` domain for a disposable local demo. For a new tenant, use the platform dashboard and publish its generated DNS TXT challenge before activation.
+21. Configure `DB_HOST`, `DB_DATABASE`, `DB_USERNAME` and `DB_PASSWORD` in the PHP server environment. Set a unique `APP_KEY` of at least 32 characters. Keep all secrets out of Git.
+22. For local OTP testing, set `APP_ENV=local` and `SMS_PROVIDER=log`. The one-time code is written only to the PHP error log. This development driver is forbidden in production.
+23. Optionally set `MEDIA_BASE_URL` to the HTTPS base URL of your public media storage. Without it, media metadata is returned but image URLs are `null`.
+24. Route `/api/v1/*` to `api/v1/index.php` using the web server rewrite configuration, or call the PHP entry point directly while developing.
 
 ## Create a local test account
 The sample seed contains no customer accounts. In a disposable local database, create one active test user with phpMyAdmin:
@@ -77,8 +81,22 @@ OTP login works only for an existing user whose status is `active`. The sample s
 
 The API resolves the tenant by the verified request host. A tenant identifier supplied by a browser is intentionally not accepted.
 
+## Platform administration and tenant onboarding
+
+After all migrations, create an active user and complete OTP verification on the dedicated platform operations tenant. Edit `database/bootstrap-platform-admin.sql` with that tenant ID and verified mobile number, then run it once. Open `platform.php` and create a tenant. The dashboard displays a one-time DNS TXT record at `_supermarket360-verification.<domain>`; publish its value in the domain's DNS zone. The challenge expires after 24 hours and can be reissued. The API activates the tenant only after the TXT record matches. The new store owner account remains pending until the tenant is active and the owner completes OTP login.
+
+Do not suspend the platform administrator's home tenant. The API prevents self-suspension.
+
+## Staff tasks and notifications
+
+Employees with `orders.pick` and/or `orders.deliver` permissions open `staff.php` to view only their own active assignments. Customers, staff and store managers can open `notifications.php` to view their own tenant-scoped messages. Notifications are in-app messages; production SMS still requires the configured provider.
+
+## Full wallet-credit refunds
+
+Managers with `orders.refund` can issue a full refund to the customer's internal wallet from the order detail panel. The API requires one verified payment attempt for the full order amount, records an append-only wallet credit, reverses any referral reward associated with the qualifying order and marks the order refunded. This is store credit, not a bank-card or ZarinPal refund. Returned goods are not automatically restocked and must be inspected and received separately.
+
 ## Not production-ready yet
-Before real customers or money are involved, configure and test the merchant's live SMS and ZarinPal credentials, HTTPS domain, least-privilege database user, media storage, scheduled reservation worker, backups and monitoring. Complete sandbox and low-value live payment acceptance, refund/reconciliation procedures, security review and desktop/mobile acceptance tests. Platform super-admin and role-management interfaces, wallet spending/refunds and optional WebGL free movement remain unfinished. Never expose database errors or provider secrets to clients.
+Before real customers or money are involved, configure and test the merchant's live SMS and ZarinPal credentials, HTTPS domain, least-privilege database user, media storage, scheduled reservation worker, backups and monitoring. Complete sandbox and low-value live payment acceptance, refund/reconciliation procedures, security review and desktop/mobile acceptance tests. Platform super-admin tenant provisioning, DNS TXT verification, staff task center, notifications and full wallet-credit refunds are implemented. Wallet checkout spending, automated bank/gateway refunds, returned-stock intake and optional WebGL free movement remain unfinished. Never expose database errors or provider secrets to clients.
 
 
 ## Reservation expiry worker
