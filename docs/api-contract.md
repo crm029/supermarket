@@ -155,3 +155,10 @@ Checkout intentionally does not mark an order paid. Reservations expire after 20
 ## Media library
 - `GET /admin/media` lists up to 200 newest media assets in the verified tenant, including safe public URL, dimensions, media type, and usage count across product/category/scene references. Requires `media.manage`.
 - `POST /admin/media` remains the CSRF-protected upload endpoint. Unused-file deletion and orphan reconciliation are not implemented yet.
+
+
+## Product barcodes and low-stock thresholds
+- Product barcodes are optional but unique within each tenant; the same barcode may be used by different tenants.
+- `low_stock_threshold` is an integer from 0 to 1,000,000. A value of `0` disables the warning; the default is `5`.
+- The seller inventory view shows per-warehouse available quantity against the product threshold. The dashboard low-stock count aggregates available stock across active warehouses and counts products at or below their threshold.
+- Existing duplicate non-empty barcodes must be resolved before applying `2026_11_05_barcode_stock_thresholds.sql`; blank legacy barcodes are normalized to NULL by the migration.

@@ -15,7 +15,16 @@ function app_admin_report_overview(PDO $db, array $tenant): never {
     $orders->execute([$tenantId]);
     $summary=$orders->fetch() ?: [];
     $stock=$db->prepare(
-        'SELECT COUNT(*) FROM stock_levels WHERE tenant_id=? AND on_hand-reserved <= 5'
+        'SELECT COUNT(*) FROM (
+           SELECT p.id,p.low_stock_threshold,
+                  COALESCE(SUM(CASE WHEN w.is_active=1 THEN sl.on_hand-sl.reserved ELSE 0 END),0) AS available_quantity
+           FROM products p
+           LEFT JOIN stock_levels sl ON sl.tenant_id=p.tenant_id AND sl.product_id=p.id
+           LEFT JOIN warehouses w ON w.tenant_id=sl.tenant_id AND w.id=sl.warehouse_id
+           WHERE p.tenant_id=? AND p.is_active=1 AND p.low_stock_threshold>0
+           GROUP BY p.id,p.low_stock_threshold
+           HAVING available_quantity <= p.low_stock_threshold
+         ) low_stock_products'
     );
     $stock->execute([$tenantId]);
     $lowStock=(int)$stock->fetchColumn();

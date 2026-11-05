@@ -57,6 +57,14 @@ function app_admin_product_payload(array $body, bool $partial = false): array {
         }
     }
 
+    if (!$partial || array_key_exists('low_stock_threshold', $body)) {
+        $threshold = filter_var($body['low_stock_threshold'] ?? 5, FILTER_VALIDATE_INT);
+        if ($threshold === false || $threshold < 0 || $threshold > 1000000) {
+            app_json(['error' => 'حد هشدار موجودی باید عددی بین صفر تا یک میلیون باشد.'], 422);
+        }
+        $data['low_stock_threshold'] = $threshold;
+    }
+
     foreach (['is_weighted', 'is_active'] as $field) {
         if (!$partial || array_key_exists($field, $body)) {
             $value = $body[$field] ?? ($field === 'is_active');
@@ -109,7 +117,7 @@ function app_admin_product_list(PDO $db, array $tenant): never {
     $count->execute($params);
     $stmt = $db->prepare(
         "SELECT id, sku, barcode, title, brand, description, unit_label,
-                price_rial, compare_at_rial, category_id, is_weighted, is_active
+                price_rial, compare_at_rial, category_id, is_weighted, is_active, low_stock_threshold
          FROM products WHERE {$sqlWhere}
          ORDER BY id DESC LIMIT {$limit} OFFSET " . (($page - 1) * $limit)
     );
@@ -129,10 +137,10 @@ function app_admin_product_create(PDO $db, array $tenant, array $session): never
         $stmt = $db->prepare(
             "INSERT INTO products
               (tenant_id, category_id, sku, barcode, title, brand, description,
-               unit_label, price_rial, compare_at_rial, is_weighted, is_active)
+               unit_label, price_rial, compare_at_rial, is_weighted, is_active, low_stock_threshold)
              VALUES
               (:tenant, :category_id, :sku, :barcode, :title, :brand, :description,
-               :unit_label, :price_rial, :compare_at_rial, :is_weighted, :is_active)"
+               :unit_label, :price_rial, :compare_at_rial, :is_weighted, :is_active, :low_stock_threshold)"
         );
         $stmt->execute([
             'tenant' => $tenant['id'],
@@ -147,6 +155,7 @@ function app_admin_product_create(PDO $db, array $tenant, array $session): never
             'compare_at_rial' => $data['compare_at_rial'],
             'is_weighted' => $data['is_weighted'],
             'is_active' => $data['is_active'],
+            'low_stock_threshold' => $data['low_stock_threshold'],
         ]);
         $id = (int)$db->lastInsertId();
         app_audit_log($db, (int)$tenant['id'], (int)$session['id'], 'catalog.product.created', 'product', $id, [
@@ -157,7 +166,7 @@ function app_admin_product_create(PDO $db, array $tenant, array $session): never
     } catch (PDOException $e) {
         if ($db->inTransaction()) $db->rollBack();
         if ($e->getCode() === '23000' && (int)($e->errorInfo[1] ?? 0) === 1062) {
-            app_json(['error' => 'کد کالا قبلاً در این فروشگاه ثبت شده است.'], 409);
+            app_json(['error' => 'کد کالا یا بارکد قبلاً در این فروشگاه ثبت شده است.'], 409);
         }
         throw $e;
     } catch (Throwable $e) {
@@ -171,7 +180,7 @@ function app_admin_product_update(PDO $db, array $tenant, array $session, int $i
     if ($data === []) app_json(['error' => 'هیچ فیلدی برای ویرایش ارسال نشده است.'], 422);
     $allowed = [
         'sku', 'title', 'price_rial', 'category_id', 'compare_at_rial',
-        'barcode', 'brand', 'unit_label', 'description', 'is_weighted', 'is_active',
+        'barcode', 'brand', 'unit_label', 'description', 'is_weighted', 'is_active', 'low_stock_threshold',
     ];
     $sets = [];
     $params = ['tenant' => $tenant['id'], 'id' => $id];
@@ -211,7 +220,7 @@ function app_admin_product_update(PDO $db, array $tenant, array $session, int $i
     } catch (PDOException $e) {
         if ($db->inTransaction()) $db->rollBack();
         if ($e->getCode() === '23000' && (int)($e->errorInfo[1] ?? 0) === 1062) {
-            app_json(['error' => 'کد کالا با کالای دیگری تداخل دارد.'], 409);
+            app_json(['error' => 'کد کالا یا بارکد با کالای دیگری تداخل دارد.'], 409);
         }
         throw $e;
     } catch (Throwable $e) {

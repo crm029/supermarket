@@ -47,7 +47,9 @@ function app_inventory_stock_list(PDO $db, array $tenant): never {
     }
     $stmt=$db->prepare(
         'SELECT sl.warehouse_id,w.title AS warehouse_title,sl.product_id,p.sku,p.title AS product_title,
-                p.unit_label,sl.on_hand,sl.reserved,(sl.on_hand-sl.reserved) AS available_quantity
+                p.unit_label,sl.on_hand,sl.reserved,(sl.on_hand-sl.reserved) AS available_quantity,
+                p.low_stock_threshold,
+                CASE WHEN p.low_stock_threshold > 0 AND (sl.on_hand-sl.reserved) <= p.low_stock_threshold THEN 1 ELSE 0 END AS is_low_stock
          FROM stock_levels sl
          JOIN warehouses w ON w.tenant_id=sl.tenant_id AND w.id=sl.warehouse_id
          JOIN products p ON p.tenant_id=sl.tenant_id AND p.id=sl.product_id

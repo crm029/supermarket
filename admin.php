@@ -45,12 +45,14 @@ declare(strict_types=1);
         <h3 id="productFormTitle">افزودن محصول</h3><input type="hidden" id="productId">
         <div class="admin-form-grid">
           <label>کد کالا (SKU)<input id="productSku" maxlength="80" required></label>
+          <label>بارکد<input id="productBarcode" maxlength="80" inputmode="numeric"></label>
           <label>نام محصول<input id="productTitle" maxlength="180" required></label>
           <label>قیمت (تومان)<input id="productPrice" type="number" min="0" step="1" required></label>
           <label>دسته‌بندی<select id="productCategory"><option value="">بدون دسته‌بندی</option></select></label>
           <label>برند<input id="productBrand" maxlength="120"></label>
           <label>شناسه تصویر محصول<input id="productMediaId" type="number" min="1"></label>
           <label>واحد فروش<input id="productUnit" maxlength="80" value="عدد"></label>
+          <label>حد هشدار موجودی<input id="productLowStockThreshold" type="number" min="0" max="1000000" step="1" value="5" required></label>
         </div>
         <label>توضیحات<textarea id="productDescription" rows="3" maxlength="10000"></textarea></label>
         <div class="admin-form-actions"><button class="primary-button" type="submit">ذخیره محصول</button><button class="text-button" id="cancelProductForm" type="button">انصراف</button></div>
@@ -84,7 +86,7 @@ declare(strict_types=1);
       <form id="transferForm" class="admin-form">
         <h3>انتقال بین انبارها</h3><div class="admin-form-grid"><label>از انبار<select id="transferFrom" required></select></label><label>به انبار<select id="transferTo" required></select></label><label>محصول<select id="transferProduct" required></select></label><label>تعداد انتقال<input id="transferQuantity" type="number" min="1" max="1000000" required></label></div><button class="primary-button" type="submit">ثبت انتقال</button>
       </form>
-      <h3>موجودی فعلی</h3><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>محصول</th><th>انبار</th><th>موجودی</th><th>رزروشده</th><th>قابل فروش</th></tr></thead><tbody id="stockRows"><tr><td colspan="5">در حال بارگذاری...</td></tr></tbody></table></div>
+      <h3>موجودی فعلی</h3><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>محصول</th><th>انبار</th><th>موجودی</th><th>رزروشده</th><th>قابل فروش</th><th>حد هشدار</th></tr></thead><tbody id="stockRows"><tr><td colspan="6">در حال بارگذاری...</td></tr></tbody></table></div>
     </section>
     <section class="admin-panel" id="panel-staff">
       <div class="admin-heading"><div><p class="eyebrow">مدیریت تیم فروشگاه</p><h2>کارکنان و سطح دسترسی</h2></div><button class="text-button" id="reloadStaff" type="button">به‌روزرسانی</button></div>
