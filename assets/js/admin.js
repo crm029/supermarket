@@ -99,6 +99,9 @@ async function loadPurchasing(){
     }).join("")||'<p>هنوز سفارش خریدی ثبت نشده است.</p>';
     const warehouseOptions=warehouses.filter(w=>Number(w.is_active)).map(w=>'<option value="'+Number(w.id)+'">'+escapeText(w.title)+'</option>').join("");
     document.getElementById("receiveWarehouse").innerHTML='<option value="">انتخاب انبار</option>'+warehouseOptions;
+    document.getElementById("returnSupplier").innerHTML='<option value="">انتخاب تأمین‌کننده</option>'+supplierOptions;
+    document.getElementById("returnWarehouse").innerHTML='<option value="">انتخاب انبار</option>'+warehouseOptions;
+    await loadSupplierReturns();
     if(selectedPurchaseOrder) await loadPurchaseOrderItems(selectedPurchaseOrder);
   }catch(error){
     document.getElementById("purchaseOrderMessage").textContent=error.message;
@@ -211,6 +214,76 @@ document.getElementById("purchaseReceiveForm").addEventListener("submit",async e
   }
 });
 
+let supplierReturnLines=[];
+async function loadSupplierReturnLines(){
+  const supplierId=Number(document.getElementById("returnSupplier").value);
+  const warehouseId=Number(document.getElementById("returnWarehouse").value);
+  const select=document.getElementById("returnReceiptItem");
+  select.innerHTML='<option value="">ابتدا تأمین‌کننده و انبار را انتخاب کنید</option>';
+  if(!supplierId||!warehouseId)return;
+  try{
+    const result=await request("admin/supplier-returns/eligible-lines?supplier_id="+supplierId+"&warehouse_id="+warehouseId);
+    supplierReturnLines=result.data||[];
+    select.innerHTML=supplierReturnLines.map(item=>
+      '<option value="'+Number(item.receipt_item_id)+'" data-remaining="'+Number(item.remaining_quantity)+'">'+
+      escapeText(item.product_title)+' · '+escapeText(item.order_number)+' · مانده قابل مرجوعی '+Number(item.remaining_quantity)+'</option>'
+    ).join("")||'<option value="">رسید قابل مرجوعی وجود ندارد</option>';
+    const first=supplierReturnLines[0];
+    document.getElementById("returnQuantity").max=first?String(Number(first.remaining_quantity)):"1";
+    document.getElementById("returnQuantity").value=first?String(Number(first.remaining_quantity)):"";
+  }catch(error){
+    document.getElementById("supplierReturnMessage").textContent=error.message;
+    document.getElementById("supplierReturnMessage").className="form-message error";
+  }
+}
+async function loadSupplierReturns(){
+  try{
+    const result=await request("admin/supplier-returns");
+    const rows=result.data||[];
+    document.getElementById("supplierReturnRows").innerHTML=rows.map(item=>
+      '<article><div><strong>'+escapeText(item.return_number)+'</strong>'+
+      '<small>'+escapeText(item.supplier_name)+' · '+escapeText(item.warehouse_title)+'</small>'+
+      '<small>'+escapeText(item.reason)+' · تعداد: '+Number(item.returned_quantity)+'</small>'+
+      '<small>ارزش مرجوعی: '+money(Number(item.return_value_rial)/10)+'</small></div>'+
+      '<span class="admin-status inactive">ثبت‌شده</span></article>'
+    ).join("")||'<p>هنوز مرجوعی ثبت نشده است.</p>';
+  }catch(error){
+    document.getElementById("supplierReturnRows").textContent=error.message;
+  }
+}
+document.getElementById("returnSupplier").addEventListener("change",loadSupplierReturnLines);
+document.getElementById("returnWarehouse").addEventListener("change",loadSupplierReturnLines);
+document.getElementById("returnReceiptItem").addEventListener("change",event=>{
+  const option=event.target.selectedOptions[0];
+  if(!option)return;
+  document.getElementById("returnQuantity").max=option.dataset.remaining||"1";
+  document.getElementById("returnQuantity").value=option.dataset.remaining||"";
+});
+document.getElementById("supplierReturnForm").addEventListener("submit",async event=>{
+  event.preventDefault();
+  const receiptItemId=Number(document.getElementById("returnReceiptItem").value);
+  const quantity=Number(document.getElementById("returnQuantity").value);
+  const max=Number(document.getElementById("returnReceiptItem").selectedOptions[0]?.dataset.remaining||0);
+  const supplierId=Number(document.getElementById("returnSupplier").value);
+  const warehouseId=Number(document.getElementById("returnWarehouse").value);
+  if(!supplierId||!warehouseId||!receiptItemId||!Number.isInteger(quantity)||quantity<1||quantity>max){
+    document.getElementById("supplierReturnMessage").textContent="تأمین‌کننده، انبار، قلم رسید و تعداد مرجوعی را بررسی کنید.";
+    document.getElementById("supplierReturnMessage").className="form-message error";return;
+  }
+  try{
+    const result=await request("admin/supplier-returns",{method:"POST",csrf:true,body:JSON.stringify({
+      supplier_id:supplierId,warehouse_id:warehouseId,reason:document.getElementById("returnReason").value.trim(),
+      notes:document.getElementById("returnNotes").value.trim(),items:[{receipt_item_id:receiptItemId,quantity}]
+    })});
+    event.target.reset();
+    await loadInventory();await loadPurchasing();await loadSupplierReturnLines();await loadSupplierReturns();
+    document.getElementById("supplierReturnMessage").textContent="مرجوعی "+result.data.return_number+" ثبت شد و موجودی آزاد کاهش یافت.";
+    document.getElementById("supplierReturnMessage").className="form-message success";
+  }catch(error){
+    document.getElementById("supplierReturnMessage").textContent=error.message;
+    document.getElementById("supplierReturnMessage").className="form-message error";
+  }
+});
 let staffData = {roles:[],staff:[],permissions:[]};
 async function loadStaff() {
   try {
