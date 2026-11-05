@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/policies.php';
+require_once __DIR__ . '/notifications.php';
 
 function app_admin_order_assignment_list(PDO $db, array $tenant, int $orderId): never {
     $order = $db->prepare('SELECT id,fulfillment,status FROM orders WHERE tenant_id=? AND id=? LIMIT 1');
@@ -48,7 +49,7 @@ function app_admin_order_assignment_create(PDO $db, array $tenant, array $sessio
     $permission=$type==='picker'?'orders.pick':'orders.deliver';
     $db->beginTransaction();
     try{
-        $orderQuery=$db->prepare('SELECT id,status,fulfillment FROM orders WHERE tenant_id=? AND id=? FOR UPDATE');
+        $orderQuery=$db->prepare('SELECT id,order_number,status,fulfillment FROM orders WHERE tenant_id=? AND id=? FOR UPDATE');
         $orderQuery->execute([$tenant['id'],$orderId]);
         $order=$orderQuery->fetch(PDO::FETCH_ASSOC);
         if(!$order){
@@ -88,11 +89,25 @@ function app_admin_order_assignment_create(PDO $db, array $tenant, array $sessio
             $db->rollBack();
             app_json(['error'=>'کارمند فعال با مجوز لازم در همین فروشگاه پیدا نشد.'],422);
         }
+        $oldAssignments=$db->prepare(
+            "SELECT id,assignee_user_id FROM order_assignments
+             WHERE tenant_id=? AND order_id=? AND assignment_type=? AND status='active' FOR UPDATE"
+        );
+        $oldAssignments->execute([$tenant['id'],$orderId,$type]);
+        $previous=$oldAssignments->fetchAll(PDO::FETCH_ASSOC);
         $replace=$db->prepare(
             "UPDATE order_assignments SET status='replaced'
              WHERE tenant_id=? AND order_id=? AND assignment_type=? AND status='active'"
         );
         $replace->execute([$tenant['id'],$orderId,$type]);
+        foreach($previous as $old){
+            if((int)$old['assignee_user_id']!==$assigneeId){
+                app_notification_create($db,(int)$tenant['id'],(int)$old['assignee_user_id'],
+                    'assignment-replaced-'.$old['id'],'assignment','وظیفه سفارش تغییر کرد',
+                    'مسئولیت قبلی شما برای سفارش '.$order['order_number'].' به کارمند دیگری واگذار شد.',
+                    'order',$orderId);
+            }
+        }
         $insert=$db->prepare(
             "INSERT INTO order_assignments
              (tenant_id,order_id,assignee_user_id,assignment_type,status,assigned_by_user_id)
@@ -103,6 +118,10 @@ function app_admin_order_assignment_create(PDO $db, array $tenant, array $sessio
         app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'order.assignment.'.$type,'order',$orderId,[
             'assignment_id'=>$id,'assignee_user_id'=>$assigneeId
         ]);
+        $assignmentLabel=$type==='picker'?'جمع‌آوری اقلام':'ارسال و تحویل';
+        app_notification_create($db,(int)$tenant['id'],$assigneeId,'assignment-created-'.$id,'assignment',
+            'وظیفه جدید به شما واگذار شد',
+            $assignmentLabel.' سفارش '.$order['order_number'].' به شما واگذار شده است.','order',$orderId);
         $db->commit();
         app_json(['data'=>['id'=>$id,'order_id'=>$orderId,'assignee_user_id'=>$assigneeId,'assignment_type'=>$type],
             'message'=>'مسئول سفارش با موفقیت تخصیص یافت.'],201);
