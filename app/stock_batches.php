@@ -7,6 +7,54 @@ require_once __DIR__ . '/bootstrap.php';
  * Lists traceable inventory lots. Legacy stock is represented by synthetic
  * lots without an expiry date until it is physically verified by staff.
  */
+
+/** Create an additional lot for stock entering a warehouse. */
+function app_stock_batch_add(PDO $db, int $tenantId, int $warehouseId, int $productId, int $quantity, string $batchNumber, ?string $expiryDate, int $unitCostRial = 0, ?int $receiptItemId = null): void {
+    if ($quantity < 1) throw new InvalidArgumentException('Batch quantity must be positive.');
+    $stmt = $db->prepare(
+        'INSERT INTO stock_batches (tenant_id,warehouse_id,product_id,receipt_item_id,batch_number,expiry_date,received_quantity,on_hand,reserved,unit_cost_rial)
+         VALUES (?,?,?,?,?,?,?, ?,0,?)
+         ON DUPLICATE KEY UPDATE received_quantity=received_quantity+VALUES(received_quantity),on_hand=on_hand+VALUES(on_hand)'
+    );
+    $stmt->execute([$tenantId,$warehouseId,$productId,$receiptItemId,$batchNumber,$expiryDate,$quantity,$quantity,$unitCostRial]);
+}
+
+/** Consume only unreserved stock, oldest expiry first; NULL expiry is last. */
+function app_stock_batch_consume(PDO $db, int $tenantId, int $warehouseId, int $productId, int $quantity, ?int $receiptItemId = null): array {
+    if ($quantity < 1) throw new InvalidArgumentException('Batch consumption must be positive.');
+    $sql = 'SELECT id,batch_number,expiry_date,on_hand,reserved,unit_cost_rial,receipt_item_id
+            FROM stock_batches
+            WHERE tenant_id=? AND warehouse_id=? AND product_id=? AND on_hand>reserved';
+    $params = [$tenantId,$warehouseId,$productId];
+    if ($receiptItemId !== null) { $sql .= ' AND receipt_item_id=?'; $params[] = $receiptItemId; }
+    $sql .= ' ORDER BY (expiry_date IS NULL),expiry_date,received_at,id FOR UPDATE';
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+    $remaining = $quantity;
+    $taken = [];
+    $update = $db->prepare('UPDATE stock_batches SET on_hand=on_hand-? WHERE tenant_id=? AND id=? AND on_hand-reserved>=?');
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $batch) {
+        if ($remaining === 0) break;
+        $available = (int)$batch['on_hand'] - (int)$batch['reserved'];
+        $take = min($remaining,$available);
+        if ($take < 1) continue;
+        $update->execute([$take,$tenantId,$batch['id'],$take]);
+        if ($update->rowCount() !== 1) throw new RuntimeException('Batch stock changed during consumption.');
+        $taken[] = ['batch_number'=>$batch['batch_number'],'expiry_date'=>$batch['expiry_date'],'quantity'=>$take,'unit_cost_rial'=>(int)$batch['unit_cost_rial'],'receipt_item_id'=>$batch['receipt_item_id']];
+        $remaining -= $take;
+    }
+    if ($remaining > 0) throw new RuntimeException('Insufficient unreserved batch stock for this operation.');
+    return $taken;
+}
+
+/** Transfer lot identity and expiry metadata without losing traceability. */
+function app_stock_batch_transfer(PDO $db, int $tenantId, int $fromWarehouseId, int $toWarehouseId, int $productId, int $quantity): void {
+    $lots = app_stock_batch_consume($db,$tenantId,$fromWarehouseId,$productId,$quantity);
+    foreach ($lots as $lot) {
+        app_stock_batch_add($db,$tenantId,$toWarehouseId,$productId,$lot['quantity'],$lot['batch_number'],$lot['expiry_date'],$lot['unit_cost_rial']);
+    }
+}
+
 function app_admin_stock_batch_list(PDO $db, array $tenant): never {
     $warehouseId = filter_input(INPUT_GET, 'warehouse_id', FILTER_VALIDATE_INT);
     $productId = filter_input(INPUT_GET, 'product_id', FILTER_VALIDATE_INT);
