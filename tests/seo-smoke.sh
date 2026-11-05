@@ -51,6 +51,15 @@ check_page "/category.php?slug=dairy" "عنوان سئو دسته تست"
 check_page "/category.php?slug=dairy" "توضیحات متا دسته تست"
 check_page "/index.php" 'rel="canonical" href="http://localhost/"'
 check_page "/index.php" 'application/ld+json'
+check_page "/index.php" 'name="google-site-verification" content="testverificationtoken123"'
+check_page "/index.php" 'data-ga4-measurement="G-ABC1234567"'
+check_page "/product/1/test-product" 'data-ga4-measurement="G-ABC1234567"'
+check_page "/category.php?slug=dairy" 'data-ga4-measurement="G-ABC1234567"'
+check_page "/payment-result.php?status=success&order=999999" 'data-ga4-measurement="G-ABC1234567"'
+if grep -Fq "sm360Track('purchase'" "$OUT"; then
+  echo "Unverified payment result must not emit a purchase event"
+  exit 1
+fi
 check_page "/index.php" 'PostalAddress'
 check_page "/index.php" 'خیابان نمونه، پلاک ۱۰'
 check_page "/index.php" 'GeoCoordinates'
