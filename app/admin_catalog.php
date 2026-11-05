@@ -184,11 +184,20 @@ function app_admin_product_update(PDO $db, array $tenant, array $session, int $i
 
     $db->beginTransaction();
     try {
-        $exists = $db->prepare('SELECT id FROM products WHERE tenant_id = ? AND id = ? FOR UPDATE');
+        $exists = $db->prepare('SELECT id, price_rial, compare_at_rial FROM products WHERE tenant_id = ? AND id = ? FOR UPDATE');
         $exists->execute([$tenant['id'], $id]);
-        if (!$exists->fetchColumn()) {
+        $current = $exists->fetch();
+        if (!$current) {
             $db->rollBack();
             app_json(['error' => 'کالا پیدا نشد.'], 404);
+        }
+        $nextPrice = $data['price_rial'] ?? (int)$current['price_rial'];
+        $nextCompare = array_key_exists('compare_at_rial', $data)
+            ? $data['compare_at_rial']
+            : ($current['compare_at_rial'] === null ? null : (int)$current['compare_at_rial']);
+        if ($nextCompare !== null && $nextCompare < $nextPrice) {
+            $db->rollBack();
+            app_json(['error' => 'قیمت قبل از تخفیف نمی‌تواند از قیمت فعلی کمتر باشد.'], 422);
         }
 
         $stmt = $db->prepare('UPDATE products SET ' . implode(', ', $sets) . ' WHERE tenant_id = :tenant AND id = :id');
