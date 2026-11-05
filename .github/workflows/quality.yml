@@ -44,7 +44,8 @@ jobs:
           node-version: "22"
 
       - name: Check storefront JavaScript syntax
-        run: node --check assets/js/app.js
+        run: |
+          node --check assets/js/app.js
           node --check assets/js/admin.js
 
       - name: Check patch whitespace
