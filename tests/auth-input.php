@@ -21,7 +21,7 @@ foreach ($valid as $input => $expected) {
 }
 
 foreach (['123456789', '0912345678', '08123456789', '+441234567890', '09abc456789'] as $invalid) {
-    if (app_auth_mobile($invalid) !== null) {
+    if (app_auth_mobile((string)$invalid) !== null) {
         throw new RuntimeException('Invalid mobile number was accepted: ' . $invalid);
     }
 }
