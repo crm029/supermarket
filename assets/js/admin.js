@@ -763,10 +763,10 @@ async function loadStockBatches() {
       '<td><strong>'+number(item.available_quantity)+'</strong></td>'+
       '<td><span class="admin-status '+(classes[item.expiry_state]||"")+'">'+(labels[item.expiry_state]||"نامشخص")+'</span></td>'+
       '<td>'+(item.expiry_state==="expired"&&Number(item.available_quantity)>0?'<button class="admin-row-action danger" data-writeoff-batch="'+Number(item.id)+'" data-available="'+Number(item.available_quantity)+'">ثبت امحا</button>':"—")+'</td></tr>'
-    ).join("")||'<tr><td colspan="8">برای این فیلتر بچی پیدا نشد.</td></tr>';
+    ).join("")||'<tr><td colspan="9">برای این فیلتر بچی پیدا نشد.</td></tr>';
   } catch(error) {
     document.getElementById("stockExpirySummary").textContent=error.message;
-    rows.innerHTML='<tr><td colspan="8">'+escapeText(error.message)+'</td></tr>';
+    rows.innerHTML='<tr><td colspan="9">'+escapeText(error.message)+'</td></tr>';
   }
 }
 function renderInventory() {
