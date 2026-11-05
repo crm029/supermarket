@@ -761,11 +761,12 @@ async function loadStockBatches() {
       '<td>'+escapeText(item.expiry_date||"ثبت نشده")+'</td>'+
       '<td>'+number(item.on_hand)+'</td><td>'+number(item.reserved)+'</td>'+
       '<td><strong>'+number(item.available_quantity)+'</strong></td>'+
-      '<td><span class="admin-status '+(classes[item.expiry_state]||"")+'">'+(labels[item.expiry_state]||"نامشخص")+'</span></td></tr>'
-    ).join("")||'<tr><td colspan="8">برای این فیلتر بچی پیدا نشد.</td></tr>';
+      '<td><span class="admin-status '+(classes[item.expiry_state]||"")+'">'+(labels[item.expiry_state]||"نامشخص")+'</span></td>'+
+      '<td>'+(item.expiry_state==="expired"&&Number(item.available_quantity)>0?'<button class="admin-row-action danger" data-writeoff-batch="'+Number(item.id)+'" data-available="'+Number(item.available_quantity)+'">ثبت امحا</button>':"—")+'</td></tr>'
+    ).join("")||'<tr><td colspan="9">برای این فیلتر بچی پیدا نشد.</td></tr>';
   } catch(error) {
     document.getElementById("stockExpirySummary").textContent=error.message;
-    rows.innerHTML='<tr><td colspan="8">'+escapeText(error.message)+'</td></tr>';
+    rows.innerHTML='<tr><td colspan="9">'+escapeText(error.message)+'</td></tr>';
   }
 }
 function renderInventory() {
@@ -1050,6 +1051,23 @@ document.getElementById("orderRows").addEventListener("click",async e=>{
 
 document.getElementById("reloadInventory").addEventListener("click",loadInventory);
 document.getElementById("reloadStockBatches").addEventListener("click",loadStockBatches);
+document.getElementById("stockBatchRows").addEventListener("click",async e=>{
+  const button=e.target.closest("[data-writeoff-batch]");
+  if(!button)return;
+  const available=Number(button.dataset.available)||0;
+  const rawQuantity=window.prompt("تعداد امحا (حداکثر "+available+")",String(available));
+  if(rawQuantity===null)return;
+  const quantity=Number(rawQuantity);
+  if(!Number.isSafeInteger(quantity)||quantity<1||quantity>available){message("تعداد امحا معتبر نیست.","error");return;}
+  const reason=window.prompt("دلیل امحا را وارد کنید:","کالای منقضی‌شده");
+  if(reason===null||!reason.trim())return;
+  if(!window.confirm("امحای "+quantity+" واحد از این بچ ثبت شود؟ این عملیات قابل برگشت خودکار نیست."))return;
+  button.disabled=true;
+  try{
+    await request("admin/stock-batches/writeoff",{method:"POST",body:JSON.stringify({batch_id:Number(button.dataset.writeoffBatch),quantity,reason:reason.trim()}),csrf:true});
+    await loadInventory();await loadStockBatches();message("امحای کالای منقضی‌شده ثبت شد.","success");
+  }catch(error){message(error.message,"error");button.disabled=false;}
+});
 document.getElementById("stockBatchState").addEventListener("change",loadStockBatches);
 document.getElementById("stockBatchDays").addEventListener("change",loadStockBatches);
 document.getElementById("warehouseForm").addEventListener("submit",async e=>{

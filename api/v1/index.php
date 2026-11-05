@@ -152,6 +152,13 @@ try {
         app_inventory_transfer($db, $tenant, $session);
     }
 
+    if ($path === '/admin/stock-batches/writeoff' && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'inventory.manage');
+        app_admin_stock_batch_writeoff($db, $tenant, $session);
+    }
+
     if ($path === '/admin/stock-batches' && $method === 'GET') {
         $session = app_auth_require($db, $tenant);
         app_auth_require_permission($db, $tenant, $session, 'inventory.read');
