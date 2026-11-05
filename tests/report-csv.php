@@ -8,6 +8,7 @@ $cases = [
     '+SUM(A1:A2)' => "'+SUM(A1:A2)",
     '@cmd' => "'@cmd",
     "-formula" => "'-formula",
+    "\n=1+1" => "'\n=1+1",
     "متن عادی" => "متن عادی",
 ];
 foreach ($cases as $input=>$expected) {
