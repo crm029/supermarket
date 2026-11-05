@@ -80,4 +80,4 @@ Base path: `/api/v1`. JSON responses use UTF-8 and Persian user-facing messages.
 - `POST /checkout` — authenticated, CSRF-protected checkout. Accepts line items, `fulfillment` (`delivery` or `pickup`), optional delivery `address_id`, and `customer_note`. Prices are recalculated inside a transaction, stock is reserved across active warehouses, and a pending-payment order is created.
 - `GET /me/orders` — authenticated customer's latest 100 orders.
 
-Checkout intentionally does not mark an order paid. Reservations expire after 20 minutes; a verified payment provider and a reservation-expiry worker are required before production payment/order completion. Delivery is currently free by the original store brief; delivery zones and configurable fees remain future work.
+Checkout intentionally does not mark an order paid. Reservations expire after 20 minutes; run `bin/expire-reservations.php` from cron/Task Scheduler every minute. A verified payment provider is still required before production payment/order completion. Delivery is currently free by the original store brief; delivery zones and configurable fees remain future work.
