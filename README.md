@@ -12,27 +12,26 @@ A multi-tenant, white-label supermarket commerce platform with an immersive virt
 
 ## Current repository status
 
-This repository contains a visual PHP storefront prototype plus a tenant-aware catalog API and an initial customer OTP login/session API. It is an active development build, **not yet a production-ready commerce service**.
+The repository now contains a tenant-aware PHP commerce backend, customer authentication, catalogue and stock operations, a photo-tour storefront editor, checkout and a ZarinPal adapter. It remains an active development build, **not yet approved for production**.
 
-Implemented in this milestone:
-- Persian RTL responsive storefront demo with category navigation, product cards, search and local demo cart.
-- MySQL schema foundation for tenants/domains, users/roles, media, categories/products, virtual-store scenes/hotspots, multi-warehouse stock, stock movements/reservations, orders, payments, wallet ledger, referrals and audit logs.
-- Verified-host tenant resolver and tenant-scoped catalog API routes for store profile, categories, product search/details and published photo-tour scenes/hotspots.
-- Role/permission tables, deny-by-default tenant permission checks, audit logging and permission-guarded product/category administration endpoints.
-- Rate-limited OTP login endpoints, hashed one-time challenges, opaque database-backed sessions, HttpOnly cookies and CSRF-protected logout. The development SMS driver logs codes only to the local PHP error log; no production SMS provider is enabled.
-- Local sample tenant seed and API/setup documentation.
-- GitHub Actions PHP/JavaScript checks plus MySQL 8 migration, tenant-isolation, authentication and permission-scope integration tests.
-- Additive tenant-isolation migration with composite foreign keys for tenant-owned relations and scope guards for role assignments and audit actors.
+Implemented and covered by repository tests:
+- Persian RTL responsive storefront with guided category navigation, live tenant catalogue/product details, photo-tour scenes and interactive product/category/navigation hotspots.
+- Tenant-aware MySQL schema, verified-host tenant resolution, composite tenant-scope constraints and cross-tenant negative tests.
+- OTP registration/login foundation, rate limiting, hashed challenges, database-backed sessions, HttpOnly cookies and CSRF protection; Kavenegar Verify Lookup adapter is available when real credentials are configured.
+- Deny-by-default tenant permission checks and audited product/category administration.
+- Seller dashboard, media uploads, scene/hotspot authoring, multi-warehouse receipts/transfers/adjustments, stock reservation and expiry worker.
+- Server-validated cart quotes, customer addresses, transactional pending checkout, customer order history/cancellation and fulfilment transitions.
+- ZarinPal v4 request/verification adapter with idempotent callbacks and stock commit after server-side verification.
+- Append-only wallet credit ledger, customer balance/history API and configurable first-paid-order referral rewards.
+- GitHub Actions PHP/JavaScript validation and MySQL-backed schema, tenant isolation and HTTP API integration checks.
 
-Not implemented yet:
-- Customer registration, account recovery and production SMS delivery (OTP login currently supports existing active accounts only).
-- Persistent cart, server-side quote validation, transactional checkout and order tracking.
-- Zarinpal integration, payment verification, refunds and reconciliation.
-- Live stock reservation services, multi-warehouse workflows and courier operations.
-- Wallet transactions and referral reward processing.
-- Super-admin, store, cashier, warehouse and courier panels and a role/permission management UI.
-- Product variants/barcode uniqueness and the scene editor, linked photo-tour hotspots and actual WebGL free-movement engine.
-- Production deployment operations, backups, monitoring, load testing and security review.
+Still in progress:
+- Platform super-admin authorization, tenant/domain provisioning, role/permission UI and store branding/settings management.
+- Persistent cross-device cart, product variants/barcodes/promotions, delivery zones/fees and supplier/batch/expiry workflows.
+- Wallet spending, refunds/reversals, advanced referral fraud controls and reward policy approval for each merchant.
+- Cashier/picker/courier assignment, courier tracking, notifications, configurable stock alerts and report exports.
+- Optional WebGL free-movement mode and real-store photography/onboarding.
+- Live merchant SMS/payment credentials, settlement reconciliation, refund acceptance, hosting, backups, monitoring, load/device/accessibility testing and production sign-off.
 
 ## Architecture principles
 
