@@ -92,7 +92,7 @@ declare(strict_types=1);
       </form>
       <form id="sceneForm" class="admin-form">
         <h3>ساخت صحنه جدید</h3>
-        <div class="admin-form-grid"><label>عنوان راهرو<input id="sceneTitle" maxlength="140" required></label><label>نوع صحنه<select id="sceneType"><option value="aisle_photo">تصویر راهرو</option><option value="panorama">پانورامای ۳۶۰</option><option value="webgl_scene">صحنه سه‌بعدی</option></select></label><label>شناسه تصویر اصلی<input id="sceneMediaId" type="number" min="1" required></label><label>شناسه تصویر جایگزین (اختیاری)<input id="sceneFallbackId" type="number" min="1"></label><label>ترتیب نمایش<input id="sceneSort" type="number" min="0" value="0"></label><label class="admin-check-label"><input id="scenePublished" type="checkbox"> انتشار در فروشگاه</label></div>
+        <div class="admin-form-grid"><label>عنوان راهرو<input id="sceneTitle" maxlength="140" required></label><label>نوع صحنه<select id="sceneType"><option value="aisle_photo">تصویر راهرو</option><option value="panorama">پانورامای ۳۶۰</option></select></label><label>شناسه تصویر اصلی<input id="sceneMediaId" type="number" min="1" required></label><label>شناسه تصویر جایگزین (اختیاری)<input id="sceneFallbackId" type="number" min="1"></label><label>ترتیب نمایش<input id="sceneSort" type="number" min="0" value="0"></label><label class="admin-check-label"><input id="scenePublished" type="checkbox"> انتشار در فروشگاه</label></div>
         <button class="primary-button" type="submit">ساخت صحنه</button>
       </form>
       <div id="sceneRows" class="admin-category-list"></div>
