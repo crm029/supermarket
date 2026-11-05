@@ -121,6 +121,15 @@ try {
         app_commerce_order_history($db, $tenant, $session);
     }
 
+    if ($path === '/auth/register' && $method === 'POST') {
+        app_auth_register($db, $tenant);
+    }
+
+    if ($path === '/auth/csrf' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_refresh_csrf($db, $session);
+    }
+
     if ($path === '/auth/request-otp' && $method === 'POST') {
         app_auth_request_otp($db, $tenant);
     }
