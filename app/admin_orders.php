@@ -114,7 +114,6 @@ function app_customer_cancel_order(PDO $db, array $tenant, array $session, int $
         );
         $release = $db->prepare("UPDATE stock_reservations SET status = 'released' WHERE id = ? AND status = 'active'");
         $movement = $db->prepare("INSERT INTO stock_movements (tenant_id,warehouse_id,product_id,actor_user_id,movement_type,quantity,reference_type,reference_id,reason) VALUES (?,?,?,?,'release',?,'order',?,'لغو سفارش توسط مشتری')");
-        //"UPDATE stock_reservations SET status = 'released' WHERE id = ? AND status = 'active'");
         foreach ($rows as $row) {
             $qty = (int)$row['quantity'];
             $releaseStock->execute([$qty,$tenant['id'],$row['warehouse_id'],$row['product_id'],$qty]);
