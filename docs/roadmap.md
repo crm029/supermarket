@@ -7,7 +7,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Document tenant model, data model, API outline, security principles and quality gates.
 - [x] Create visual storefront prototype.
 - [x] Add initial MySQL schema for commerce, multi-warehouse inventory, media scenes, orders, wallet/referral and audit records.
-- [x] Add verified-host tenant resolver and read-only store/category/product API.
+- [x] Add verified-host tenant resolver and read-only store/category/product API, including product detail and published scene/hotspot reads.
 - [x] Add local sample tenant seed and PHP syntax-check workflow.
 - [x] Run PHP syntax checks in GitHub Actions and resolve any failures.
 - [ ] Validate schema against the selected MySQL/MariaDB versions.
@@ -33,7 +33,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 
 ## Phase 3 — immersive storefront
 - [ ] Merchant scene/media editor.
-- [ ] Photo-tour nodes, hotspots and product-to-shelf links.
+- [x] Tenant-scoped read API for published photo-tour nodes, hotspots and product-to-shelf links.\n- [ ] Merchant scene editor and hotspot authoring workflow.
 - [ ] Guided category-to-aisle navigation.
 - [ ] Optional WebGL free-movement mode with keyboard/touch and low-end fallback.
 - [ ] Real-store media onboarding and responsive image delivery.

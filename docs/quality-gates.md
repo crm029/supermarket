@@ -30,7 +30,7 @@ A feature is not considered complete until it passes its relevant gates.
 ## Experience
 - Search and standard product listing work without WebGL.
 - Keyboard and touch navigation are supported.
-- Images have useful alt text, responsive sizes and lazy loading.
+- Public media URLs are tenant-owned, derived from a trusted HTTPS base URL in production, and reject traversal/backslash storage keys.\n- Images have useful alt text, responsive sizes and lazy loading.
 - Store scenes have a clear fallback when an image or 3D asset fails.
 - Mobile performance and accessibility are tested on real devices.
 
