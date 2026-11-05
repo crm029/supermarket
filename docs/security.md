@@ -16,3 +16,7 @@
 - Production launch requires a security review and tests on the actual hosting environment.
 
 Implemented controls include tenant-scoped OTP registration/login, hashed challenges, bounded attempts and phone/IP rate limits, opaque database-backed sessions, HttpOnly/SameSite cookies, CSRF protection on protected writes, deny-by-default catalogue permissions, tenant-isolation constraints, upload validation, transactional checkout, server-side payment verification and idempotent wallet/referral ledger posting. The development SMS log driver is forbidden in production. Production use is still blocked on real merchant credentials, deployment hardening, operational controls, end-to-end acceptance and an independent security review.
+
+
+## Staff role administration
+Tenant staff management is permission-guarded by `staff.manage`. Role creation only accepts tenant-scoped permissions; the `staff.manage` permission and `store_owner` role cannot be delegated through the staff panel. Assignments require an active user in the same tenant, writes require CSRF, and role changes are audited. The store-owner role and self-removal from the staff panel are protected.
