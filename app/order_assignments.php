@@ -113,14 +113,35 @@ function app_admin_order_assignment_create(PDO $db, array $tenant, array $sessio
 }
 
 function app_admin_order_assignment_complete(PDO $db, array $tenant, array $session, int $orderId, int $assignmentId): never {
-    $stmt=$db->prepare(
-        "UPDATE order_assignments SET status='completed',completed_at=UTC_TIMESTAMP()
-         WHERE tenant_id=? AND order_id=? AND id=? AND status='active'"
-    );
-    $stmt->execute([$tenant['id'],$orderId,$assignmentId]);
-    if($stmt->rowCount()!==1)app_json(['error'=>'تخصیص فعال پیدا نشد.'],404);
-    app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'order.assignment.completed','order',$orderId,[
-        'assignment_id'=>$assignmentId
-    ]);
-    app_json(['message'=>'وظیفه تخصیص‌یافته تکمیل شد.']);
+    $db->beginTransaction();
+    try {
+        $order=$db->prepare('SELECT status FROM orders WHERE tenant_id=? AND id=? FOR UPDATE');
+        $order->execute([$tenant['id'],$orderId]);
+        $orderStatus=$order->fetchColumn();
+        if($orderStatus===false){
+            $db->rollBack();
+            app_json(['error'=>'سفارش پیدا نشد.'],404);
+        }
+        if(in_array($orderStatus,['cancelled','refunded','delivered'],true)){
+            $db->rollBack();
+            app_json(['error'=>'برای سفارش نهایی‌شده امکان تکمیل وظیفه وجود ندارد.'],409);
+        }
+        $stmt=$db->prepare(
+            "UPDATE order_assignments SET status='completed',completed_at=UTC_TIMESTAMP()
+             WHERE tenant_id=? AND order_id=? AND id=? AND status='active'"
+        );
+        $stmt->execute([$tenant['id'],$orderId,$assignmentId]);
+        if($stmt->rowCount()!==1){
+            $db->rollBack();
+            app_json(['error'=>'تخصیص فعال پیدا نشد.'],404);
+        }
+        app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'order.assignment.completed','order',$orderId,[
+            'assignment_id'=>$assignmentId
+        ]);
+        $db->commit();
+        app_json(['message'=>'وظیفه تخصیص‌یافته تکمیل شد.']);
+    }catch(Throwable $e){
+        if($db->inTransaction())$db->rollBack();
+        throw $e;
+    }
 }
