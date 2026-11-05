@@ -26,7 +26,6 @@ Base path: `/api/v1`. JSON responses use UTF-8 and Persian user-facing messages.
 - `PATCH /admin/products/{id}` — update a product; requires `catalog.products.manage`, session and CSRF token.
 - `DELETE /admin/products/{id}` — soft-deactivate a product; requires `catalog.products.manage`, session and CSRF token.
 - `GET /admin/dashboard`
-- `POST /admin/products`, `PATCH /admin/products/{id}`
 - `POST /admin/media` — tenant media upload with MIME/size validation.
 - `POST /admin/warehouses`
 - `POST /admin/stock/receipts`, `POST /admin/stock/adjustments`, `POST /admin/stock/transfers`
