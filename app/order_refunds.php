@@ -83,34 +83,36 @@ function app_admin_order_refund_wallet(PDO $db, array $tenant, array $session, i
 
         $referralQuery=$db->prepare(
             "SELECT id,referrer_user_id,reward_rial FROM referral_events
-             WHERE tenant_id=? AND qualifying_order_id=? AND status='rewarded'
+             WHERE tenant_id=? AND qualifying_order_id=? AND status IN ('rewarded','qualified')
              LIMIT 1 FOR UPDATE"
         );
         $referralQuery->execute([$tenant['id'],$orderId]);
         $referral=$referralQuery->fetch(PDO::FETCH_ASSOC);
         $reversedReward=0;
-        if($referral&&(int)$referral['reward_rial']>0){
+        if($referral){
             $referrerId=(int)$referral['referrer_user_id'];
             $reversedReward=(int)$referral['reward_rial'];
-            $referrerWallet=app_wallet_ensure_account($db,(int)$tenant['id'],$referrerId);
-            $referrerLock=$db->prepare('SELECT id FROM wallet_accounts WHERE tenant_id=? AND id=? FOR UPDATE');
-            $referrerLock->execute([$tenant['id'],$referrerWallet]);
-            $debit=$db->prepare(
-                "INSERT INTO wallet_entries
-                 (tenant_id,wallet_id,entry_type,amount_rial,source_type,source_id,idempotency_key,note)
-                 VALUES (?,?,'debit',?,'referral_reward_reversal',?,?,'برگشت پاداش دعوت به علت بازپرداخت سفارش اولیه')"
-            );
-            $debit->execute([$tenant['id'],$referrerWallet,$reversedReward,$orderId,'referral-reversal-'.$orderId]);
-            if($debit->rowCount()!==1)throw new RuntimeException('Referral reward reversal could not be recorded.');
+            if($reversedReward>0){
+                $referrerWallet=app_wallet_ensure_account($db,(int)$tenant['id'],$referrerId);
+                $referrerLock=$db->prepare('SELECT id FROM wallet_accounts WHERE tenant_id=? AND id=? FOR UPDATE');
+                $referrerLock->execute([$tenant['id'],$referrerWallet]);
+                $debit=$db->prepare(
+                    "INSERT INTO wallet_entries
+                     (tenant_id,wallet_id,entry_type,amount_rial,source_type,source_id,idempotency_key,note)
+                     VALUES (?,?,'debit',?,'referral_reward_reversal',?,?,'برگشت پاداش دعوت به علت بازپرداخت سفارش اولیه')"
+                );
+                $debit->execute([$tenant['id'],$referrerWallet,$reversedReward,$orderId,'referral-reversal-'.$orderId]);
+                if($debit->rowCount()!==1)throw new RuntimeException('Referral reward reversal could not be recorded.');
+                app_notification_create($db,(int)$tenant['id'],$referrerId,'referral-reversed-'.$orderId,'system',
+                    'پاداش دعوت برگشت خورد','پاداش مربوط به سفارش '.$order['order_number'].' به علت بازپرداخت آن برگشت داده شد.',
+                    'order',$orderId);
+            }
             $eventUpdate=$db->prepare(
                 "UPDATE referral_events SET status='reversed'
-                 WHERE tenant_id=? AND id=? AND status='rewarded'"
+                 WHERE tenant_id=? AND id=? AND status IN ('rewarded','qualified')"
             );
             $eventUpdate->execute([$tenant['id'],$referral['id']]);
             if($eventUpdate->rowCount()!==1)throw new RuntimeException('Referral event could not be reversed.');
-            app_notification_create($db,(int)$tenant['id'],$referrerId,'referral-reversed-'.$orderId,'system',
-                'پاداش دعوت برگشت خورد','پاداش مربوط به سفارش '.$order['order_number'].' به علت بازپرداخت آن برگشت داده شد.',
-                'order',$orderId);
         }
 
         app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'order.refunded.wallet_credit','order',$orderId,[
