@@ -41,20 +41,22 @@ function app_inventory_stock_list(PDO $db, array $tenant): never {
         $params['warehouse']=$warehouse;
     }
     if ($query !== '') {
-        $where[]='(p.title LIKE :title OR p.sku LIKE :sku OR p.barcode LIKE :barcode)';
+        $where[]='(p.title LIKE :title OR p.variant_label LIKE :variant_label OR p.sku LIKE :sku OR p.barcode LIKE :barcode)';
         $like='%'.mb_substr($query,0,80).'%';
-        $params['title']=$like;$params['sku']=$like;$params['barcode']=$like;
+        $params['title']=$like;$params['variant_label']=$like;$params['sku']=$like;$params['barcode']=$like;
     }
     $stmt=$db->prepare(
-        'SELECT sl.warehouse_id,w.title AS warehouse_title,sl.product_id,p.sku,p.title AS product_title,
+        "SELECT sl.warehouse_id,w.title AS warehouse_title,sl.product_id,p.sku,
+                CASE WHEN p.product_kind='variant' THEN CONCAT(parent.title,' · ',p.variant_label) ELSE p.title END AS product_title,
                 p.unit_label,sl.on_hand,sl.reserved,(sl.on_hand-sl.reserved) AS available_quantity,
                 p.low_stock_threshold,
                 CASE WHEN p.low_stock_threshold > 0 AND (sl.on_hand-sl.reserved) <= p.low_stock_threshold THEN 1 ELSE 0 END AS is_low_stock
          FROM stock_levels sl
          JOIN warehouses w ON w.tenant_id=sl.tenant_id AND w.id=sl.warehouse_id
          JOIN products p ON p.tenant_id=sl.tenant_id AND p.id=sl.product_id
+         LEFT JOIN products parent ON parent.tenant_id=p.tenant_id AND parent.id=p.parent_product_id
          WHERE '.implode(' AND ',$where).'
-         ORDER BY w.id,p.title LIMIT 500'
+         ORDER BY w.id,p.title LIMIT 500"
     );
     $stmt->execute($params);
     app_json(['data'=>$stmt->fetchAll()]);
