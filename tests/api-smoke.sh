@@ -94,7 +94,18 @@ assert_json() {
       exit(0);
     }
     if ($check === "staff-list") { if (!is_array($data["data"]["roles"] ?? null) || !is_array($data["data"]["staff"] ?? null)) exit(1); exit(0); }
-    if ($check === "media-library") { if (!is_array($data["data"] ?? null) || count($data["data"]) < 1 || (int)($data["data"][0]["usage_count"] ?? 0) < 1) exit(1); exit(0); }
+    if ($check === "media-library") {
+      $items = $data["data"] ?? [];
+      if (!is_array($items) || count($items) < 2) exit(1);
+      foreach ($items as $item) if ((int)($item["usage_count"] ?? 0) > 0) exit(0);
+      exit(1);
+    }
+    if ($check === "media-cleaned") {
+      foreach (($data["data"] ?? []) as $item) {
+        if (($item["alt_text"] ?? "") === "تصویر بدون استفاده") exit(1);
+      }
+      exit(0);
+    }
     if ($check === "cart-empty") {
       if (!is_array($data["data"]["items"] ?? null) || count($data["data"]["items"]) !== 0) exit(1);
       exit(0);
@@ -173,6 +184,15 @@ request GET /admin/stock 200 "" "$TOKEN"
 request GET /admin/scenes 200 "" "$TOKEN"
 request GET /admin/media 200 "" "$TOKEN"
 assert_json media-library
+MEDIA_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM media_assets WHERE tenant_id=1 AND alt_text='تصویر تست شیر' LIMIT 1")"
+UNUSED_MEDIA_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM media_assets WHERE tenant_id=1 AND alt_text='تصویر بدون استفاده' LIMIT 1")"
+request DELETE "/admin/media/$MEDIA_ID" 409 "" "$TOKEN" "$CSRF"
+request DELETE "/admin/media/$UNUSED_MEDIA_ID" 419 "" "$TOKEN"
+request DELETE "/admin/media/$UNUSED_MEDIA_ID" 200 "" "$TOKEN" "$CSRF"
+QUEUE_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM media_cleanup_queue WHERE tenant_id=1 AND storage_key='tenant-1/product/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg' LIMIT 1")"
+if [[ "$QUEUE_STATUS" != "completed" ]]; then echo "Unused media cleanup queue did not complete."; exit 1; fi
+request GET /admin/media 200 "" "$TOKEN"
+assert_json media-cleaned
 request GET /admin/settings 403 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
 request GET /admin/settings 200 "" "$TOKEN"
 request PUT /admin/settings 419 '{"profile":{},"checkout":{}}' "$TOKEN"
