@@ -203,7 +203,7 @@ document.getElementById("purchaseReceiveForm").addEventListener("submit",async e
   try{
     await request("admin/purchase-orders/"+orderId+"/receive",{
       method:"POST",csrf:true,
-      body:JSON.stringify({warehouse_id:Number(document.getElementById("receiveWarehouse").value),notes:document.getElementById("receiveNotes").value.trim(),items:[{item_id:itemId,quantity}]})
+      body:JSON.stringify({warehouse_id:Number(document.getElementById("receiveWarehouse").value),notes:document.getElementById("receiveNotes").value.trim(),items:[{item_id:itemId,quantity,batch_number:document.getElementById("receiveBatchNumber").value.trim(),expiry_date:document.getElementById("receiveExpiryDate").value||null}]})
     });
     await loadInventory();await loadPurchasing();await loadPurchaseOrderItems(orderId);
     document.getElementById("purchaseReceiveMessage").textContent="رسید ثبت شد و موجودی انبار به‌روزرسانی شد.";
@@ -733,8 +733,39 @@ async function loadInventory() {
     const [w,s]=await Promise.all([request("admin/warehouses"),request("admin/stock")]);
     warehouses=w.data||[];stockRows=s.data||[];
     renderInventory();
+    await loadStockBatches();
   } catch(error) {
     document.getElementById("stockRows").innerHTML='<tr><td colspan="6">'+escapeText(error.message)+'</td></tr>';
+  }
+}
+async function loadStockBatches() {
+  const state=document.getElementById("stockBatchState").value;
+  const days=Number(document.getElementById("stockBatchDays").value)||30;
+  const rows=document.getElementById("stockBatchRows");
+  try {
+    const [batchResult,summaryResult]=await Promise.all([
+      request("admin/stock-batches?state="+encodeURIComponent(state)+"&days="+days),
+      request("admin/stock-expiry?days="+days)
+    ]);
+    const summary=summaryResult.data||{};
+    const number=value=>new Intl.NumberFormat("fa-IR").format(Number(value)||0);
+    document.getElementById("stockExpirySummary").textContent=
+      "منقضی‌شده: "+number(summary.expired_on_hand)+" واحد ("+number(summary.expired_batches)+" بچ) · "+
+      "در آستانه انقضا: "+number(summary.expiring_available)+" واحد ("+number(summary.expiring_batches)+" بچ) · "+
+      "بدون تاریخ انقضا: "+number(summary.unknown_expiry_batches)+" بچ";
+    const labels={expired:"منقضی‌شده",expiring:"نزدیک انقضا",valid:"دارای مهلت",unknown:"نامشخص"};
+    const classes={expired:"inactive",expiring:"inactive",valid:"active",unknown:""};
+    rows.innerHTML=(batchResult.data||[]).map(item=>
+      '<tr><td><strong>'+escapeText(item.product_title)+'</strong><small>'+escapeText(item.sku||"")+'</small></td>'+
+      '<td>'+escapeText(item.warehouse_title)+'</td><td>'+escapeText(item.batch_number)+'</td>'+
+      '<td>'+escapeText(item.expiry_date||"ثبت نشده")+'</td>'+
+      '<td>'+number(item.on_hand)+'</td><td>'+number(item.reserved)+'</td>'+
+      '<td><strong>'+number(item.available_quantity)+'</strong></td>'+
+      '<td><span class="admin-status '+(classes[item.expiry_state]||"")+'">'+(labels[item.expiry_state]||"نامشخص")+'</span></td></tr>'
+    ).join("")||'<tr><td colspan="8">برای این فیلتر بچی پیدا نشد.</td></tr>';
+  } catch(error) {
+    document.getElementById("stockExpirySummary").textContent=error.message;
+    rows.innerHTML='<tr><td colspan="8">'+escapeText(error.message)+'</td></tr>';
   }
 }
 function renderInventory() {
@@ -1018,6 +1049,9 @@ document.getElementById("orderRows").addEventListener("click",async e=>{
 });
 
 document.getElementById("reloadInventory").addEventListener("click",loadInventory);
+document.getElementById("reloadStockBatches").addEventListener("click",loadStockBatches);
+document.getElementById("stockBatchState").addEventListener("change",loadStockBatches);
+document.getElementById("stockBatchDays").addEventListener("change",loadStockBatches);
 document.getElementById("warehouseForm").addEventListener("submit",async e=>{
   e.preventDefault();
   try{
