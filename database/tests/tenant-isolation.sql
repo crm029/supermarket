@@ -37,9 +37,11 @@ END//
 CREATE PROCEDURE assert_cross_tenant_role_rejected()
 BEGIN
   DECLARE rejected BOOLEAN DEFAULT FALSE;
-  DECLARE CONTINUE HANDLER FOR SQLSTATE '45000' SET rejected = TRUE;
-  INSERT INTO user_roles (tenant_id,user_id,role_id)
-  VALUES (1,@tenant_one_user,@tenant_two_role);
+  BEGIN
+    DECLARE CONTINUE HANDLER FOR SQLSTATE '45000' SET rejected = TRUE;
+    INSERT INTO user_roles (tenant_id,user_id,role_id)
+    VALUES (1,@tenant_one_user,@tenant_two_role);
+  END;
   IF rejected = FALSE THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cross-tenant role assignment was accepted';
   END IF;
@@ -48,11 +50,13 @@ END//
 CREATE PROCEDURE assert_cross_tenant_audit_actor_rejected()
 BEGIN
   DECLARE rejected BOOLEAN DEFAULT FALSE;
-  DECLARE CONTINUE HANDLER FOR SQLSTATE '45000' SET rejected = TRUE;
-  INSERT INTO audit_logs
-    (tenant_id,actor_user_id,action,entity_type,entity_id)
-  VALUES
-    (1,@tenant_two_user,'test.cross_tenant','test',1);
+  BEGIN
+    DECLARE CONTINUE HANDLER FOR SQLSTATE '45000' SET rejected = TRUE;
+    INSERT INTO audit_logs
+      (tenant_id,actor_user_id,action,entity_type,entity_id)
+    VALUES
+      (1,@tenant_two_user,'test.cross_tenant','test',1);
+  END;
   IF rejected = FALSE THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cross-tenant audit actor was accepted';
   END IF;
