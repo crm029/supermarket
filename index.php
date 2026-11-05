@@ -68,6 +68,15 @@ declare(strict_types=1);
       </div>
       <div class="scene-controls"><span>● فروشگاه نمونه</span><span>برای حرکت بین راهروها از فلش‌ها استفاده کن</span><div><button id="zoomOut" aria-label="کوچک‌نمایی">−</button><button id="zoomIn" aria-label="بزرگ‌نمایی">+</button></div></div>
       <div class="shelf-heading"><div><small>منتخب این قفسه</small><h3>محصولات این راهرو</h3></div><span id="productCount">۰ محصول</span></div>
+      <div class="catalog-filters">
+        <label>برند<input id="productBrandFilter" maxlength="120" placeholder="همه برندها"></label>
+        <label>حداقل قیمت (تومان)<input id="productMinPriceFilter" type="number" min="0" step="1" placeholder="از"></label>
+        <label>حداکثر قیمت (تومان)<input id="productMaxPriceFilter" type="number" min="0" step="1" placeholder="تا"></label>
+        <label>مرتب‌سازی<select id="productSortFilter"><option value="title_asc">نام کالا</option><option value="price_asc">ارزان‌ترین</option><option value="price_desc">گران‌ترین</option><option value="newest">جدیدترین</option></select></label>
+        <label class="catalog-stock-filter"><input id="productInStockFilter" type="checkbox"> فقط کالاهای موجود</label>
+        <button id="applyProductFilters" type="button" class="primary-button">اعمال فیلتر</button>
+        <button id="clearProductFilters" type="button" class="text-button">پاک‌کردن</button>
+      </div>
       <div class="product-grid" id="productGrid"></div>
     </section>
   </section>
