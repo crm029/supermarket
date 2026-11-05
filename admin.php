@@ -65,7 +65,7 @@ declare(strict_types=1);
     <section class="admin-panel" id="panel-orders">
       <div class="admin-heading"><div><p class="eyebrow">آماده‌سازی و ارسال</p><h2>مدیریت سفارش‌ها</h2></div><button class="text-button" id="reloadOrders">به‌روزرسانی</button></div>
       <div class="admin-toolbar"><select id="orderStatusFilter"><option value="">همه وضعیت‌ها</option><option value="paid">پرداخت‌شده</option><option value="accepted">پذیرفته‌شده</option><option value="picking">در حال جمع‌آوری</option><option value="packed">بسته‌بندی‌شده</option><option value="dispatched">ارسال‌شده</option><option value="ready_pickup">آماده تحویل حضوری</option><option value="delivered">تحویل‌شده</option></select></div>
-      <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>شماره سفارش</th><th>مشتری</th><th>اقلام</th><th>مبلغ (تومان)</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody id="orderRows"><tr><td colspan="6">در حال بارگذاری...</td></tr></tbody></table></div>
+      <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>شماره سفارش</th><th>مشتری</th><th>اقلام</th><th>مبلغ (تومان)</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody id="orderRows"><tr><td colspan="6">در حال بارگذاری...</td></tr></tbody></table></div><div id="adminOrderDetail" class="admin-welcome" hidden></div>
     </section>
     <section class="admin-panel" id="panel-inventory">
       <div class="admin-heading"><div><p class="eyebrow">کنترل موجودی</p><h2>انبار و کالاها</h2></div><button class="text-button" id="reloadInventory">به‌روزرسانی</button></div>
