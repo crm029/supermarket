@@ -10,6 +10,7 @@ require_once dirname(__DIR__, 2) . '/app/commerce.php';
 require_once dirname(__DIR__, 2) . '/app/payments.php';
 require_once dirname(__DIR__, 2) . '/app/admin_orders.php';
 require_once dirname(__DIR__, 2) . '/app/inventory.php';
+require_once dirname(__DIR__, 2) . '/app/admin_scenes.php';
 
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
@@ -31,6 +32,54 @@ try {
     }
     $method = app_method();
     $db = app_db();
+
+    if ($path === '/admin/media' && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'media.manage');
+        app_media_upload($db, $tenant, $session);
+    }
+
+    if ($path === '/admin/scenes') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'media.manage');
+        if ($method === 'GET') app_admin_scene_list($db, $tenant);
+        if ($method === 'POST') {
+            app_auth_require_csrf($session);
+            app_admin_scene_create($db, $tenant, $session);
+        }
+        header('Allow: GET, POST');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if (preg_match('#^/admin/scenes/([1-9][0-9]*)$#', $path, $sceneMatch)) {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'media.manage');
+        if ($method === 'PATCH') {
+            app_auth_require_csrf($session);
+            app_admin_scene_update($db, $tenant, $session, (int)$sceneMatch[1]);
+        }
+        if ($method === 'DELETE') {
+            app_auth_require_csrf($session);
+            app_admin_scene_unpublish($db, $tenant, $session, (int)$sceneMatch[1]);
+        }
+        header('Allow: PATCH, DELETE');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if (preg_match('#^/admin/scenes/([1-9][0-9]*)/hotspots$#', $path, $hotspotSceneMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'media.manage');
+        app_admin_hotspot_create($db, $tenant, $session, (int)$hotspotSceneMatch[1]);
+    }
+
+    if (preg_match('#^/admin/hotspots/([1-9][0-9]*)$#', $path, $hotspotMatch) && $method === 'DELETE') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'media.manage');
+        app_admin_hotspot_delete($db, $tenant, $session, (int)$hotspotMatch[1]);
+    }
 
     if ($path === '/admin/warehouses') {
         $session = app_auth_require($db, $tenant);
