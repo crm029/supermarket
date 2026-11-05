@@ -193,6 +193,14 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
     if (!in_array($fulfillment, ['delivery', 'pickup'], true)) {
         app_json(['error' => 'روش دریافت سفارش معتبر نیست.'], 422);
     }
+    $pickupSlotId = null;
+    if (array_key_exists('pickup_slot_id',$body) && $body['pickup_slot_id'] !== null && $body['pickup_slot_id'] !== '') {
+        $pickupSlotId = filter_var($body['pickup_slot_id'],FILTER_VALIDATE_INT);
+        if ($pickupSlotId === false || $pickupSlotId < 1) app_json(['error'=>'بازه دریافت حضوری معتبر نیست.'],422);
+    }
+    if ($fulfillment === 'delivery' && $pickupSlotId !== null) {
+        app_json(['error'=>'برای سفارش ارسالی نمی‌توان بازه دریافت حضوری انتخاب کرد.'],422);
+    }
     $addressId = null;
     if ($fulfillment === 'delivery') {
         $addressId = filter_var($body['address_id'] ?? null, FILTER_VALIDATE_INT);
@@ -214,6 +222,15 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
     $minimumOrderRial = max(0, (int)($checkoutSettings['minimum_order_rial'] ?? 0));
     $reservationMinutes = min(120, max(5, (int)($checkoutSettings['reservation_minutes'] ?? 20)));
     $deliveryZoneId = null;
+    $pickupSlotsConfiguredQuery = $db->prepare('SELECT COUNT(*) FROM pickup_slots WHERE tenant_id=?');
+    $pickupSlotsConfiguredQuery->execute([$tenant['id']]);
+    $pickupSlotsConfigured = (int)$pickupSlotsConfiguredQuery->fetchColumn() > 0;
+    if ($fulfillment === 'pickup' && $pickupSlotsConfigured && $pickupSlotId === null) {
+        app_json(['error'=>'برای تحویل حضوری یک بازه زمانی انتخاب کنید.'],422);
+    }
+    if ($fulfillment === 'pickup' && !$pickupSlotsConfigured && $pickupSlotId !== null) {
+        app_json(['error'=>'بازه دریافت انتخاب‌شده پیدا نشد.'],404);
+    }
 
     $db->beginTransaction();
     try {
@@ -250,6 +267,38 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
             }
         }
 
+        if ($fulfillment === 'pickup' && $pickupSlotId !== null) {
+            $slot = $db->prepare(
+                'SELECT id,capacity FROM pickup_slots
+                 WHERE tenant_id=? AND id=? AND is_active=1
+                   AND starts_at>UTC_TIMESTAMP() AND ends_at>UTC_TIMESTAMP()
+                 LIMIT 1 FOR UPDATE'
+            );
+            $slot->execute([$tenant['id'],$pickupSlotId]);
+            $slotRow = $slot->fetch(PDO::FETCH_ASSOC);
+            if (!$slotRow) {
+                $db->rollBack();
+                app_json(['error'=>'این بازه دریافت دیگر فعال یا قابل انتخاب نیست.'],409);
+            }
+            $reserved = $db->prepare(
+                "SELECT COUNT(*) FROM orders o
+                 WHERE o.tenant_id=? AND o.pickup_slot_id=?
+                   AND (
+                     o.status IN ('paid','accepted','picking','packed','ready_pickup','dispatched','delivered')
+                     OR (o.status='pending_payment' AND EXISTS (
+                       SELECT 1 FROM stock_reservations sr
+                       WHERE sr.tenant_id=o.tenant_id AND sr.order_id=o.id
+                         AND sr.status='active' AND sr.expires_at>UTC_TIMESTAMP()
+                     ))
+                   )"
+            );
+            $reserved->execute([$tenant['id'],$pickupSlotId]);
+            if ((int)$reserved->fetchColumn() >= (int)$slotRow['capacity']) {
+                $db->rollBack();
+                app_json(['error'=>'ظرفیت این بازه دریافت تکمیل شده است؛ زمان دیگری انتخاب کنید.'],409);
+            }
+        }
+
         // Lock product rows first, then recalculate prices and stock inside the transaction.
         $ids = array_keys($lines);
         sort($ids, SORT_NUMERIC);
@@ -269,11 +318,11 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
         $orderNumber = 'SM' . gmdate('ymdHis') . strtoupper(bin2hex(random_bytes(3)));
         $insertOrder = $db->prepare(
             "INSERT INTO orders
-             (tenant_id,user_id,address_id,delivery_zone_id,order_number,status,fulfillment,subtotal_rial,discount_rial,delivery_fee_rial,total_rial,customer_note)
-             VALUES (?,?,?,?,?,'pending_payment',?,?,0,?,?,?)"
+             (tenant_id,user_id,address_id,delivery_zone_id,pickup_slot_id,order_number,status,fulfillment,subtotal_rial,discount_rial,delivery_fee_rial,total_rial,customer_note)
+             VALUES (?,?,?,?,?,?,'pending_payment',?,?,0,?,?,?)"
         );
         $insertOrder->execute([
-            $tenant['id'], $session['id'], $addressId, $deliveryZoneId, $orderNumber, $fulfillment,
+            $tenant['id'], $session['id'], $addressId, $deliveryZoneId, $pickupSlotId, $orderNumber, $fulfillment,
             $quote['subtotal_rial'], $deliveryFeeRial, $orderTotalRial, $note === '' ? null : $note,
         ]);
         $orderId = (int)$db->lastInsertId();
@@ -325,7 +374,7 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
             'id' => $orderId, 'order_number' => $orderNumber, 'status' => 'pending_payment',
             'fulfillment' => $fulfillment, 'items' => $quote['items'],
             'subtotal_rial' => $quote['subtotal_rial'], 'delivery_fee_rial' => $deliveryFeeRial,
-            'delivery_zone_id' => $deliveryZoneId,
+            'delivery_zone_id' => $deliveryZoneId, 'pickup_slot_id' => $pickupSlotId,
             'total_rial' => $orderTotalRial, 'reservation_expires_in_seconds' => $reservationMinutes * 60,
             'payment_required' => true,
         ], 'message' => 'سفارش ثبت اولیه شد؛ برای نهایی‌شدن باید پرداخت تأیید شود.'], 201);
