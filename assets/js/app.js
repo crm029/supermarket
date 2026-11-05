@@ -29,8 +29,8 @@ document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",
 document.getElementById("searchInput").addEventListener("input",e=>{const q=e.target.value.trim();renderProducts(products.filter(p=>(activeCategory==="all"||p.category===activeCategory)&&p.name.includes(q)));});
 document.getElementById("enterStore").addEventListener("click",()=>document.getElementById("store").scrollIntoView({behavior:"smooth"}));
 document.getElementById("browseCategories").addEventListener("click",()=>document.getElementById("categoryList").scrollIntoView({behavior:"smooth",block:"center"}));
-document.getElementById("prevAisle").addEventListener("click",()=>{const keys=Object.keys(categoryNames);selectCategory(keys[(aisleIndex-1+keys.length)%keys.length]);});
-document.getElementById("nextAisle").addEventListener("click",()=>{const keys=Object.keys(categoryNames);selectCategory(keys[(aisleIndex+1)%keys.length]);});
+document.getElementById("prevAisle").addEventListener("click",()=>{if(publicScenes.length){currentScene=(currentScene-1+publicScenes.length)%publicScenes.length;renderScenes();return;}const keys=Object.keys(categoryNames);selectCategory(keys[(aisleIndex-1+keys.length)%keys.length]);});
+document.getElementById("nextAisle").addEventListener("click",()=>{if(publicScenes.length){currentScene=(currentScene+1)%publicScenes.length;renderScenes();return;}const keys=Object.keys(categoryNames);selectCategory(keys[(aisleIndex+1)%keys.length]);});
 document.querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("[data-mode]").forEach(x=>x.classList.toggle("active",x===b));const hints={guided:"با انتخاب هر دسته، به قفسه مربوط هدایت می‌شی.",tour:"در نسخه بعدی، نقاط قابل کلیک برای جابه‌جایی بین تصاویر واقعی فعال می‌شن.",free:"حرکت آزاد سه‌بعدی در مرحله توسعه موتور تعاملی اضافه می‌شه."};document.getElementById("modeHint").textContent=hints[b.dataset.mode];}));
 document.getElementById("zoomIn").addEventListener("click",()=>{zoom=Math.min(1.2,zoom+.05);document.getElementById("aisleScene").style.backgroundSize=(zoom*100)+"% auto";});
 document.getElementById("zoomOut").addEventListener("click",()=>{zoom=Math.max(1,zoom-.05);document.getElementById("aisleScene").style.backgroundSize=(zoom*100)+"% auto";});
@@ -146,18 +146,5 @@ async function loadLiveCatalog() {
     document.querySelector(".aisle-top").appendChild(note);
   }
 }
-
-document.getElementById("prevAisle").addEventListener("click", () => {
-  if (publicScenes.length) {
-    currentScene = (currentScene - 1 + publicScenes.length) % publicScenes.length;
-    renderScenes();
-  }
-});
-document.getElementById("nextAisle").addEventListener("click", () => {
-  if (publicScenes.length) {
-    currentScene = (currentScene + 1) % publicScenes.length;
-    renderScenes();
-  }
-});
 
 loadLiveCatalog();
