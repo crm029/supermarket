@@ -16,6 +16,23 @@ function app_platform_normalize_host(mixed $value): ?string {
     return $host;
 }
 
+function app_platform_audit_list(PDO $db): never {
+    $stmt=$db->query(
+        "SELECT id,action,entity_type,entity_id,details,created_at
+         FROM audit_logs
+         WHERE action LIKE 'platform.%'
+         ORDER BY id DESC LIMIT 200"
+    );
+    $rows=$stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach($rows as &$row){
+        $row['id']=(int)$row['id'];
+        $row['entity_id']=$row['entity_id']===null?null:(int)$row['entity_id'];
+        $row['details']=$row['details']===null?null:json_decode((string)$row['details'],true);
+    }
+    unset($row);
+    app_json(['data'=>$rows]);
+}
+
 function app_platform_tenant_list(PDO $db): never {
     $stmt=$db->query(
         "SELECT t.id,t.name,t.slug,t.status,t.timezone,t.created_at,
