@@ -62,7 +62,7 @@ declare(strict_types=1);
         <label>توضیحات کامل محصول<textarea id="productDescription" rows="3" maxlength="10000"></textarea></label>
         <div class="admin-form-grid">
           <label>عنوان سئو (اختیاری)<input id="productSeoTitle" maxlength="180" placeholder="اگر خالی باشد از نام محصول استفاده می‌شود"></label>
-          <label>توضیحات متا (حداکثر ۳۲۰ نویسه)<textarea id="productSeoDescription" rows="2" maxlength="320" placeholder="متن کوتاه مخصوص نتیجه جست‌وجو"></textarea></label>
+          <label>توضیحات متا (حداکثر ۳۲۰ نویسه)<textarea id="productSeoDescription" rows="2" maxlength="160" placeholder="متن کوتاه مخصوص نتیجه جست‌وجو"></textarea></label>
         </div>
         <div class="admin-form-actions"><button class="primary-button" type="submit">ذخیره محصول</button><button class="text-button" id="cancelProductForm" type="button">انصراف</button></div>
       </form>
@@ -95,7 +95,7 @@ declare(strict_types=1);
         <label>توضیحات دسته‌بندی<textarea id="categoryDescription" rows="2" maxlength="2000" placeholder="توضیح مفید درباره محصولات این دسته"></textarea></label>
         <div class="admin-form-grid">
           <label>عنوان سئو (اختیاری)<input id="categorySeoTitle" maxlength="180" placeholder="عنوان نمایش در گوگل"></label>
-          <label>توضیحات متا<textarea id="categorySeoDescription" rows="2" maxlength="320" placeholder="خلاصه جذاب و دقیق دسته‌بندی"></textarea></label>
+          <label>توضیحات متا<textarea id="categorySeoDescription" rows="2" maxlength="160" placeholder="خلاصه جذاب و دقیق دسته‌بندی"></textarea></label>
         </div>
         <div class="admin-form-actions"><button class="primary-button" id="categorySubmitButton" type="submit">افزودن دسته</button><button class="text-button" id="categoryCancelButton" type="button" hidden>انصراف از ویرایش</button></div>
       </form>
