@@ -47,6 +47,12 @@ try {
     $method = app_method();
     $db = app_db();
 
+    if ($path === '/platform/audit' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_platform_permission($db, $tenant, $session, 'platform.audit.read');
+        app_platform_audit_list($db);
+    }
+
     if ($path === '/platform/tenants') {
         $session = app_auth_require($db, $tenant);
         app_auth_require_platform_permission($db, $tenant, $session, 'platform.tenants.manage');
