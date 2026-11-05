@@ -48,3 +48,10 @@ A feature is not considered complete until it passes its relevant gates.
 - Admin product reads and writes require an explicit tenant-scoped permission; missing grants deny access.
 - A role grant cannot cross its tenant/global role scope. Platform permissions are not accepted by tenant-scoped checks.
 - Product category and category parent/media references are validated against the active tenant. Category parent changes cannot create cycles; deactivation is blocked while child categories or active products remain.\n- Product/category changes write audit events in the same transaction.
+
+
+## Persistent carts
+- A customer can read and replace only their own cart within the verified tenant.
+- Cart updates require CSRF and validate active product ownership and bounded quantities.
+- Cart contents never reserve stock or set prices; checkout recalculates prices and stock inside its transaction.
+- Guest cart merge must not leak a previous signed-in customer's local cart into another account.
