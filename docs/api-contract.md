@@ -203,8 +203,10 @@ Checkout intentionally does not mark an order paid. Reservations expire after 20
 
 ## Supplier returns
 - GET /admin/supplier-returns — tenant-scoped return history; requires inventory.read.
+- GET /admin/supplier-returns/eligible-lines?supplier_id=&warehouse_id= — lists unreturned quantities from actual receipt lines for the selected supplier and warehouse; requires inventory.read.
 - POST /admin/supplier-returns — posts a supplier return; requires inventory.manage, authenticated session and CSRF.
 - A return line references an actual purchase receipt line (receipt_item_id), and the server derives its supplier, warehouse, product and unit cost. The selected warehouse must match the original receipt.
 - Cumulative returns cannot exceed the quantity originally received on that receipt line. The server locks receipt and stock rows, refuses to return reserved/unavailable stock, reduces on-hand quantity and writes a signed supplier_return stock movement plus an audit event in one transaction.
+- The seller panel provides a return form populated only from eligible receipt lines, plus return history.
 - Return records and stock movements are append-only through the application API; no edit/delete route is exposed.
 
