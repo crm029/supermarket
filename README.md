@@ -17,6 +17,7 @@ The repository now contains a tenant-aware PHP commerce backend, customer authen
 Implemented and covered by repository tests:
 - Persian RTL responsive storefront with guided category navigation, live tenant catalogue/product details, photo-tour scenes, interactive hotspots and procedural WebGL free movement through category-labelled aisles (with a non-WebGL fallback).
 - Tenant-aware MySQL schema, verified-host tenant resolution, composite tenant-scope constraints and cross-tenant negative tests.
+- Tenant-aware SEO foundation: primary-domain canonical URLs, robots and sitemap endpoints, crawlable product/category landing pages, Open Graph/Twitter metadata and GroceryStore/Product/CollectionPage structured data.
 - OTP registration/login foundation, rate limiting, hashed challenges, database-backed sessions, HttpOnly cookies and CSRF protection; Kavenegar Verify Lookup adapter is available when real credentials are configured.
 - Deny-by-default tenant permission checks and audited product/category administration.
 - Seller dashboard, merchant branding and checkout settings, staff roles and permission management, tenant media library, media uploads, scene/hotspot authoring, multi-warehouse receipts/transfers/adjustments, stock reservation and expiry worker, supplier directory, purchase orders and partial receiving with stock posting.
@@ -27,10 +28,11 @@ Implemented and covered by repository tests:
 
 Still in progress:
 - Platform super-admin authorization and tenant/domain provisioning.
-- Supplier purchase orders, stock returns and batch/expiry workflows.
+- Platform super-admin authorization and tenant/domain provisioning.
 - Wallet spending, refunds/reversals, advanced referral fraud controls and reward policy approval for each merchant.
-- Cashier/picker/courier assignment, courier tracking, notifications, configurable stock alerts and report exports.
+- Cashier/picker/courier assignment, courier tracking, operational notifications and report exports.
 - Real-store photography/onboarding and responsive image delivery.
+- Merchant-managed SEO slugs and unique category/product SEO fields, Google Search Console/GA4 setup and production Core Web Vitals review.
 - Live merchant SMS/payment credentials, settlement reconciliation, refund acceptance, hosting, backups, monitoring, load/device/accessibility testing and production sign-off.
 
 ## Architecture principles
@@ -62,6 +64,7 @@ Still in progress:
 - `docs/quality-gates.md` — release acceptance gates.
 - `docs/security.md` — security principles.
 - `docs/roadmap.md` — delivery status.
+- `docs/seo.md` — tenant-aware SEO implementation and merchant launch checklist.
 
 Real merchant photography, production domains, SMS credentials and payment-gateway credentials are supplied only for an actual merchant deployment.
 
