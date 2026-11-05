@@ -15,4 +15,4 @@
 - Dependency scanning, PHP static analysis, automated tests and security headers in CI.
 - Production launch requires a security review and tests on the actual hosting environment.
 
-The current static prototype has no real authentication, database, SMS, payment, inventory or tenant isolation. It must not be used to accept real customer data or payments.
+The API now has a first OTP login/session slice: OTP hashes, five-minute expiry, five-attempt lockout, phone/IP rate limits, opaque server-side sessions, HttpOnly/SameSite cookies and CSRF-protected logout. The development SMS driver writes codes only to the local PHP error log. Production SMS delivery is deliberately disabled until a provider adapter and credentials are configured. Authorization policies, customer registration, password reset, checkout, payment and inventory workflows are still incomplete; the project must not be used to accept real customer data or payments.
