@@ -55,6 +55,64 @@ function app_stock_batch_transfer(PDO $db, int $tenantId, int $fromWarehouseId, 
     }
 }
 
+
+/** Reserve exact FEFO lots for an order reservation; expired lots are never eligible. */
+function app_stock_batch_reserve(PDO $db, int $tenantId, int $reservationId, int $warehouseId, int $productId, int $quantity): void {
+    $stmt=$db->prepare(
+        'SELECT id,on_hand,reserved FROM stock_batches
+         WHERE tenant_id=? AND warehouse_id=? AND product_id=?
+           AND (expiry_date IS NULL OR expiry_date>=UTC_DATE()) AND on_hand>reserved
+         ORDER BY (expiry_date IS NULL),expiry_date,received_at,id FOR UPDATE'
+    );
+    $stmt->execute([$tenantId,$warehouseId,$productId]);
+    $remaining=$quantity;
+    $update=$db->prepare('UPDATE stock_batches SET reserved=reserved+? WHERE tenant_id=? AND id=? AND on_hand-reserved>=?');
+    $insert=$db->prepare("INSERT INTO stock_reservation_batches (tenant_id,reservation_id,batch_id,quantity,status) VALUES (?,?,?,?,'active')");
+    foreach($stmt->fetchAll(PDO::FETCH_ASSOC) as $batch){
+        if($remaining===0)break;
+        $available=(int)$batch['on_hand']-(int)$batch['reserved'];
+        $take=min($remaining,$available);
+        if($take<1)continue;
+        $update->execute([$take,$tenantId,$batch['id'],$take]);
+        if($update->rowCount()!==1)throw new RuntimeException('Batch reservation changed concurrently.');
+        $insert->execute([$tenantId,$reservationId,$batch['id'],$take]);
+        $remaining-=$take;
+    }
+    if($remaining>0)throw new RuntimeException('Insufficient unexpired batch stock.');
+}
+
+/** Commit all lot allocations for a paid reservation. */
+function app_stock_batch_commit_reservation(PDO $db, int $tenantId, int $reservationId): void {
+    $stmt=$db->prepare("SELECT id,batch_id,quantity FROM stock_reservation_batches WHERE tenant_id=? AND reservation_id=? AND status='active' ORDER BY batch_id FOR UPDATE");
+    $stmt->execute([$tenantId,$reservationId]);
+    $rows=$stmt->fetchAll(PDO::FETCH_ASSOC);
+    $updateBatch=$db->prepare('UPDATE stock_batches SET on_hand=on_hand-?,reserved=reserved-? WHERE tenant_id=? AND id=? AND on_hand>=? AND reserved>=?');
+    $updateAllocation=$db->prepare("UPDATE stock_reservation_batches SET status='committed' WHERE tenant_id=? AND id=? AND status='active'");
+    foreach($rows as $row){
+        $qty=(int)$row['quantity'];
+        $updateBatch->execute([$qty,$qty,$tenantId,$row['batch_id'],$qty,$qty]);
+        if($updateBatch->rowCount()!==1)throw new RuntimeException('Reserved batch could not be committed.');
+        $updateAllocation->execute([$tenantId,$row['id']]);
+    }
+    if($rows===[])throw new RuntimeException('No batch allocations exist for this active reservation.');
+}
+
+/** Release exact lot allocations when an order is cancelled or its reservation expires. */
+function app_stock_batch_release_reservation(PDO $db, int $tenantId, int $reservationId, string $status='released'): void {
+    if(!in_array($status,['released','expired'],true))throw new InvalidArgumentException('Invalid batch release status.');
+    $stmt=$db->prepare("SELECT id,batch_id,quantity FROM stock_reservation_batches WHERE tenant_id=? AND reservation_id=? AND status='active' ORDER BY batch_id FOR UPDATE");
+    $stmt->execute([$tenantId,$reservationId]);
+    $rows=$stmt->fetchAll(PDO::FETCH_ASSOC);
+    $updateBatch=$db->prepare('UPDATE stock_batches SET reserved=reserved-? WHERE tenant_id=? AND id=? AND reserved>=?');
+    $updateAllocation=$db->prepare("UPDATE stock_reservation_batches SET status=? WHERE tenant_id=? AND id=? AND status='active'");
+    foreach($rows as $row){
+        $qty=(int)$row['quantity'];
+        $updateBatch->execute([$qty,$tenantId,$row['batch_id'],$qty]);
+        if($updateBatch->rowCount()!==1)throw new RuntimeException('Reserved batch could not be released.');
+        $updateAllocation->execute([$status,$tenantId,$row['id']]);
+    }
+}
+
 function app_admin_stock_batch_list(PDO $db, array $tenant): never {
     $warehouseId = filter_input(INPUT_GET, 'warehouse_id', FILTER_VALIDATE_INT);
     $productId = filter_input(INPUT_GET, 'product_id', FILTER_VALIDATE_INT);
