@@ -76,7 +76,7 @@ declare(strict_types=1);
     <article><span>03</span><h3>حساب و کیف پول</h3><p>سفارش‌ها، اعتبار و کد معرفت یک‌جا.</p></article>
   </section>
 </main>
-<footer><div class="brand"><span class="brand-mark">۳۶۰</span><span>مارکت‌پلاس</span></div><div class="footer-links"><a href="#about">درباره ما</a><a href="#contact">تماس با ما</a><a href="#policies">قوانین و مقررات</a></div><small>© نسخه نمایشی پلتفرم سوپرمارکت ۳۶۰</small></footer>
+<footer><div class="brand"><span class="brand-mark">۳۶۰</span><span>مارکت‌پلاس</span></div><div class="footer-links"><a href="#about">درباره ما</a><a href="#contact">تماس با ما</a><a href="admin.php">مدیریت فروشگاه</a><a href="#policies">قوانین و مقررات</a></div><small>© نسخه نمایشی پلتفرم سوپرمارکت ۳۶۰</small></footer>
 
 <dialog id="productDialog" class="product-dialog"><button class="dialog-close" data-close="productDialog" aria-label="بستن">×</button><div id="productDetail"></div></dialog>
 <dialog id="cartDialog" class="cart-dialog"><button class="dialog-close" data-close="cartDialog" aria-label="بستن">×</button><small class="eyebrow">انتخاب‌های خوشمزه‌ات</small><h2>سبد خرید</h2><div id="cartItems"></div><div class="cart-total"><span>جمع کل</span><strong id="cartTotal">۰ تومان</strong></div><button class="primary-button full" id="checkoutButton" type="button">ادامه و ثبت سفارش</button><p class="demo-note">این نسخه نمایشی است؛ پرداخت و ثبت سفارش در مراحل بعدی فعال می‌شود.</p></dialog>
