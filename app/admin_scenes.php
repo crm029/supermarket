@@ -171,3 +171,19 @@ function app_admin_hotspot_delete(PDO $db, array $tenant, array $session, int $h
     app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'scene.hotspot.deleted','scene_hotspot',$hotspotId);
     app_json(['message'=>'نقطه تعاملی حذف شد.']);
 }
+
+function app_admin_hotspot_list(PDO $db, array $tenant, int $sceneId): never {
+    $scene=$db->prepare('SELECT id FROM store_scenes WHERE tenant_id=? AND id=? LIMIT 1');
+    $scene->execute([$tenant['id'],$sceneId]);
+    if(!$scene->fetchColumn())app_json(['error'=>'صحنه پیدا نشد.'],404);
+    $stmt=$db->prepare(
+        'SELECT id,label,x,y,action,target_scene_id,product_id,payload
+         FROM scene_hotspots WHERE tenant_id=? AND scene_id=? ORDER BY id'
+    );
+    $stmt->execute([$tenant['id'],$sceneId]);
+    $rows=$stmt->fetchAll();
+    foreach($rows as &$row){$row['payload']=$row['payload']===null?null:json_decode($row['payload'],true);}
+    unset($row);
+    app_json(['data'=>$rows]);
+}
+
