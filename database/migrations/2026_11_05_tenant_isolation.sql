@@ -130,6 +130,26 @@ ALTER TABLE user_roles
     FOREIGN KEY (tenant_id, user_id) REFERENCES users (tenant_id, id);
 
 
+
+-- Stop before trigger creation if a legacy tenant-specific role assignment is
+-- already inconsistent. Composite foreign keys below similarly reject any
+-- cross-tenant legacy reference rather than silently rewriting ownership.
+DELIMITER //
+CREATE PROCEDURE assert_legacy_role_scope()
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM user_roles ur
+    JOIN roles r ON r.id = ur.role_id
+    WHERE r.tenant_id IS NOT NULL AND r.tenant_id <> ur.tenant_id
+  ) THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Legacy user_roles contains cross-tenant role assignments';
+  END IF;
+END//
+DELIMITER ;
+CALL assert_legacy_role_scope();
+DROP PROCEDURE assert_legacy_role_scope;
+
 DELIMITER //
 CREATE TRIGGER trg_audit_actor_tenant_insert
 BEFORE INSERT ON audit_logs
