@@ -83,6 +83,7 @@ function app_inventory_receipt(PDO $db, array $tenant, array $session): never {
     $quantity=app_inventory_positive_int($body['quantity']??null,'تعداد');
     $reason=trim((string)($body['reason']??''));
     if(mb_strlen($reason)>255)app_json(['error'=>'شرح رسید بیش از حد طولانی است.'],422);
+    $batch=app_stock_batch_metadata_input($body);
     $db->beginTransaction();
     try{
         app_inventory_validate_refs($db,(int)$tenant['id'],$warehouseId,$productId);
@@ -92,7 +93,7 @@ function app_inventory_receipt(PDO $db, array $tenant, array $session): never {
              ON DUPLICATE KEY UPDATE on_hand=on_hand+VALUES(on_hand)'
         );
         $stmt->execute([$tenant['id'],$warehouseId,$productId,$quantity]);
-        app_stock_batch_add($db,(int)$tenant['id'],$warehouseId,$productId,$quantity,'MANUAL-'.gmdate('YmdHis').'-'.strtoupper(bin2hex(random_bytes(3))),null);
+        app_stock_batch_add($db,(int)$tenant['id'],$warehouseId,$productId,$quantity,$batch['batch_number']!==''?$batch['batch_number']:'MANUAL-'.gmdate('YmdHis').'-'.strtoupper(bin2hex(random_bytes(3))),$batch['expiry_date']);
         $movement=$db->prepare(
             "INSERT INTO stock_movements
              (tenant_id,warehouse_id,product_id,actor_user_id,movement_type,quantity,reference_type,reason)
@@ -116,6 +117,11 @@ function app_inventory_adjustment(PDO $db, array $tenant, array $session): never
     if($quantity===false||$quantity===0||abs($quantity)>1000000||$reason===''||mb_strlen($reason)>255){
         app_json(['error'=>'مقدار اصلاح موجودی و دلیل آن معتبر نیست.'],422);
     }
+    $batch=['batch_number'=>'','expiry_date'=>null];
+    if($quantity>0){$batch=app_stock_batch_metadata_input($body);}
+    elseif(trim((string)($body['batch_number']??''))!==''||trim((string)($body['expiry_date']??''))!==''){
+        app_json(['error'=>'اطلاعات بچ فقط برای افزایش موجودی قابل ثبت است.'],422);
+    }
     $db->beginTransaction();
     try{
         app_inventory_validate_refs($db,(int)$tenant['id'],$warehouseId,$productId);
@@ -129,7 +135,7 @@ function app_inventory_adjustment(PDO $db, array $tenant, array $session): never
         $update=$db->prepare('UPDATE stock_levels SET on_hand=on_hand+? WHERE tenant_id=? AND warehouse_id=? AND product_id=?');
         $update->execute([$quantity,$tenant['id'],$warehouseId,$productId]);
         if($quantity>0){
-            app_stock_batch_add($db,(int)$tenant['id'],$warehouseId,$productId,$quantity,'ADJ-'.gmdate('YmdHis').'-'.strtoupper(bin2hex(random_bytes(3))),null);
+            app_stock_batch_add($db,(int)$tenant['id'],$warehouseId,$productId,$quantity,$batch['batch_number']!==''?$batch['batch_number']:'ADJ-'.gmdate('YmdHis').'-'.strtoupper(bin2hex(random_bytes(3))),$batch['expiry_date']);
         }else{
             app_stock_batch_consume($db,(int)$tenant['id'],$warehouseId,$productId,abs($quantity));
         }
