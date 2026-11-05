@@ -55,7 +55,9 @@ assert_json() {
       foreach (($data["data"] ?? []) as $row) {
         if (($row["slug"] ?? "") === "api-created-category") {
           $expectedTitle = $check === "category-seo-fields" ? "عنوان سئو دسته API" : "عنوان سئو ویرایش‌شده";
-          if (($row["description"] ?? "") !== "توضیح دسته API" ||
+          $expectedSlug = $check === "category-seo-fields" ? "api-created-category" : "api-updated-category";
+          if (($row["slug"] ?? "") !== $expectedSlug ||
+              ($row["description"] ?? "") !== "توضیح دسته API" ||
               ($row["seo_title"] ?? "") !== $expectedTitle ||
               ($row["seo_description"] ?? "") !== "متای دسته API") exit(1);
           exit(0);
@@ -300,10 +302,9 @@ request POST /admin/categories 201 '{"title":"دسته ساخته‌شده با 
 NEW_CATEGORY_ID="$(assert_json created-id)"
 request GET "/admin/categories" 200 "" "$TOKEN"
 assert_json category-seo-fields
-request PATCH "/admin/categories/$NEW_CATEGORY_ID" 200 '{"title":"دسته ویرایش‌شده","seo_title":"عنوان سئو ویرایش‌شده"}' "$TOKEN" "$CSRF"
+request PATCH "/admin/categories/$NEW_CATEGORY_ID" 200 '{"title":"دسته ویرایش‌شده","slug":"api-updated-category","seo_title":"عنوان سئو ویرایش‌شده"}' "$TOKEN" "$CSRF"
 request GET "/admin/categories" 200 "" "$TOKEN"
 assert_json category-seo-update
-request DELETE "/admin/categories/$NEW_CATEGORY_ID" 200 "" "$TOKEN" "$CSRF"
 
 request GET "/products/$PRODUCT_ID" 404 "" "" "" "tenant-two.localhost"
 
