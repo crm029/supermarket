@@ -146,6 +146,12 @@ assert_json() {
       $profile = $data["data"]["profile"] ?? [];
       $checkout = $data["data"]["checkout"] ?? [];
       if (($profile["name"] ?? "") !== "فروشگاه آزمایشی" ||
+          ($profile["street_address"] ?? "") !== "خیابان نمونه، پلاک ۱۰" ||
+          ($profile["city"] ?? "") !== "تهران" ||
+          ($profile["country_code"] ?? "") !== "IR" ||
+          (float)($profile["latitude"] ?? 0) !== 35.6892 ||
+          (float)($profile["longitude"] ?? 0) !== 51.389 ||
+          ($profile["opening_hours"] ?? "") !== "Mo-Su 08:00-22:00" ||
           (int)($checkout["delivery_fee_rial"] ?? -1) !== 1000 ||
           (int)($checkout["reservation_minutes"] ?? -1) !== 15) exit(1);
       exit(0);
@@ -260,7 +266,8 @@ assert_json media-cleaned
 request GET /admin/settings 403 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
 request GET /admin/settings 200 "" "$TOKEN"
 request PUT /admin/settings 419 '{"profile":{},"checkout":{}}' "$TOKEN"
-request PUT /admin/settings 200 '{"profile":{"name":"فروشگاه آزمایشی","tagline":"تست تنظیمات","support_phone":"02112345678","primary_color":"#173D2D","accent_color":"#E6A23C"},"checkout":{"delivery_enabled":true,"pickup_enabled":true,"delivery_fee_rial":1000,"minimum_order_rial":1,"reservation_minutes":15}}' "$TOKEN" "$CSRF"
+request PUT /admin/settings 422 '{"profile":{"name":"اطلاعات نامعتبر","primary_color":"#173D2D","accent_color":"#E6A23C","latitude":95,"longitude":51.389},"checkout":{"delivery_enabled":true,"pickup_enabled":true,"delivery_fee_rial":1000,"minimum_order_rial":1,"reservation_minutes":15}}' "$TOKEN" "$CSRF"
+request PUT /admin/settings 200 '{"profile":{"name":"فروشگاه آزمایشی","tagline":"تست تنظیمات","support_phone":"02112345678","street_address":"خیابان نمونه، پلاک ۱۰","city":"تهران","region":"تهران","postal_code":"1234567890","country_code":"IR","latitude":35.6892,"longitude":51.389,"opening_hours":"Mo-Su 08:00-22:00","primary_color":"#173D2D","accent_color":"#E6A23C"},"checkout":{"delivery_enabled":true,"pickup_enabled":true,"delivery_fee_rial":1000,"minimum_order_rial":1,"reservation_minutes":15}}' "$TOKEN" "$CSRF"
 request GET /admin/settings 200 "" "$TOKEN"
 assert_json store-settings
 request GET /store 200
