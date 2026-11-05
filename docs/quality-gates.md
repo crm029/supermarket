@@ -33,3 +33,5 @@ A feature is not considered complete until it passes its relevant gates.
 - Images have useful alt text, responsive sizes and lazy loading.
 - Store scenes have a clear fallback when an image or 3D asset fails.
 - Mobile performance and accessibility are tested on real devices.
+
+## Database integrity\n- CI creates a disposable MySQL 8 database, imports the base schema and sample seed, applies the tenant-isolation migration, and runs negative tests proving cross-tenant category, role and audit-actor references are rejected.\n- The migration must be applied only after a backup; legacy cross-tenant references must be corrected, not silently reassigned.\n
