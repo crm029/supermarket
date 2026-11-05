@@ -370,6 +370,12 @@ async function applyCatalogFilters() {
   const minimum=document.getElementById("productMinPriceFilter").value;
   const maximum=document.getElementById("productMaxPriceFilter").value;
   const sort=document.getElementById("productSortFilter").value;
+  if ((minimum!=="" && (!Number.isSafeInteger(Number(minimum)) || Number(minimum)<0)) ||
+      (maximum!=="" && (!Number.isSafeInteger(Number(maximum)) || Number(maximum)<0)) ||
+      (minimum!=="" && maximum!=="" && Number(minimum)>Number(maximum))) {
+    document.getElementById("productCount").textContent="بازه قیمت را بررسی کنید.";
+    return;
+  }
   if(query)params.push("q="+encodeURIComponent(query));
   if(brand)params.push("brand="+encodeURIComponent(brand));
   if(minimum!=="")params.push("min_price="+Math.round(Number(minimum)*10));
