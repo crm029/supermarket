@@ -219,3 +219,14 @@ Checkout intentionally does not mark an order paid. Reservations expire after 20
 - Purchase-order receiving accepts optional `batch_number` and `expiry_date` (`YYYY-MM-DD`) on each item. If omitted, the system assigns a receipt-derived batch number and leaves expiry unknown. Every newly received purchase-order line is recorded as a stock batch linked to its receipt item.
 
 **Operational boundary:** This release records purchase-order receipt batches and provides expiry visibility. It does not yet allocate checkout reservations by FEFO or block sales of expired lots. Manual receipts, adjustments, transfers, and supplier returns still need batch-ledger synchronization before batch quantities can be treated as the authoritative stock ledger. Existing stock is backfilled as `LEGACY-*` lots with unknown expiry; staff should not infer an expiry date for those lots.
+
+
+### Batch ledger behavior and reservation expiry
+
+- Checkout reserves stock from eligible lots in FEFO order (earliest expiry first; lots with unknown expiry are last). Lots whose expiry date is before the current UTC date are excluded.
+- Each aggregate order reservation is linked to exact rows in `stock_reservation_batches`. Successful payment consumes those lot allocations; customer cancellation and reservation expiry release them.
+- The scheduled CLI worker is `php scripts/expire-stock-reservations.php`. Run it once per minute (or more frequently) from the host scheduler. It uses a MySQL advisory lock, processes at most 500 expired reservations per run, and updates aggregate and lot-level reserved quantities in one transaction.
+- Manual receipts and positive adjustments create lots with unknown expiry. Negative adjustments and warehouse transfers consume available lots in FEFO order; transfers preserve batch number, expiry date, and unit cost. Supplier returns consume the matching original receipt lot only.
+- Existing active reservations are mapped to the synthetic legacy lot during migration so payment, cancellation, and expiry continue to reconcile after deployment.
+
+**Deployment note:** schedule the expiry worker after deploying this migration and application release. If the worker is not scheduled, expired payment reservations will continue to occupy stock until another process releases them.
