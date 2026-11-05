@@ -1066,6 +1066,8 @@ document.getElementById("receiptForm").addEventListener("submit",async e=>{
       warehouse_id:Number(document.getElementById("receiptWarehouse").value),
       product_id:Number(document.getElementById("receiptProduct").value),
       quantity:Number(document.getElementById("receiptQuantity").value),
+      batch_number:document.getElementById("receiptBatchNumber").value.trim(),
+      expiry_date:document.getElementById("receiptExpiryDate").value||null,
       reason:document.getElementById("receiptReason").value.trim()
     }),csrf:true});
     e.target.reset();await loadInventory();message("رسید انبار ثبت شد.","success");
@@ -1078,6 +1080,8 @@ document.getElementById("adjustmentForm").addEventListener("submit",async e=>{
       warehouse_id:Number(document.getElementById("adjustWarehouse").value),
       product_id:Number(document.getElementById("adjustProduct").value),
       quantity:Number(document.getElementById("adjustQuantity").value),
+      batch_number:document.getElementById("adjustBatchNumber").value.trim(),
+      expiry_date:document.getElementById("adjustExpiryDate").value||null,
       reason:document.getElementById("adjustReason").value.trim()
     }),csrf:true});
     e.target.reset();await loadInventory();message("اصلاح موجودی ثبت شد.","success");
