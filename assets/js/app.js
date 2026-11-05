@@ -80,7 +80,7 @@ function buildFreeMovementWorld(){
 function focusFreeCategory(category){
   const position=freeWorld&&freeWorld.shelfPositions[category];if(!position)return;
   freeWorld.camera.position.set(0,1.62,position.z+2.4);
-  freeWorld.yaw=position.side===-1?.62:-.62;freeWorld.camera.rotation.set(0,freeWorld.yaw,0);
+  freeWorld.yaw=position.side === -1 ? 0.62 : -0.62;freeWorld.camera.rotation.set(0,freeWorld.yaw,0);
   document.getElementById("freeMovementStatus").textContent="راهرو: "+(categoryNames[category]||"فروشگاه");
 }
 function startFreeMovement(){
@@ -110,6 +110,8 @@ function startFreeMovement(){
     canvas.addEventListener("pointercancel",()=>{freePointerLook=null;});
     const moveMap={forward:"w",back:"s",left:"a",right:"d"};
     document.querySelectorAll("[data-move]").forEach(button=>{
+      if(button.dataset.moveBound==="1")return;
+      button.dataset.moveBound="1";
       const key=moveMap[button.dataset.move];
       button.addEventListener("pointerdown",event=>{event.preventDefault();freeMovementKeys.add(key);});
       ["pointerup","pointercancel","pointerleave"].forEach(type=>button.addEventListener(type,()=>freeMovementKeys.delete(key)));
