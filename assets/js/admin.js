@@ -530,7 +530,7 @@ function renderInventory() {
     const select=document.getElementById(id);const previous=select.value;
     select.innerHTML=warehouseOptions; if(previous)select.value=previous;
   });
-  const productOptions=products.filter(p=>Number(p.is_active)).map(p=>'<option value="'+Number(p.id)+'">'+escapeText(p.title)+' · '+escapeText(p.sku)+'</option>').join("");
+  const productOptions=products.filter(p=>Number(p.is_active)&&p.product_kind!=="variant_parent").map(p=>'<option value="'+Number(p.id)+'">'+escapeText(p.product_kind==="variant"?(p.parent_title||p.title)+" · "+(p.variant_label||"تنوع"):p.title)+' · '+escapeText(p.sku)+'</option>').join("");
   ["receiptProduct","adjustProduct","transferProduct"].forEach(id=>{
     const select=document.getElementById(id);const previous=select.value;
     select.innerHTML=productOptions;if(previous)select.value=previous;
