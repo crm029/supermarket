@@ -228,6 +228,36 @@ try {
         app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
     }
 
+    if (preg_match('#^/admin/products/([1-9][0-9]*)/variants$#', $path, $variantParentMatch)) {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'catalog.products.manage');
+        $parentId = (int)$variantParentMatch[1];
+        if ($method === 'GET') app_admin_product_variant_list($db, $tenant, $parentId);
+        if ($method === 'POST') {
+            app_auth_require_csrf($session);
+            app_admin_product_variant_create($db, $tenant, $session, $parentId);
+        }
+        header('Allow: GET, POST');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if (preg_match('#^/admin/products/([1-9][0-9]*)/variants/([1-9][0-9]*)$#', $path, $variantMatch)) {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'catalog.products.manage');
+        $parentId = (int)$variantMatch[1];
+        $variantId = (int)$variantMatch[2];
+        if ($method === 'PATCH') {
+            app_auth_require_csrf($session);
+            app_admin_product_variant_update($db, $tenant, $session, $parentId, $variantId);
+        }
+        if ($method === 'DELETE') {
+            app_auth_require_csrf($session);
+            app_admin_product_variant_deactivate($db, $tenant, $session, $parentId, $variantId);
+        }
+        header('Allow: PATCH, DELETE');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
     if (preg_match('#^/admin/products/([1-9][0-9]*)$#', $path, $productMatch)) {
         $productId = (int)$productMatch[1];
         $session = app_auth_require($db, $tenant);
