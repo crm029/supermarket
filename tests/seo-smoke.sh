@@ -38,6 +38,17 @@ check_redirect() {
 check_page "/robots.php" "Sitemap: http://localhost/sitemap.xml"
 check_page "/sitemap.php" "http://localhost/product/1/test-product"
 check_page "/sitemap.php" "http://localhost/category/dairy"
+status="$(curl -sS -o "$OUT" -w '%{http_code}' -H "Host: $HOST_HEADER" "$BASE_URL/sitemap.php")"
+if [[ "$status" != "200" ]]; then
+  echo "Sitemap returned HTTP $status"
+  cat "$OUT"
+  exit 1
+fi
+sitemap_count="$(grep -o '<url>' "$OUT" | wc -l | tr -d ' ')"
+if (( sitemap_count > 50000 )); then
+  echo "Sitemap exceeded the 50,000 URL protocol limit: $sitemap_count"
+  exit 1
+fi
 check_page "/product/1/test-product" "شیر پرچرب یک لیتری"
 check_page "/product/1/test-product" "عنوان سئو محصول تست"
 check_page "/product/1/test-product" "توضیحات متا محصول تست"
