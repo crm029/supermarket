@@ -27,17 +27,11 @@ foreach (app_seo_product_list($seo) as $product) {
         'lastmod' => app_seo_lastmod($product['updated_at'] ?? $product['created_at'] ?? null),
     ];
 }
-$xml = new XMLWriter();
-$xml->openMemory();
-$xml->startDocument('1.0','UTF-8');
-$xml->startElement('urlset');
-$xml->writeAttribute('xmlns','http://www.sitemaps.org/schemas/sitemap/0.9');
+$xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+$xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
 foreach ($urls as $url) {
-    $xml->startElement('url');
-    $xml->writeElement('loc',$url['loc']);
-    $xml->writeElement('lastmod',$url['lastmod']);
-    $xml->endElement();
+    $xml .= '<url><loc>' . htmlspecialchars($url['loc'],ENT_XML1|ENT_QUOTES,'UTF-8') . '</loc>';
+    $xml .= '<lastmod>' . htmlspecialchars($url['lastmod'],ENT_XML1|ENT_QUOTES,'UTF-8') . '</lastmod></url>' . "\n";
 }
-$xml->endElement();
-$xml->endDocument();
-echo $xml->outputMemory();
+$xml .= '</urlset>';
+echo $xml;
