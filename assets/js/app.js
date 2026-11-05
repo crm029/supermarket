@@ -30,7 +30,7 @@ function clampNumber(value,min,max){return Math.max(min,Math.min(max,value));}
 function makeFreeLabel(THREE,text){
   const canvas=document.createElement("canvas");canvas.width=512;canvas.height=128;
   const ctx=canvas.getContext("2d");
-  ctx.fillStyle="#10251d";ctx.beginPath();ctx.roundRect(8,8,496,112,24);ctx.fill();
+  ctx.fillStyle="#10251d";if(typeof ctx.roundRect==="function"){ctx.beginPath();ctx.roundRect(8,8,496,112,24);ctx.fill();}else{ctx.fillRect(8,8,496,112);}
   ctx.fillStyle="#ffffff";ctx.font="bold 46px Tahoma, sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(text,256,66,460);
   const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
   const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:texture,transparent:true,depthWrite:false}));
