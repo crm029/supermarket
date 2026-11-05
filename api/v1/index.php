@@ -21,7 +21,6 @@ try {
     $apiPrefix = '/api/v1';
     $apiPosition = strpos($path, $apiPrefix);
     if ($apiPosition !== false &&
-        ($apiPosition === 0 || $path[$apiPosition - 1] === '/') &&
         (!isset($path[$apiPosition + strlen($apiPrefix)]) || $path[$apiPosition + strlen($apiPrefix)] === '/')) {
         $path = substr($path, $apiPosition + strlen($apiPrefix));
         if ($path === '') $path = '/';
