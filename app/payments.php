@@ -142,12 +142,22 @@ function app_payment_start(PDO $db, array $tenant, array $session): never {
     }
 }
 
+function app_payment_redirect_result(string $status, ?int $orderId = null): never {
+    $base = rtrim((string)(app_env('APP_BASE_URL') ?? ''), '/');
+    $path = $base !== '' ? (string)(parse_url($base, PHP_URL_PATH) ?? '') : '';
+    $path = '/' . trim($path, '/');
+    if ($path === '/') $path = '';
+    $query = 'status=' . rawurlencode($status);
+    if ($orderId !== null && $orderId > 0) $query .= '&order=' . $orderId;
+    header('Location: ' . $path . '/payment-result.php?' . $query, true, 303);
+    exit;
+}
+
 function app_payment_callback(PDO $db, array $tenant): never {
     $authority = trim((string)($_GET['Authority'] ?? ''));
     $status = strtoupper(trim((string)($_GET['Status'] ?? '')));
     if (!preg_match('/^[A-Za-z0-9_-]{5,64}$/', $authority)) {
-        header('Location: /payment-result.php?status=failed', true, 303);
-        exit;
+        app_payment_redirect_result('failed');
     }
 
     $find = $db->prepare(
@@ -163,14 +173,12 @@ function app_payment_callback(PDO $db, array $tenant): never {
         exit;
     }
     if ($attempt['status'] === 'verified') {
-        header('Location: /payment-result.php?status=success&order=' . (int)$attempt['order_id'], true, 303);
-        exit;
+        app_payment_redirect_result('success', (int)$attempt['order_id']);
     }
     if ($status !== 'OK') {
         $fail = $db->prepare("UPDATE payment_attempts SET status = 'failed' WHERE id = ? AND status <> 'verified'");
         $fail->execute([$attempt['id']]);
-        header('Location: /payment-result.php?status=failed&order=' . (int)$attempt['order_id'], true, 303);
-        exit;
+        app_payment_redirect_result('failed', (int)$attempt['order_id']);
     }
 
     try {
@@ -248,12 +256,10 @@ function app_payment_callback(PDO $db, array $tenant): never {
         $paid = $db->prepare("UPDATE orders SET status = 'paid' WHERE tenant_id = ? AND id = ? AND status IN ('pending_payment','cancelled')");
         $paid->execute([$tenant['id'],$order['id']]);
         $db->commit();
-        header('Location: /payment-result.php?status=success&order=' . (int)$order['id'], true, 303);
-        exit;
+        app_payment_redirect_result('success', (int)$order['id']);
     } catch (Throwable $e) {
         if ($db->inTransaction()) $db->rollBack();
         error_log('[supermarket360-payment-callback] ' . $e->getMessage());
-        header('Location: /payment-result.php?status=review&order=' . (int)$attempt['order_id'], true, 303);
-        exit;
+        app_payment_redirect_result('review', (int)$attempt['order_id']);
     }
 }
