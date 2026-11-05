@@ -431,9 +431,10 @@ try {
         $limit = max(1, min(48, (int)($_GET['per_page'] ?? 24)));
         $sort = (string)($_GET['sort'] ?? 'title_asc');
         $inStock = isset($_GET['in_stock']) ? (string)$_GET['in_stock'] : '';
-        if (($category !== null && $category !== false && $category < 1) ||
-            ($minimum !== null && $minimum !== false && $minimum < 0) ||
-            ($maximum !== null && $maximum !== false && $maximum < 0) ||
+        if ($category === false || $minimum === false || $maximum === false ||
+            ($category !== null && $category < 1) ||
+            ($minimum !== null && $minimum < 0) ||
+            ($maximum !== null && $maximum < 0) ||
             ($minimum !== null && $minimum !== false && $maximum !== null && $maximum !== false && $minimum > $maximum) ||
             mb_strlen($query) > 80 || mb_strlen($brand) > 120 ||
             !in_array($sort, ['title_asc','price_asc','price_desc','newest'], true) ||
