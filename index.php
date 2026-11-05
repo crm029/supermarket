@@ -18,6 +18,27 @@ $seoStructuredData = [
     'description'=>$seoDescription,
 ];
 if (!empty($seoProfile['support_phone'])) $seoStructuredData['telephone'] = $seoProfile['support_phone'];
+if (!empty($seoProfile['street_address'])) {
+    $postalAddress = [
+        '@type'=>'PostalAddress',
+        'streetAddress'=>(string)$seoProfile['street_address'],
+        'addressCountry'=>(string)($seoProfile['country_code'] ?? 'IR'),
+    ];
+    if (!empty($seoProfile['city'])) $postalAddress['addressLocality']=(string)$seoProfile['city'];
+    if (!empty($seoProfile['region'])) $postalAddress['addressRegion']=(string)$seoProfile['region'];
+    if (!empty($seoProfile['postal_code'])) $postalAddress['postalCode']=(string)$seoProfile['postal_code'];
+    $seoStructuredData['address']=$postalAddress;
+}
+if ($seoProfile['latitude'] !== null && $seoProfile['longitude'] !== null) {
+    $seoStructuredData['geo']=[
+        '@type'=>'GeoCoordinates',
+        'latitude'=>(float)$seoProfile['latitude'],
+        'longitude'=>(float)$seoProfile['longitude'],
+    ];
+}
+if (!empty($seoProfile['opening_hours'])) {
+    $seoStructuredData['openingHours']=array_map('trim',explode(',',(string)$seoProfile['opening_hours']));
+}
 $seoJsonLd = $seoCanonical ? json_encode($seoStructuredData,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT) : null;
 ?><!doctype html>
 <html lang="fa" dir="rtl">
