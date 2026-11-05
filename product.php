@@ -94,12 +94,16 @@ $compareToman = $product['compare_at_rial'] === null ? null : number_format((int
   <meta name="description" content="<?= $e($description) ?>">
   <link rel="canonical" href="<?= $e($canonical) ?>">
   <meta property="og:type" content="product">
+  <meta property="og:locale" content="fa_IR">
   <meta property="og:site_name" content="<?= $e($storeName) ?>">
   <meta property="og:title" content="<?= $e($title) ?>">
   <meta property="og:description" content="<?= $e($description) ?>">
   <meta property="og:url" content="<?= $e($canonical) ?>">
   <?php if (!empty($image['url'])): ?><meta property="og:image" content="<?= $e($image['url']) ?>"><?php endif; ?>
   <meta name="twitter:card" content="<?= !empty($image['url'])?'summary_large_image':'summary' ?>">
+  <meta name="twitter:title" content="<?= $e($title) ?>">
+  <meta name="twitter:description" content="<?= $e($description) ?>">
+  <?php if (!empty($image['url'])): ?><meta name="twitter:image" content="<?= $e($image['url']) ?>"><?php endif; ?>
   <link rel="stylesheet" href="/assets/css/app.css">
   <script type="application/ld+json"><?= $jsonLd ?: '{}' ?></script>
   <script>
