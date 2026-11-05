@@ -91,6 +91,8 @@ let cartSaveChain = Promise.resolve();
 let pendingCheckout = false;
 let pendingPaymentOrderId = null;
 let savedAddresses = [];
+let pickupSlotsConfigured = false;
+let availablePickupSlots = [];
 let editingAddressId = null;
 let publicScenes = [];
 let currentScene = 0;
@@ -264,6 +266,28 @@ document.getElementById("saveAddressChanges").addEventListener("click", async ()
 });
 document.getElementById("cancelAddressEdit").addEventListener("click", () => resetAddressEditor());
 
+async function loadPickupSlots() {
+  const field=document.getElementById("pickupSlotField");
+  const select=document.getElementById("pickupSlotSelect");
+  const note=document.getElementById("pickupSlotNote");
+  try{
+    const result=await apiGet("pickup-slots");
+    pickupSlotsConfigured=Boolean(result?.configured);
+    availablePickupSlots=Array.isArray(result?.slots)?result.slots:[];
+    select.innerHTML='<option value="">انتخاب بازه زمانی</option>'+availablePickupSlots.map(slot=>{
+      const start=new Date(slot.starts_at),end=new Date(slot.ends_at);
+      const fmt=value=>value.toLocaleString("fa-IR",{weekday:"short",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});
+      return '<option value="'+Number(slot.id)+'">'+escapeHTML(slot.title)+' · '+fmt(start)+' تا '+fmt(end)+' · ظرفیت '+Number(slot.remaining_capacity)+'</option>';
+    }).join("");
+    note.textContent=!pickupSlotsConfigured?"تحویل حضوری بدون نیاز به انتخاب زمان انجام می‌شود.":availablePickupSlots.length?"یکی از بازه‌های دارای ظرفیت را انتخاب کنید.":"در حال حاضر بازه خالی برای تحویل حضوری وجود ندارد.";
+  }catch(error){
+    pickupSlotsConfigured=true;
+    availablePickupSlots=[];
+    select.innerHTML='<option value="">بازه‌ها بارگذاری نشدند</option>';
+    note.textContent="دریافت زمان‌های تحویل ممکن نیست؛ برای ثبت سفارش حضوری دوباره تلاش کنید.";
+  }
+  field.hidden=document.getElementById("fulfillmentSelect").value!=="pickup"||!pickupSlotsConfigured;
+}
 async function startCheckout() {
   if (!cart.size) return;
   document.getElementById("cartDialog").close();
@@ -276,6 +300,7 @@ async function startCheckout() {
   document.getElementById("addressRecipient").value = currentUser.full_name || "";
   document.getElementById("addressMobile").value = currentUser.mobile || "";
   try { savedAddresses = await apiGet("me/addresses") || []; } catch (_) { savedAddresses = []; }
+  await loadPickupSlots();
   renderSavedAddressManager();
   const addressSelect=document.getElementById("savedAddressSelect");
   addressSelect.innerHTML='<option value="new">ثبت نشانی جدید</option>'+savedAddresses.map(a=>'<option value="'+Number(a.id)+'">'+escapeHTML(a.title)+' — '+escapeHTML(a.city||"")+'، '+escapeHTML(a.address)+'</option>').join("");
@@ -499,6 +524,9 @@ document.getElementById("fulfillmentSelect").addEventListener("change",e=>{
   document.getElementById("savedAddressSelect").parentElement.hidden=!useDelivery;
   document.getElementById("deliveryAddressFields").hidden=!useDelivery||document.getElementById("savedAddressSelect").value!=="new";
 });
+document.getElementById("fulfillmentSelect").addEventListener("change",e=>{
+  document.getElementById("pickupSlotField").hidden=e.target.value!=="pickup"||!pickupSlotsConfigured;
+});
 document.getElementById("savedAddressSelect").addEventListener("change",e=>{
   document.getElementById("deliveryAddressFields").hidden=e.target.value!=="new"||document.getElementById("fulfillmentSelect").value==="pickup";
 });
@@ -516,6 +544,11 @@ document.getElementById("placeOrderButton").addEventListener("click",async()=>{
     setFormMessage("checkoutMessage","در حال اعتبارسنجی قیمت و موجودی...");
     let addressId=null;
     const fulfillment=document.getElementById("fulfillmentSelect").value;
+    const pickupSlotValue=document.getElementById("pickupSlotSelect").value;
+    if(fulfillment==="pickup"&&pickupSlotsConfigured&&!pickupSlotValue){
+      throw new Error("برای تحویل حضوری یک بازه زمانی دارای ظرفیت انتخاب کنید.");
+    }
+    const pickupSlotId=fulfillment==="pickup"&&pickupSlotsConfigured?Number(pickupSlotValue):null;
     if(fulfillment==="delivery"){
       const selectedAddress=document.getElementById("savedAddressSelect").value;
       if(selectedAddress!=="new"){
@@ -527,7 +560,7 @@ document.getElementById("placeOrderButton").addEventListener("click",async()=>{
     }
     const order=await apiPost("checkout",{
       items:[...cart].map(([product_id,quantity])=>({product_id,quantity})),
-      fulfillment,address_id:addressId,
+      fulfillment,address_id:addressId,pickup_slot_id:pickupSlotId,
       customer_note:document.getElementById("orderNote").value.trim()
     },true);
     pendingPaymentOrderId=Number(order.data.id);
