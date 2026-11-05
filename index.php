@@ -10,6 +10,20 @@ $seoDescription = mb_substr($seoDescription,0,160);
 $seoTitle = $seoStoreName.' | خرید آنلاین سوپرمارکت';
 $seoCanonical = $seoContext ? app_seo_url($seoContext) : null;
 $seoCategories = $seoContext ? app_seo_category_list($seoContext) : [];
+$seoHeroImage = null;
+if ($seoContext) {
+    $heroQuery = $seoContext["db"]->prepare(
+        "SELECT COALESCE(media_id,fallback_media_id)
+         FROM store_scenes
+         WHERE tenant_id=? AND is_published=1 AND COALESCE(media_id,fallback_media_id) IS NOT NULL
+         ORDER BY sort_order,id LIMIT 1"
+    );
+    $heroQuery->execute([(int)$seoContext["tenant"]["id"]]);
+    $heroMediaId = $heroQuery->fetchColumn();
+    if ($heroMediaId) {
+        $seoHeroImage = app_media_public_data($seoContext["db"],(int)$seoContext["tenant"]["id"],(int)$heroMediaId);
+    }
+}
 $seoStructuredData = [
     '@context'=>'https://schema.org',
     '@type'=>'GroceryStore',
@@ -57,9 +71,11 @@ $seoJsonLd = $seoCanonical ? json_encode($seoStructuredData,JSON_UNESCAPED_UNICO
   <meta property="og:title" content="<?= htmlspecialchars($seoTitle,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?>">
   <meta property="og:description" content="<?= htmlspecialchars($seoDescription,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?>">
   <?php if ($seoCanonical): ?><meta property="og:url" content="<?= htmlspecialchars($seoCanonical,ENT_QUOTES,'UTF-8') ?>"><?php endif; ?>
-  <meta name="twitter:card" content="summary">
+  <?php if (!empty($seoHeroImage["url"])): ?><meta property="og:image" content="<?= htmlspecialchars($seoHeroImage["url"],ENT_QUOTES,"UTF-8") ?>"><meta property="og:image:alt" content="<?= htmlspecialchars($seoHeroImage["alt_text"] ?: $seoStoreName,ENT_QUOTES|ENT_SUBSTITUTE,"UTF-8") ?>"><?php endif; ?>
+  <meta name="twitter:card" content="<?= !empty($seoHeroImage["url"]) ? "summary_large_image" : "summary" ?>">
   <meta name="twitter:title" content="<?= htmlspecialchars($seoTitle,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?>">
   <meta name="twitter:description" content="<?= htmlspecialchars($seoDescription,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?>">
+  <?php if (!empty($seoHeroImage["url"])): ?><meta name="twitter:image" content="<?= htmlspecialchars($seoHeroImage["url"],ENT_QUOTES,"UTF-8") ?>"><meta name="twitter:image:alt" content="<?= htmlspecialchars($seoHeroImage["alt_text"] ?: $seoStoreName,ENT_QUOTES|ENT_SUBSTITUTE,"UTF-8") ?>"><?php endif; ?>
   <?php if ($seoJsonLd): ?><script type="application/ld+json"><?= $seoJsonLd ?></script><?php endif; ?>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -89,7 +105,8 @@ $seoJsonLd = $seoCanonical ? json_encode($seoStructuredData,JSON_UNESCAPED_UNICO
       </div>
       <div class="trust-row"><span>✓ قیمت شفاف</span><span>✓ ارسال با پیک فروشگاه</span><span>✓ تحویل حضوری</span></div>
     </div>
-    <div class="hero-art" role="img" aria-label="تصویر نمونه از راهروی یک سوپرمارکت">
+    <div class="hero-art">
+      <?php if (!empty($seoHeroImage["url"])): ?><img class="hero-store-image" src="<?= htmlspecialchars($seoHeroImage["url"],ENT_QUOTES,"UTF-8") ?>" alt="<?= htmlspecialchars($seoHeroImage["alt_text"] ?: $seoStoreName,ENT_QUOTES|ENT_SUBSTITUTE,"UTF-8") ?>" width="<?= (int)($seoHeroImage["width"] ?? 1200) ?>" height="<?= (int)($seoHeroImage["height"] ?? 800) ?>" fetchpriority="high"><?php endif; ?>
       <div class="hero-chip"><span class="live-dot"></span> فروشگاه مجازی ۳۶۰</div>
       <div class="aisle-label">راهروی شماره ۰۱ <small>خوراکی‌های روزمره</small></div>
     </div>
