@@ -143,3 +143,10 @@ Checkout intentionally does not mark an order paid. Reservations expire after 20
 - Profile fields: name, tagline, support phone, primary color and accent color.
 - Checkout fields: delivery/pickup availability, delivery fee in IRR, minimum order in IRR and reservation duration (5–120 minutes).
 - Public `GET /store` exposes the safe profile and checkout settings and fulfillment availability. Checkout independently enforces enabled fulfillment, minimum order, delivery fee and reservation expiry on the server.
+
+
+## Staff and tenant roles
+- `GET /admin/staff` lists tenant roles, the tenant permission catalog (excluding the non-delegable `staff.manage` permission), and staff users; requires `staff.manage`.
+- `POST /admin/roles` creates a tenant role and grants selected tenant-scoped permissions; requires `staff.manage` and CSRF. `store_owner` and `staff.manage` cannot be delegated.
+- `POST /admin/staff/assign` assigns a tenant role to an already active, OTP-verified user by mobile number; requires `staff.manage` and CSRF.
+- `DELETE /admin/staff/{user_id}/roles/{role_id}` removes a tenant role assignment; requires `staff.manage` and CSRF. A user cannot remove their own role through this route, and the store-owner role is protected.

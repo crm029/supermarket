@@ -54,6 +54,7 @@ async function loadAll() {
     await loadScenes();
     await loadReport();
     await loadSettings();
+    await loadStaff();
     document.getElementById("statProducts").textContent=new Intl.NumberFormat("fa-IR").format(products.filter(x=>Number(x.is_active)).length);
     document.getElementById("statCategories").textContent=new Intl.NumberFormat("fa-IR").format(categories.filter(x=>Number(x.is_active)).length);
     document.getElementById("statConnection").textContent="متصل";
@@ -64,6 +65,78 @@ async function loadAll() {
     message(error.message,"error");
   }
 }
+let staffData = {roles:[],staff:[],permissions:[]};
+async function loadStaff() {
+  try {
+    const result=await request("admin/staff");
+    staffData=result.data||{roles:[],staff:[],permissions:[]};
+    const permissions=document.getElementById("staffPermissionList");
+    permissions.innerHTML=(staffData.permissions||[]).map(p=>
+      '<label class="staff-permission"><input type="checkbox" value="'+escapeHTML(p.permission_key)+'" data-staff-permission><span><strong>'+escapeHTML(p.permission_key)+'</strong><small>'+escapeHTML(p.description||"")+'</small></span></label>'
+    ).join("")||'<p class="admin-hint">مجوزی برای انتخاب وجود ندارد.</p>';
+    const roleSelect=document.getElementById("staffRoleSelect");
+    roleSelect.innerHTML='<option value="">انتخاب نقش</option>'+(staffData.roles||[]).map(r=>
+      '<option value="'+Number(r.id)+'">'+escapeHTML(r.title)+'</option>'
+    ).join("");
+    const rows=document.getElementById("staffRows");
+    rows.innerHTML=(staffData.staff||[]).map(person=>
+      '<tr><td>'+escapeHTML(person.full_name||"—")+'</td><td>'+escapeHTML(person.mobile||"")+'</td><td>'+escapeHTML(person.status||"")+'</td><td><div class="staff-role-tags">'+(person.role_ids||[]).map(id=>{
+        const role=(staffData.roles||[]).find(item=>Number(item.id)===Number(id));
+        return role?'<span class="staff-role-tag">'+escapeHTML(role.title)+' <button type="button" aria-label="حذف نقش" data-remove-staff-role="'+Number(id)+'" data-staff-user="'+Number(person.id)+'">×</button></span>':"";
+      }).join("")+'</div></td></tr>'
+    ).join("")||'<tr><td colspan="4">هنوز کارمندی با نقش ثبت نشده است.</td></tr>';
+  } catch(error) {
+    document.getElementById("staffMessage").textContent=error.message;
+    document.getElementById("staffMessage").className="form-message error";
+  }
+}
+document.getElementById("reloadStaff").addEventListener("click",loadStaff);
+document.getElementById("staffRoleForm").addEventListener("submit",async event=>{
+  event.preventDefault();
+  const permissionKeys=[...document.querySelectorAll("[data-staff-permission]:checked")].map(input=>input.value);
+  try{
+    await request("admin/roles",{method:"POST",csrf:true,body:JSON.stringify({
+      role_key:document.getElementById("staffRoleKey").value.trim(),
+      title:document.getElementById("staffRoleTitle").value.trim(),
+      permission_keys:permissionKeys
+    })});
+    event.target.reset();await loadStaff();
+    document.getElementById("staffMessage").textContent="نقش جدید ساخته شد.";
+    document.getElementById("staffMessage").className="form-message success";
+  }catch(error){
+    document.getElementById("staffMessage").textContent=error.message;
+    document.getElementById("staffMessage").className="form-message error";
+  }
+});
+document.getElementById("staffAssignForm").addEventListener("submit",async event=>{
+  event.preventDefault();
+  try{
+    await request("admin/staff/assign",{method:"POST",csrf:true,body:JSON.stringify({
+      mobile:document.getElementById("staffMobile").value.trim(),
+      role_id:Number(document.getElementById("staffRoleSelect").value)
+    })});
+    document.getElementById("staffMobile").value="";
+    await loadStaff();
+    document.getElementById("staffMessage").textContent="نقش به کارمند اختصاص یافت.";
+    document.getElementById("staffMessage").className="form-message success";
+  }catch(error){
+    document.getElementById("staffMessage").textContent=error.message;
+    document.getElementById("staffMessage").className="form-message error";
+  }
+});
+document.getElementById("staffRows").addEventListener("click",async event=>{
+  const button=event.target.closest("[data-remove-staff-role]");
+  if(!button||!confirm("این نقش از حساب کارمند برداشته شود؟"))return;
+  try{
+    await request("admin/staff/"+Number(button.dataset.staffUser)+"/roles/"+Number(button.dataset.removeStaffRole),{method:"DELETE",csrf:true});
+    await loadStaff();
+    document.getElementById("staffMessage").textContent="نقش از حساب کارمند برداشته شد.";
+    document.getElementById("staffMessage").className="form-message success";
+  }catch(error){
+    document.getElementById("staffMessage").textContent=error.message;
+    document.getElementById("staffMessage").className="form-message error";
+  }
+});
 async function loadSettings() {
   try {
     const result=await request("admin/settings");

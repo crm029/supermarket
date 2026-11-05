@@ -22,7 +22,8 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Kavenegar Verify Lookup production OTP adapter with server-side credentials and delivery response validation.
 - [ ] Merchant Kavenegar account/template credentials, password reset and delivery reports.
 - [x] Tenant/platform permission catalog, role grants, deny-by-default product API checks and product-change audit events.
-- [ ] Role/permission management UI and platform super-admin authorization.
+- [x] Tenant staff role creation, permission assignment, employee role assignment/removal UI and API; staff-management privilege cannot be delegated.
+- [ ] Platform super-admin authorization.
 - [ ] Platform super-admin tenant provisioning and domain verification.
 - [x] Secure tenant-scoped image upload with MIME, size, dimension and storage-key validation.
 - [x] Store settings UI, branding controls, fulfillment availability, delivery fee, minimum order and reservation duration.

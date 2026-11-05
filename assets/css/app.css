@@ -36,3 +36,16 @@
 .address-empty{margin:0;color:var(--muted,#667085);font-size:.88rem}
 .address-edit-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 @media(max-width:520px){.saved-address-row{align-items:flex-start;flex-direction:column}.saved-address-actions{width:100%;justify-content:flex-end}}
+
+
+/* Staff and role administration */
+.staff-permission-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:9px;margin:12px 0 18px}
+.staff-permission{display:flex;align-items:flex-start;gap:9px;padding:11px;border:1px solid var(--line);border-radius:12px;background:var(--paper);cursor:pointer}
+.staff-permission input{margin-top:5px;accent-color:var(--forest)}
+.staff-permission span{display:grid;gap:3px;min-width:0}
+.staff-permission strong{font-size:12px;direction:ltr;text-align:right;overflow-wrap:anywhere}
+.staff-permission small{font-size:11px;color:var(--muted);line-height:1.7}
+.staff-role-tags{display:flex;flex-wrap:wrap;gap:7px}
+.staff-role-tag{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;background:#edf2e7;color:var(--forest);font-size:11px}
+.staff-role-tag button{border:0;background:transparent;color:#a33;font:700 15px Vazirmatn;cursor:pointer}
+.admin-hint{font-size:11px;color:var(--muted);line-height:1.9}

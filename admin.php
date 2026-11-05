@@ -26,6 +26,7 @@ declare(strict_types=1);
     <button class="admin-nav" data-panel="orders">مدیریت سفارش‌ها</button>
     <button class="admin-nav" data-panel="inventory">انبار و موجودی</button>
     <button class="admin-nav" data-panel="settings">تنظیمات و ظاهر فروشگاه</button>
+    <button class="admin-nav" data-panel="staff">کارکنان و سطح دسترسی</button>
     <button class="admin-nav" data-panel="scenes">طراحی فروشگاه مجازی</button>
     <div class="admin-sidebar-note">دسترسی‌ها بر اساس نقش و مجوز حساب شما از سمت سرور کنترل می‌شوند.</div>
   </aside>
@@ -83,6 +84,25 @@ declare(strict_types=1);
         <h3>انتقال بین انبارها</h3><div class="admin-form-grid"><label>از انبار<select id="transferFrom" required></select></label><label>به انبار<select id="transferTo" required></select></label><label>محصول<select id="transferProduct" required></select></label><label>تعداد انتقال<input id="transferQuantity" type="number" min="1" max="1000000" required></label></div><button class="primary-button" type="submit">ثبت انتقال</button>
       </form>
       <h3>موجودی فعلی</h3><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>محصول</th><th>انبار</th><th>موجودی</th><th>رزروشده</th><th>قابل فروش</th></tr></thead><tbody id="stockRows"><tr><td colspan="5">در حال بارگذاری...</td></tr></tbody></table></div>
+    </section>
+    <section class="admin-panel" id="panel-staff">
+      <div class="admin-heading"><div><p class="eyebrow">مدیریت تیم فروشگاه</p><h2>کارکنان و سطح دسترسی</h2></div><button class="text-button" id="reloadStaff" type="button">به‌روزرسانی</button></div>
+      <div class="admin-welcome"><p>کارمند ابتدا باید با شماره موبایل خود ثبت‌نام و تأیید شود. سپس می‌توانید یک یا چند نقش محدود به او اختصاص دهید. نقش مدیر اصلی از این بخش قابل واگذاری یا حذف نیست.</p></div>
+      <form id="staffRoleForm" class="admin-form">
+        <h3>ساخت نقش جدید</h3>
+        <div class="admin-form-grid"><label>شناسه انگلیسی نقش<input id="staffRoleKey" maxlength="60" pattern="[a-z][a-z0-9_]{2,59}" placeholder="cashier" required></label><label>عنوان نمایشی نقش<input id="staffRoleTitle" maxlength="100" placeholder="صندوقدار" required></label></div>
+        <p class="admin-hint">مجوز مدیریت کارکنان فقط برای مدیر اصلی محفوظ است و به نقش‌های جدید داده نمی‌شود.</p>
+        <div id="staffPermissionList" class="staff-permission-grid"></div>
+        <button class="primary-button" type="submit">ساخت نقش</button>
+      </form>
+      <form id="staffAssignForm" class="admin-form">
+        <h3>اختصاص نقش به کارمند</h3>
+        <div class="admin-form-grid"><label>شماره موبایل کارمند<input id="staffMobile" inputmode="tel" maxlength="14" placeholder="09xxxxxxxxx" required></label><label>نقش<select id="staffRoleSelect" required><option value="">ابتدا نقش بسازید</option></select></label></div>
+        <button class="primary-button" type="submit">اختصاص نقش</button>
+      </form>
+      <div class="admin-heading"><div><h3>اعضای تیم</h3></div></div>
+      <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>کارمند</th><th>موبایل</th><th>وضعیت</th><th>نقش‌ها و عملیات</th></tr></thead><tbody id="staffRows"><tr><td colspan="4">در حال بارگذاری...</td></tr></tbody></table></div>
+      <p id="staffMessage" class="form-message" role="status"></p>
     </section>
     <section class="admin-panel" id="panel-settings">
       <div class="admin-heading"><div><p class="eyebrow">هویت و تجربه مشتری</p><h2>تنظیمات فروشگاه</h2></div><button class="text-button" id="reloadSettings" type="button">بارگذاری مجدد</button></div>

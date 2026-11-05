@@ -15,6 +15,7 @@ require_once dirname(__DIR__, 2) . '/app/reports.php';
 require_once dirname(__DIR__, 2) . '/app/wallet.php';
 require_once dirname(__DIR__, 2) . '/app/customer_cart.php';
 require_once dirname(__DIR__, 2) . '/app/store_settings.php';
+require_once dirname(__DIR__, 2) . '/app/staff.php';
 
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
@@ -326,6 +327,35 @@ try {
             'mobile' => $session['mobile'],
             'referral_code' => $session['referral_code'],
         ]]);
+    }
+
+    if ($path === '/admin/staff') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'staff.manage');
+        if ($method === 'GET') app_admin_staff_list($db, $tenant);
+        header('Allow: GET');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if ($path === '/admin/roles' && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'staff.manage');
+        app_admin_staff_create_role($db, $tenant, $session);
+    }
+
+    if ($path === '/admin/staff/assign' && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'staff.manage');
+        app_admin_staff_assign_role($db, $tenant, $session);
+    }
+
+    if (preg_match('#^/admin/staff/([1-9][0-9]*)/roles/([1-9][0-9]*)$#', $path, $staffRoleMatch) && $method === 'DELETE') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'staff.manage');
+        app_admin_staff_remove_role($db, $tenant, $session, (int)$staffRoleMatch[1], (int)$staffRoleMatch[2]);
     }
 
     if ($path === '/admin/settings') {
