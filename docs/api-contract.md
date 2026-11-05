@@ -200,3 +200,11 @@ Checkout intentionally does not mark an order paid. Reservations expire after 20
 - `GET /admin/products/{id}/variants` lists a parent’s variants; `POST` creates one; `PATCH /admin/products/{id}/variants/{variantId}` updates; `DELETE` deactivates. All variant administration requires `catalog.products.manage` and CSRF on mutations.
 - Public product lists show parent groups with the minimum active-variant price and aggregated available stock. Product detail returns active variants and each variant’s availability. Cart/checkout must use a sellable variant ID, never the parent ID.
 - Inventory receipts and movements operate on the child variant product ID. Order-line title snapshots include the parent title and selected variant label. Deactivating a parent makes all its variants unavailable for sale without deleting their stock or history.
+
+## Supplier returns
+- GET /admin/supplier-returns — tenant-scoped return history; requires inventory.read.
+- POST /admin/supplier-returns — posts a supplier return; requires inventory.manage, authenticated session and CSRF.
+- A return line references an actual purchase receipt line (receipt_item_id), and the server derives its supplier, warehouse, product and unit cost. The selected warehouse must match the original receipt.
+- Cumulative returns cannot exceed the quantity originally received on that receipt line. The server locks receipt and stock rows, refuses to return reserved/unavailable stock, reduces on-hand quantity and writes a signed supplier_return stock movement plus an audit event in one transaction.
+- Return records and stock movements are append-only through the application API; no edit/delete route is exposed.
+
