@@ -694,13 +694,15 @@ document.getElementById("placeOrderButton").addEventListener("click",async()=>{
     const order=await apiPost("checkout",{
       items:[...cart].map(([product_id,quantity])=>({product_id,quantity})),
       fulfillment,address_id:addressId,pickup_slot_id:pickupSlotId,
+      coupon_code:document.getElementById("couponCodeInput").value.trim().toUpperCase(),
       customer_note:document.getElementById("orderNote").value.trim()
     },true);
     pendingPaymentOrderId=Number(order.data.id);
     cart.clear();updateCart();persistCustomerCart();
     document.getElementById("cartItems").innerHTML='<p class="empty-cart">سفارش با موفقیت ثبت شد.</p>';
     document.getElementById("cartTotal").textContent=money(0);
-    setFormMessage("checkoutMessage","سفارش "+order.data.order_number+" ثبت شد؛ در حال انتقال به درگاه پرداخت...","success");
+    const couponApplied=Number(order.data.discount_rial)>0?" · تخفیف "+money(Math.round(Number(order.data.discount_rial)/10))+" با کد "+order.data.coupon_code:"";
+    setFormMessage("checkoutMessage","سفارش "+order.data.order_number+" ثبت شد"+couponApplied+"؛ در حال انتقال به درگاه پرداخت...","success");
     const payment=await apiPost("payments/zarinpal/request",{order_id:pendingPaymentOrderId},true);
     if(payment.data?.redirect_url){window.location.assign(payment.data.redirect_url);return;}
     throw new Error("درگاه پرداخت هنوز پیکربندی نشده است. سفارش ثبت شده و می‌توانید بعداً پرداخت را دوباره امتحان کنید.");
