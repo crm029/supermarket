@@ -57,6 +57,10 @@ declare(strict_types=1);
       <div class="platform-section-heading"><h2>فروشگاه‌های ثبت‌شده</h2><span id="platformTenantCount"></span></div>
       <div id="platformTenantList" class="platform-tenant-list"><p>در حال بارگذاری...</p></div>
     </section>
+    <section class="platform-list-section">
+      <div class="platform-section-heading"><h2>گزارش رویدادهای پلتفرم</h2><span>آخرین ۲۰۰ رویداد</span></div>
+      <div id="platformAuditList" class="platform-audit-list"><p>در حال بارگذاری...</p></div>
+    </section>
     <p id="platformMessage" class="platform-message" role="status" aria-live="polite"></p>
   </section>
 </main>
