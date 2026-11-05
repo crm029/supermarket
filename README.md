@@ -15,19 +15,18 @@ A multi-tenant, white-label supermarket commerce platform with an immersive virt
 The repository now contains a tenant-aware PHP commerce backend, customer authentication, catalogue and stock operations, a photo-tour storefront editor, checkout and a ZarinPal adapter. It remains an active development build, **not yet approved for production**.
 
 Implemented and covered by repository tests:
-- Persian RTL responsive storefront with guided category navigation, live tenant catalogue/product details, photo-tour scenes, interactive hotspots and procedural WebGL free movement through category-labelled aisles (with a non-WebGL fallback).
+- Persian RTL responsive storefront with guided category navigation, live tenant catalogue/product details, photo-tour scenes, interactive hotspots and procedural WebGL free movement through live category shelves with clickable live catalogue products (with a non-WebGL fallback).
 - Tenant-aware MySQL schema, verified-host tenant resolution, composite tenant-scope constraints and cross-tenant negative tests.
 - Tenant-aware SEO foundation: primary-domain canonical URLs, robots and sitemap endpoints, crawlable product/category landing pages, Open Graph/Twitter metadata and GroceryStore/Product/CollectionPage structured data.
 - OTP registration/login foundation, rate limiting, hashed challenges, database-backed sessions, HttpOnly cookies and CSRF protection; Kavenegar Verify Lookup adapter is available when real credentials are configured.
 - Deny-by-default tenant permission checks and audited product/category administration.
-- Seller dashboard, merchant branding and checkout settings, staff roles and permission management, tenant media library, media uploads, scene/hotspot authoring, multi-warehouse receipts/transfers/adjustments, stock reservation and expiry worker, supplier directory, purchase orders and partial receiving with stock posting.
+- Seller dashboard, merchant branding and checkout settings, staff roles and permission management, tenant media library, media uploads, scene/hotspot authoring, multi-warehouse receipts/transfers/adjustments, supplier returns, FEFO batch/expiry tracking, audited expired-stock write-off, low-stock alerts, inventory movement history, stock reservation and expiry worker, supplier directory, purchase orders and partial receiving with stock posting.
 - Server-validated cart quotes, persistent cross-device customer carts, customer addresses, tenant postal-code delivery zones, capacity-controlled scheduled pickup, tenant-scoped percentage/fixed coupons with usage limits, transactional pending checkout, customer order history/cancellation and fulfilment transitions.
 - ZarinPal v4 request/verification adapter with idempotent callbacks and stock commit after server-side verification.
 - Append-only wallet credit ledger, customer balance/history API and configurable first-paid-order referral rewards.
 - GitHub Actions PHP/JavaScript validation and MySQL-backed schema, tenant isolation and HTTP API integration checks.
 
 Still in progress:
-- Platform super-admin authorization and tenant/domain provisioning.
 - Platform super-admin authorization and tenant/domain provisioning.
 - Wallet spending, refunds/reversals, advanced referral fraud controls and reward policy approval for each merchant.
 - Cashier/picker/courier assignment, courier tracking, operational notifications and report exports.
