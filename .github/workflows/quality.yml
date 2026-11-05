@@ -143,9 +143,125 @@ jobs:
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_05_seo_content_fields.sql
 
       - name: Verify merchant SEO content fields
+        run: mysql --batch --skip-column-names --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/seo-fields.sql | grep -Eq '^2[[:space:]]+4      - name: Test stock batch reservation integrity
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/stock-batches.sql
+
+
+
+      - name: Test initial store owner bootstrap
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/bootstrap-store-owner.sql
+
+      - name: Set up PHP for HTTP API tests
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: pdo_mysql, mbstring
+          coverage: none
+
+      - name: Create public API smoke fixtures
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/api-smoke-fixtures.sql
+
+      - name: Run tenant-aware HTTP API smoke tests
+        env:
+          APP_ENV: testing
+          APP_KEY: ci-test-secret-with-more-than-thirty-two-characters
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: supermarket360
+          DB_USERNAME: root
+          DB_PASSWORD: root
+          MEDIA_BASE_URL: https://cdn.example.test/assets
+          MEDIA_STORAGE_PATH: /tmp/supermarket-media
         run: |
-          result="$(mysql --batch --skip-column-names --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/seo-fields.sql)"
-          test "$(echo "$result" | awk '{print $1 " " $2}')" = "2 4"
+          set -euo pipefail
+          mkdir -p /tmp/supermarket-media
+          php -S 127.0.0.1:8099 tests/php-router.php >/tmp/supermarket-api.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          bash tests/api-smoke.sh
+          REFERRAL_REWARD_BASIS_POINTS=500 php tests/wallet-referral-integration.php
+
+      - name: Run tenant-aware SEO page smoke tests
+        env:
+          APP_ENV: testing
+          APP_KEY: ci-test-secret-with-more-than-thirty-two-characters
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: supermarket360
+          DB_USERNAME: root
+          DB_PASSWORD: root
+          MEDIA_BASE_URL: https://cdn.example.test/assets
+          MEDIA_STORAGE_PATH: /tmp/supermarket-media
+        run: |
+          set -euo pipefail
+          php -S 127.0.0.1:8100 -t . >/tmp/supermarket-seo.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS -H "Host: localhost" http://127.0.0.1:8100/index.php >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          curl -fsS -H "Host: localhost" http://127.0.0.1:8100/index.php >/dev/null
+          bash tests/seo-smoke.sh
+2\t4'
+
+      - name: Test stock batch reservation integrity
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/stock-batches.sql
+
+
+
+      - name: Test initial store owner bootstrap
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/bootstrap-store-owner.sql
+
+      - name: Set up PHP for HTTP API tests
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: pdo_mysql, mbstring
+          coverage: none
+
+      - name: Create public API smoke fixtures
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/api-smoke-fixtures.sql
+
+      - name: Run tenant-aware HTTP API smoke tests
+        env:
+          APP_ENV: testing
+          APP_KEY: ci-test-secret-with-more-than-thirty-two-characters
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: supermarket360
+          DB_USERNAME: root
+          DB_PASSWORD: root
+          MEDIA_BASE_URL: https://cdn.example.test/assets
+          MEDIA_STORAGE_PATH: /tmp/supermarket-media
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/supermarket-media
+          php -S 127.0.0.1:8099 tests/php-router.php >/tmp/supermarket-api.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          bash tests/api-smoke.sh
+          REFERRAL_REWARD_BASIS_POINTS=500 php tests/wallet-referral-integration.php
+
+      - name: Run tenant-aware SEO page smoke tests
+        env:
+          APP_ENV: testing
+          APP_KEY: ci-test-secret-with-more-than-thirty-two-characters
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: supermarket360
+          DB_USERNAME: root
+          DB_PASSWORD: root
+          MEDIA_BASE_URL: https://cdn.example.test/assets
+          MEDIA_STORAGE_PATH: /tmp/supermarket-media
+        run: |
+          set -euo pipefail
+          php -S 127.0.0.1:8100 -t . >/tmp/supermarket-seo.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS -H "Host: localhost" http://127.0.0.1:8100/index.php >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          curl -fsS -H "Host: localhost" http://127.0.0.1:8100/index.php >/dev/null
+          bash tests/seo-smoke.sh
+
       - name: Test stock batch reservation integrity
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/stock-batches.sql
 
