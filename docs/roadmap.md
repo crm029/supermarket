@@ -9,7 +9,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Add initial MySQL schema for commerce, multi-warehouse inventory, media scenes, orders, wallet/referral and audit records.
 - [x] Add verified-host tenant resolver and read-only store/category/product API.
 - [x] Add local sample tenant seed and PHP syntax-check workflow.
-- [ ] Run PHP syntax checks in GitHub Actions and resolve any failures.
+- [x] Run PHP syntax checks in GitHub Actions and resolve any failures.
 - [ ] Validate schema against the selected MySQL/MariaDB versions.
 - [ ] Verify XAMPP installation on a real local machine.
 
