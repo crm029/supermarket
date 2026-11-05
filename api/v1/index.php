@@ -190,11 +190,12 @@ try {
         $count->execute($params);
         $stmt = $db->prepare(
             "SELECT p.id, p.sku, p.title, p.brand, p.description, p.unit_label, p.price_rial,
-                    p.compare_at_rial, p.image_media_id, p.is_weighted,
+                    p.compare_at_rial, p.image_media_id, p.is_weighted, c.slug AS category_slug,
                     m.storage_key AS media_storage_key, m.alt_text AS media_alt_text,
                     m.width AS media_width, m.height AS media_height
              FROM products p
              LEFT JOIN media_assets m ON m.tenant_id = p.tenant_id AND m.id = p.image_media_id
+             LEFT JOIN categories c ON c.tenant_id = p.tenant_id AND c.id = p.category_id AND c.is_active = 1
              WHERE {$sqlWhere}
              ORDER BY p.title LIMIT {$limit} OFFSET " . (($page - 1) * $limit)
         );
