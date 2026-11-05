@@ -23,6 +23,19 @@ INSERT INTO users (tenant_id, full_name, mobile, referral_code, status, mobile_v
 VALUES (1, 'کاربر آزمایشی', '09123456789', 'LOCALTEST01', 'active', UTC_TIMESTAMP());
 ```
 
+## Grant a local test user product permissions
+The sample database has no staff roles. After creating a test user, assign a tenant role and the product permissions in phpMyAdmin (replace the IDs if your local records differ):
+
+```sql
+INSERT INTO roles (tenant_id, role_key, title) VALUES (1, 'store_manager', 'مدیر فروشگاه');
+SET @role_id = LAST_INSERT_ID();
+SELECT role_scope_id INTO @role_scope FROM roles WHERE id = @role_id;
+INSERT INTO user_roles (tenant_id, user_id, role_id) VALUES (1, (SELECT id FROM users WHERE tenant_id = 1 AND mobile = '09123456789'), @role_id);
+INSERT INTO role_permissions (role_scope_id, role_id, permission_id)
+SELECT @role_scope, @role_id, id FROM permissions
+WHERE permission_key IN ('catalog.products.read', 'catalog.products.manage');
+```
+
 ## Authentication endpoints
 - `POST /api/v1/auth/request-otp` with JSON `{"mobile":"09123456789"}`
 - `POST /api/v1/auth/verify-otp` with JSON `{"mobile":"09123456789","code":"123456"}`
@@ -30,6 +43,12 @@ VALUES (1, 'کاربر آزمایشی', '09123456789', 'LOCALTEST01', 'active', 
 - `POST /api/v1/auth/logout` with the session cookie and `X-CSRF-Token` header
 
 OTP login works only for an existing user whose status is `active`. The sample seed does not create customer accounts. Add a test account manually in a disposable local database. Production SMS delivery is disabled until a provider adapter and credentials are configured; never enable the log driver on a public server.
+
+## Admin product endpoints
+- `GET /api/v1/admin/products` — requires `catalog.products.read`.
+- `POST /api/v1/admin/products` — requires `catalog.products.manage`, session cookie and `X-CSRF-Token`.
+- `PATCH /api/v1/admin/products/{id}` — update product; requires the same permission and CSRF token.
+- `DELETE /api/v1/admin/products/{id}` — soft-deactivate product; requires the same permission and CSRF token.
 
 ## Example catalog requests
 - `GET /api/v1/store`
