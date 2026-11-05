@@ -16,12 +16,13 @@ The root `index.php` provides a local storefront preview; live tenant catalogue,
 10. Apply `database/migrations/2026_11_05_media_cleanup_queue.sql` to enable safe queued removal of unused media files.
 11. Apply `database/migrations/2026_11_05_delivery_zones.sql` to enable postal-code delivery zones and order-zone references.
 12. Apply `database/migrations/2026_11_05_pickup_slots.sql` to enable scheduled pickup slots and order-slot references.
-13. For an existing database, review and repair inconsistent tenant references before applying migrations. Never run schema or demo seed imports over a live production database.
-14. Create one tenant and one verified domain matching the Host header, then set the tenant status to `active`. The demo seed configures `localhost`.
-15. Configure `DB_HOST`, `DB_DATABASE`, `DB_USERNAME` and `DB_PASSWORD` in the PHP server environment. Set a unique `APP_KEY` of at least 32 characters. Keep all secrets out of Git.
-16. For local OTP testing, set `APP_ENV=local` and `SMS_PROVIDER=log`. The one-time code is written only to the PHP error log. This development driver is forbidden in production.
-17. Optionally set `MEDIA_BASE_URL` to the HTTPS base URL of your public media storage. Without it, media metadata is returned but image URLs are `null`.
-18. Route `/api/v1/*` to `api/v1/index.php` using the web server rewrite configuration, or call the PHP entry point directly while developing.
+13. Apply `database/migrations/2026_11_05_coupons.sql` to enable tenant promotion coupons and order redemption snapshots.
+14. For an existing database, review and repair inconsistent tenant references before applying migrations. Never run schema or demo seed imports over a live production database.
+15. Create one tenant and one verified domain matching the Host header, then set the tenant status to `active`. The demo seed configures `localhost`.
+16. Configure `DB_HOST`, `DB_DATABASE`, `DB_USERNAME` and `DB_PASSWORD` in the PHP server environment. Set a unique `APP_KEY` of at least 32 characters. Keep all secrets out of Git.
+17. For local OTP testing, set `APP_ENV=local` and `SMS_PROVIDER=log`. The one-time code is written only to the PHP error log. This development driver is forbidden in production.
+18. Optionally set `MEDIA_BASE_URL` to the HTTPS base URL of your public media storage. Without it, media metadata is returned but image URLs are `null`.
+19. Route `/api/v1/*` to `api/v1/index.php` using the web server rewrite configuration, or call the PHP entry point directly while developing.
 
 ## Create a local test account
 The sample seed contains no customer accounts. In a disposable local database, create one active test user with phpMyAdmin:
@@ -157,3 +158,7 @@ Create future pickup windows in the seller panel with store-local start/end time
 
 ## Immersive 3D storefront
 The optional free-movement mode loads the pinned Three.js 0.160.0 runtime from jsDelivr. It builds a lightweight procedural aisle and supports WASD/arrow keys, touch controls and drag-to-look. If the runtime cannot load or WebGL is unavailable, the storefront falls back to guided category navigation and the photo tour. Real-store photography and physical-device visual acceptance remain deployment tasks.
+
+
+## Promotion coupons
+Apply the coupon migration after the pickup-slot migration. The seller panel can create percentage or fixed-amount codes, set validity dates and usage limits, and deactivate codes. Customers enter an optional code in checkout; the final discount is calculated and revalidated server-side. A pending order reserves one use until paid, cancelled or expired.
