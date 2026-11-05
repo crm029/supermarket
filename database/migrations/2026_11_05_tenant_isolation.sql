@@ -131,7 +131,10 @@ ALTER TABLE user_roles ADD COLUMN tenant_id BIGINT UNSIGNED NULL AFTER user_id;
 ALTER TABLE user_roles ADD COLUMN role_scope_id BIGINT UNSIGNED NULL AFTER tenant_id;
 UPDATE user_roles ur
 JOIN users u ON u.id = ur.user_id
-SET ur.tenant_id = u.tenant_id;\nUPDATE user_roles ur\nJOIN roles r ON r.id = ur.role_id\nSET ur.role_scope_id = COALESCE(r.tenant_id, 0);
+SET ur.tenant_id = u.tenant_id;
+UPDATE user_roles ur
+JOIN roles r ON r.id = ur.role_id
+SET ur.role_scope_id = COALESCE(r.tenant_id, 0);
 ALTER TABLE user_roles
   MODIFY tenant_id BIGINT UNSIGNED NOT NULL,
   MODIFY role_scope_id BIGINT UNSIGNED NOT NULL,
