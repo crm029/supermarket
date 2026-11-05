@@ -39,13 +39,18 @@ function app_commerce_quote(PDO $db, int $tenantId, array $lines, bool $requireS
     $ids = array_keys($lines);
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
     $stmt = $db->prepare(
-        "SELECT p.id, p.title, p.sku, p.unit_label, p.price_rial, p.is_weighted,
+        "SELECT p.id,
+                CASE WHEN p.product_kind='variant' THEN CONCAT(parent.title,' · ',p.variant_label) ELSE p.title END AS title,
+                p.sku, p.unit_label, p.price_rial, p.is_weighted,
                 COALESCE(SUM(CASE WHEN w.is_active = 1 THEN sl.on_hand - sl.reserved ELSE 0 END), 0) AS available_quantity
          FROM products p
+         LEFT JOIN products parent ON parent.tenant_id=p.tenant_id AND parent.id=p.parent_product_id
          LEFT JOIN stock_levels sl ON sl.tenant_id = p.tenant_id AND sl.product_id = p.id
          LEFT JOIN warehouses w ON w.tenant_id = sl.tenant_id AND w.id = sl.warehouse_id AND w.is_active = 1
-         WHERE p.tenant_id = ? AND p.is_active = 1 AND p.id IN ({$placeholders})
-         GROUP BY p.id, p.title, p.sku, p.unit_label, p.price_rial, p.is_weighted"
+         WHERE p.tenant_id = ? AND p.is_active = 1 AND p.product_kind <> 'variant_parent'
+           AND (p.product_kind <> 'variant' OR parent.is_active=1)
+           AND p.id IN ({$placeholders})
+         GROUP BY p.id, parent.title, p.variant_label, p.title, p.sku, p.unit_label, p.price_rial, p.is_weighted"
     );
     $stmt->execute(array_merge([$tenantId], $ids));
     $found = [];
