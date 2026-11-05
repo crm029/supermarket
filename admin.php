@@ -46,6 +46,7 @@ declare(strict_types=1);
           <label>قیمت (تومان)<input id="productPrice" type="number" min="0" step="1" required></label>
           <label>دسته‌بندی<select id="productCategory"><option value="">بدون دسته‌بندی</option></select></label>
           <label>برند<input id="productBrand" maxlength="120"></label>
+          <label>شناسه تصویر محصول<input id="productMediaId" type="number" min="1"></label>
           <label>واحد فروش<input id="productUnit" maxlength="80" value="عدد"></label>
         </div>
         <label>توضیحات<textarea id="productDescription" rows="3" maxlength="10000"></textarea></label>
@@ -56,7 +57,7 @@ declare(strict_types=1);
       <div class="admin-heading"><div><p class="eyebrow">ساختار فروشگاه</p><h2>دسته‌بندی‌ها</h2></div></div>
       <form id="categoryForm" class="admin-form admin-category-form">
         <h3>افزودن دسته‌بندی</h3>
-        <div class="admin-form-grid"><label>عنوان دسته<input id="categoryTitle" maxlength="120" required></label><label>شناسه انگلیسی (Slug)<input id="categorySlug" maxlength="140" required pattern="[a-z0-9]+(?:-[a-z0-9]+)*"></label></div>
+        <div class="admin-form-grid"><label>عنوان دسته<input id="categoryTitle" maxlength="120" required></label><label>شناسه انگلیسی (Slug)<input id="categorySlug" maxlength="140" required pattern="[a-z0-9]+(?:-[a-z0-9]+)*"></label><label>شناسه تصویر دسته<input id="categoryMediaId" type="number" min="1"></label></div>
         <button class="primary-button" type="submit">افزودن دسته</button>
       </form>
       <div id="categoryRows" class="admin-category-list"></div>
