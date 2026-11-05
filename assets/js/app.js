@@ -18,7 +18,24 @@ function renderProducts(list=products){grid.innerHTML=list.map(p=>{const image=s
 function selectCategory(category){activeCategory=category;document.querySelectorAll(".category").forEach(b=>b.classList.toggle("active",b.dataset.category===category));document.getElementById("aisleTitle").textContent=categoryNames[category];const list=category==="all"?products:products.filter(p=>p.category===category);renderProducts(list);aisleIndex=Object.keys(categoryNames).indexOf(category);document.getElementById("aisleScene").style.backgroundPosition=`${50+(aisleIndex%3-1)*8}% center`;}
 function addToCart(id){const p=products.find(x=>x.id===Number(id));if(!p)return;cart.set(p.id,(cart.get(p.id)||0)+1);updateCart();}
 function updateCart(){const count=[...cart.values()].reduce((a,b)=>a+b,0);document.getElementById("cartCount").textContent=new Intl.NumberFormat("fa-IR").format(count);}
-function openProduct(id){const p=products.find(x=>x.id===Number(id));if(!p)return;const image=safeImageURL(p.image);document.getElementById("productDetail").innerHTML=`${image?`<img class="detail-image" src="${escapeHTML(image)}" alt="${escapeHTML(p.name)}" referrerpolicy="no-referrer">`:""}<p class="eyebrow">${escapeHTML(p.brand)}</p><h2>${escapeHTML(p.name)}</h2><p class="detail-description">${escapeHTML(p.description)}</p><p>${escapeHTML(p.unit)}</p><h3>${money(Number(p.price)||0)}</h3><button class="primary-button full" id="detailAdd">افزودن به سبد خرید</button>`;document.getElementById("detailAdd").onclick=()=>{addToCart(id);document.getElementById("productDialog").close();};document.getElementById("productDialog").showModal();}
+async function openProduct(id){
+  let p=products.find(x=>x.id===Number(id));
+  if(!p)return;
+  let stockLabel="";
+  try {
+    const detail=await apiGet("products/"+Number(id));
+    if(detail){
+      p={...p,name:detail.title||p.name,brand:detail.brand||p.brand,
+        unit:detail.unit_label||p.unit,price:Math.round((Number(detail.price_rial)||0)/10),
+        image:detail.image?.url||p.image,description:detail.description||p.description};
+      stockLabel=detail.in_stock?"موجود در فروشگاه":"فعلاً ناموجود";
+    }
+  } catch (_) {}
+  const image=safeImageURL(p.image);
+  document.getElementById("productDetail").innerHTML=`${image?`<img class="detail-image" src="${escapeHTML(image)}" alt="${escapeHTML(p.name)}" referrerpolicy="no-referrer">`:""}<p class="eyebrow">${escapeHTML(p.brand)}</p><h2>${escapeHTML(p.name)}</h2><p class="detail-description">${escapeHTML(p.description)}</p><p>${escapeHTML(p.unit)}</p>${stockLabel?`<p class="stock-label">${stockLabel}</p>`:""}<h3>${money(Number(p.price)||0)}</h3><button class="primary-button full" id="detailAdd" ${stockLabel==="فعلاً ناموجود"?"disabled":""}>افزودن به سبد خرید</button>`;
+  document.getElementById("detailAdd").onclick=()=>{addToCart(id);document.getElementById("productDialog").close();};
+  document.getElementById("productDialog").showModal();
+}
 function showCart(){const box=document.getElementById("cartItems");if(!cart.size){box.innerHTML='<p class="empty-cart">سبدت هنوز خالیه. یه دور توی قفسه‌ها بزن!</p>';document.getElementById("cartTotal").textContent=money(0);}else{let total=0;box.innerHTML=[...cart].map(([id,q])=>{const p=products.find(x=>x.id===id);if(!p)return "";const lineTotal=(Number(p.price)||0)*q;total+=lineTotal;return `<div class="cart-line"><span>${escapeHTML(p.name)} × ${new Intl.NumberFormat("fa-IR").format(q)}</span><strong>${money(lineTotal)}</strong><button data-remove="${Number(id)}">حذف</button></div>`;}).join("");document.getElementById("cartTotal").textContent=money(total);}document.getElementById("cartDialog").showModal();}
 document.getElementById("categoryList").addEventListener("click",e=>{const b=e.target.closest("[data-category]");if(b)selectCategory(b.dataset.category);});
 grid.addEventListener("click",e=>{const add=e.target.closest("[data-add]");if(add){e.stopPropagation();addToCart(add.dataset.add);return;}const card=e.target.closest("[data-id]");if(card)openProduct(card.dataset.id);});
