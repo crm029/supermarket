@@ -27,9 +27,9 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Basic tenant-scoped product list/create/update/deactivate API with permission checks.
 - [x] Basic tenant-scoped category list/create/update/deactivate API with parent-cycle and media ownership checks.
 - [ ] Product variants, barcode uniqueness, promotions and advanced search.
-- [ ] Persistent cart and server-side quote validation.
-- [ ] Address book, delivery zones, pickup scheduling and fees.
-- [ ] Transactional checkout, order state machine and customer order tracking.
+- [x] Server-side cart quote validation against live prices and available stock.\n- [ ] Persistent browser cart across devices and sessions.
+- [x] Customer address book API (list/create, tenant and owner scoped).\n- [ ] Address editing/deletion, delivery zones, pickup scheduling and configurable fees.
+- [x] Transactional pending-order creation with cross-warehouse stock reservations and customer order history API.\n- [ ] Payment verification, reservation expiry worker, order state transitions and customer order detail/tracking.
 
 ## Phase 3 — immersive storefront
 - [ ] Merchant scene/media editor.
