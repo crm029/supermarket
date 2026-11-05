@@ -136,6 +136,9 @@ jobs:
       - name: Apply stock batches migration
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_05_stock_batches.sql
 
+      - name: Apply expired stock write-off migration
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_05_expired_stock_writeoff.sql
+
       - name: Test stock batch reservation integrity
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/stock-batches.sql
 
