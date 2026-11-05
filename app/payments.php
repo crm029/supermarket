@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/wallet.php';
+require_once __DIR__ . '/stock_batches.php';
 
 function app_payment_config(): array {
     $merchant = trim((string)(app_env('ZARINPAL_MERCHANT_ID') ?? ''));
@@ -237,6 +238,7 @@ function app_payment_callback(PDO $db, array $tenant): never {
                 $qty = (int)$row['quantity'];
                 $consume->execute([$qty,$qty,$tenant['id'],$row['warehouse_id'],$row['product_id'],$qty,$qty]);
                 if ($consume->rowCount() !== 1) throw new RuntimeException('Reserved stock could not be committed.');
+                app_stock_batch_commit_reservation($db,(int)$tenant['id'],(int)$row['id']);
                 $movement->execute([$tenant['id'],$row['warehouse_id'],$row['product_id'],$order['user_id'],-$qty,$order['id']]);
                 $commitReservation->execute([$row['id']]);
             }
@@ -252,6 +254,7 @@ function app_payment_callback(PDO $db, array $tenant): never {
                     $qty = (int)$row['quantity'];
                     $releaseStock->execute([$qty,$tenant['id'],$row['warehouse_id'],$row['product_id'],$qty]);
                     if ($releaseStock->rowCount() !== 1) throw new RuntimeException('Unable to release remaining stock reservation.');
+                    app_stock_batch_release_reservation($db,(int)$tenant['id'],(int)$row['id'],'released');
                     $releaseReservation->execute([$row['id']]);
                     $releaseMovement->execute([$tenant['id'],$row['warehouse_id'],$row['product_id'],$order['user_id'],-$qty,$order['id']]);
                 }
