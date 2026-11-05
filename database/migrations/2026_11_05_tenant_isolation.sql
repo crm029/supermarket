@@ -219,19 +219,7 @@ BEGIN
      (role_tenant IS NOT NULL AND role_tenant <> NEW.tenant_id) THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'User role assignment crosses tenant boundary';
   END IF;
-END//
-CREATE TRIGGER trg_roles_scope_update
-BEFORE UPDATE ON roles
-FOR EACH ROW
-BEGIN
-  IF NEW.tenant_id IS NOT NULL AND EXISTS (
-    SELECT 1
-    FROM user_roles ur
-    JOIN users u ON u.id = ur.user_id
-    WHERE ur.role_id = OLD.id AND u.tenant_id <> NEW.tenant_id
-  ) THEN
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Role update would cross tenant boundary';
-  END IF;
+  SET NEW.role_scope_id = COALESCE(role_tenant, 0);
 END//
 CREATE TRIGGER trg_roles_scope_insert
 BEFORE INSERT ON roles
