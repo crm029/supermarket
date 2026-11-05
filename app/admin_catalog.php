@@ -93,8 +93,11 @@ function app_admin_product_list(PDO $db, array $tenant): never {
     $params = ['tenant' => $tenant['id']];
 
     if ($query !== '') {
-        $where[] = '(title LIKE :q OR sku LIKE :q OR barcode LIKE :q)';
-        $params['q'] = '%' . mb_substr($query, 0, 80) . '%';
+        $where[] = '(title LIKE :q_title OR sku LIKE :q_sku OR barcode LIKE :q_barcode)';
+        $search = '%' . mb_substr($query, 0, 80) . '%';
+        $params['q_title'] = $search;
+        $params['q_sku'] = $search;
+        $params['q_barcode'] = $search;
     }
     if ($category !== null && $category !== false) {
         $where[] = 'category_id = :category';
