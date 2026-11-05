@@ -5,7 +5,7 @@
 
 SET @tenant_id = 1;
 SET @owner_name = 'مدیر فروشگاه';
-SET @owner_mobile = '09120000000';
+SET @owner_mobile = _utf8mb4'09120000000' COLLATE utf8mb4_unicode_ci;
 
 INSERT INTO users (tenant_id, full_name, mobile, status, referral_code)
 VALUES (@tenant_id, @owner_name, @owner_mobile, 'pending',
@@ -13,7 +13,7 @@ VALUES (@tenant_id, @owner_name, @owner_mobile, 'pending',
 ON DUPLICATE KEY UPDATE full_name = VALUES(full_name);
 
 SET @owner_id = (
-  SELECT id FROM users WHERE tenant_id = @tenant_id AND mobile = @owner_mobile LIMIT 1
+  SELECT id FROM users WHERE tenant_id = @tenant_id AND mobile = @owner_mobile COLLATE utf8mb4_unicode_ci LIMIT 1
 );
 
 INSERT INTO roles (tenant_id, role_key, title)
