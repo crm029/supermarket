@@ -96,7 +96,7 @@ function app_media_cleanup_process_one(PDO $db, array $item): bool {
     $key = (string)$item['storage_key'];
     $root = trim((string)(app_env('MEDIA_STORAGE_PATH') ?? ''));
     $isWindowsDrive = preg_match('/^[A-Za-z]:/', $root) === 1 &&
-        in_array(substr($root, 2, 1), ['/', '\\\\'], true);
+        in_array(substr($root, 2, 1), ['/', '\\'], true);
     if ($root === '' || !(str_starts_with($root, DIRECTORY_SEPARATOR) || $isWindowsDrive)) {
         app_media_cleanup_mark($db,$queueId,false,'storage_path_not_configured');
         return false;
