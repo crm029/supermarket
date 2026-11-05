@@ -76,6 +76,7 @@ function app_inventory_low_stock_list(PDO $db, array $tenant): never {
             LEFT JOIN products parent ON parent.tenant_id=p.tenant_id AND parent.id=p.parent_product_id
             LEFT JOIN stock_levels sl ON sl.tenant_id=w.tenant_id AND sl.warehouse_id=w.id AND sl.product_id=p.id
             WHERE w.tenant_id=? AND w.is_active=1 AND p.low_stock_threshold>0
+              AND (p.product_kind<>'variant' OR (parent.id IS NOT NULL AND parent.is_active=1))
               AND COALESCE(sl.on_hand,0)-COALESCE(sl.reserved,0)<=p.low_stock_threshold";
     $params = [(int)$tenant['id']];
     if ($warehouse !== null && $warehouse !== false && $warehouse > 0) {
