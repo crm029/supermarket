@@ -8,6 +8,7 @@ let adminVariants = [];
 let orders = [];
 let warehouses = [];
 let stockRows = [];
+let lowStockRows = [];
 let scenes = [];
 let hotspots = [];
 let activePanel = "overview";
@@ -730,8 +731,8 @@ function updateHotspotFields() {
 }
 async function loadInventory() {
   try {
-    const [w,s]=await Promise.all([request("admin/warehouses"),request("admin/stock")]);
-    warehouses=w.data||[];stockRows=s.data||[];
+    const [w,s,l]=await Promise.all([request("admin/warehouses"),request("admin/stock"),request("admin/stock/low")]);
+    warehouses=w.data||[];stockRows=s.data||[];lowStockRows=l.data||[];
     renderInventory();
     await loadStockBatches();
   } catch(error) {
@@ -781,6 +782,18 @@ function renderInventory() {
     select.innerHTML=productOptions;if(previous)select.value=previous;
   });
   document.getElementById("stockRows").innerHTML=stockRows.map(s=>'<tr><td><strong>'+escapeText(s.product_title)+'</strong><small>'+escapeText(s.sku)+'</small></td><td>'+escapeText(s.warehouse_title)+'</td><td>'+new Intl.NumberFormat("fa-IR").format(Number(s.on_hand))+'</td><td>'+new Intl.NumberFormat("fa-IR").format(Number(s.reserved))+'</td><td><strong>'+new Intl.NumberFormat("fa-IR").format(Number(s.available_quantity))+'</strong></td><td><span class="admin-status '+(Number(s.is_low_stock)?"inactive":"active")+'">'+new Intl.NumberFormat("fa-IR").format(Number(s.low_stock_threshold))+(Number(s.is_low_stock)?" · هشدار":"")+'</span></td></tr>').join("")||'<tr><td colspan="6">هنوز موجودی ثبت نشده است.</td></tr>';
+  const formatQuantity=value=>new Intl.NumberFormat("fa-IR").format(Number(value)||0);
+  document.getElementById("stockLowSummary").textContent=lowStockRows.length
+    ? formatQuantity(lowStockRows.length)+" هشدار فعال در انبارها شناسایی شد. برای هر مورد می‌توانید فرم سفارش خرید را با کالای مربوطه آماده کنید."
+    : "در حال حاضر هیچ کالایی پایین‌تر از حد هشدار تعریف‌شده نیست.";
+  document.getElementById("stockLowRows").innerHTML=lowStockRows.map(item=>
+    '<tr><td><strong>'+escapeText(item.product_title)+'</strong><small>'+escapeText(item.sku)+'</small></td>'+
+    '<td>'+escapeText(item.warehouse_title)+'</td>'+
+    '<td>'+formatQuantity(item.available_quantity)+' '+escapeText(item.unit_label||"")+'</td>'+
+    '<td>'+formatQuantity(item.low_stock_threshold)+'</td>'+
+    '<td><strong>'+formatQuantity(item.shortage_quantity)+'</strong></td>'+
+    '<td><button class="admin-row-action" type="button" data-reorder-product="'+Number(item.product_id)+'" data-reorder-quantity="'+Number(item.shortage_quantity)+'">آماده‌سازی سفارش خرید</button></td></tr>'
+  ).join("")||'<tr><td colspan="6">هشدار کمبود موجودی ثبت نشده است.</td></tr>';
 }
 async function loadOrders() {
   try {
@@ -1050,6 +1063,17 @@ document.getElementById("orderRows").addEventListener("click",async e=>{
 });
 
 document.getElementById("reloadInventory").addEventListener("click",loadInventory);
+document.getElementById("stockLowRows").addEventListener("click",event=>{
+  const button=event.target.closest("[data-reorder-product]");
+  if(!button)return;
+  const productId=Number(button.dataset.reorderProduct);
+  const suggestedQuantity=Math.max(1,Number(button.dataset.reorderQuantity)||1);
+  showPanel("purchasing");
+  document.getElementById("purchaseProduct").value=String(productId);
+  document.getElementById("purchaseQuantity").value=String(suggestedQuantity);
+  document.getElementById("purchaseOrderForm").scrollIntoView({behavior:"smooth",block:"center"});
+  message("کالا و تعداد پیشنهادی در فرم سفارش خرید قرار گرفت؛ تأمین‌کننده و قیمت را تکمیل کنید.");
+});
 document.getElementById("reloadStockBatches").addEventListener("click",loadStockBatches);
 document.getElementById("stockBatchRows").addEventListener("click",async e=>{
   const button=e.target.closest("[data-writeoff-batch]");
