@@ -23,6 +23,7 @@ The application code includes customer registration, catalogue management, inven
 ## Media and operations
 
 - [ ] Configure MEDIA_STORAGE_PATH outside the public PHP document root and MEDIA_BASE_URL through a static-only web-server alias or CDN.
+- [ ] Set PUBLIC_DOCUMENT_ROOT to the absolute public web root so the CLI preflight can verify that media storage is outside it.
 - [ ] Upload the real store logo, product photography, aisle images and equirectangular panoramas; verify every public URL.
 - [ ] Photograph and author every aisle scene and hotspot. Demo/sample images are not a substitute for the actual store.
 - [ ] Schedule bin/expire-reservations.php every minute and monitor its exit status and logs.
