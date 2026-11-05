@@ -365,13 +365,14 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
             $remaining = (int)$item['quantity'];
             $stockRows = $db->prepare(
                 'SELECT sl.warehouse_id, sl.on_hand, sl.reserved,
-                        COALESCE(SUM(CASE WHEN (b.expiry_date IS NULL OR b.expiry_date>=UTC_DATE())
-                                          THEN GREATEST(b.on_hand-b.reserved,0) ELSE 0 END),0) AS batch_available
+                        (SELECT COALESCE(SUM(GREATEST(b.on_hand-b.reserved,0)),0)
+                         FROM stock_batches b
+                         WHERE b.tenant_id=sl.tenant_id AND b.warehouse_id=sl.warehouse_id
+                           AND b.product_id=sl.product_id
+                           AND (b.expiry_date IS NULL OR b.expiry_date>=UTC_DATE())) AS batch_available
                  FROM stock_levels sl
                  JOIN warehouses w ON w.id = sl.warehouse_id AND w.tenant_id = sl.tenant_id
-                 LEFT JOIN stock_batches b ON b.tenant_id=sl.tenant_id AND b.warehouse_id=sl.warehouse_id AND b.product_id=sl.product_id
                  WHERE sl.tenant_id = ? AND sl.product_id = ? AND w.is_active = 1 AND sl.on_hand > sl.reserved
-                 GROUP BY sl.warehouse_id,sl.on_hand,sl.reserved
                  HAVING batch_available>0
                  ORDER BY batch_available DESC, sl.warehouse_id FOR UPDATE'
             );
