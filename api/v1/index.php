@@ -67,6 +67,13 @@ try {
         app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
     }
 
+    if (preg_match('#^/platform/tenants/([1-9][0-9]*)/verification-challenge$#', $path, $platformChallengeMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_platform_permission($db, $tenant, $session, 'platform.tenants.manage');
+        app_platform_issue_domain_challenge($db, $tenant, $session, (int)$platformChallengeMatch[1]);
+    }
+
     if (preg_match('#^/platform/tenants/([1-9][0-9]*)/verify-domain$#', $path, $platformVerifyMatch) && $method === 'POST') {
         $session = app_auth_require($db, $tenant);
         app_auth_require_csrf($session);
