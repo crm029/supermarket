@@ -21,7 +21,7 @@ Implemented in this milestone:
 - Role/permission tables, deny-by-default tenant permission checks, audit logging and permission-guarded product administration endpoints.
 - Rate-limited OTP login endpoints, hashed one-time challenges, opaque database-backed sessions, HttpOnly cookies and CSRF-protected logout. The development SMS driver logs codes only to the local PHP error log; no production SMS provider is enabled.
 - Local sample tenant seed and API/setup documentation.
-- GitHub Actions PHP/JavaScript checks plus MySQL 8 migration, tenant-isolation and authentication-schema integration tests.
+- GitHub Actions PHP/JavaScript checks plus MySQL 8 migration, tenant-isolation, authentication and permission-scope integration tests.
 - Additive tenant-isolation migration with composite foreign keys for tenant-owned relations and scope guards for role assignments and audit actors.
 
 Not implemented yet:
