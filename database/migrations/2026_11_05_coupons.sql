@@ -20,6 +20,10 @@ CREATE TABLE coupons (
   KEY ix_coupon_availability (tenant_id,is_active,starts_at,ends_at),
   FOREIGN KEY (tenant_id) REFERENCES tenants(id),
   CHECK (discount_value > 0),
+  CHECK (discount_type <> 'percentage' OR discount_value <= 100),
+  CHECK (discount_type <> 'fixed' OR max_discount_rial IS NULL),
+  CHECK (max_discount_rial IS NULL OR max_discount_rial > 0),
+  CHECK (usage_limit IS NULL OR usage_limit > 0),
   CHECK (per_user_limit BETWEEN 1 AND 1000),
   CHECK (ends_at > starts_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
