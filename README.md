@@ -5,49 +5,59 @@ A multi-tenant, white-label supermarket commerce platform with an immersive virt
 ## Product direction
 
 - Each merchant gets an independent branded storefront and domain.
-- All merchants run on one centrally operated application and database.
-- Tenant data is isolated at the application and database-query layers.
-- A central super-admin can provision and manage stores.
-- A future discovery marketplace can list participating stores without merging their operational data.
+- All stores run on one centrally operated application and database with strict tenant scoping.
+- The future discovery marketplace is optional; it does not replace dedicated store websites.
+- Customers can choose guided category navigation, photo-tour navigation, or optional free-movement 3D.
+- Store owners replace sample imagery with their own entrance, aisle, shelf and product photography.
 
-## Planned capabilities
+## Current repository status
 
-- Immersive store navigation: free movement, point-to-point photo tour, and category-to-aisle navigation.
-- Real store photography and product photography, replaceable per tenant.
-- Catalog, variants, pricing, promotions, stock and product details.
-- Customer accounts, short unique referral codes, wallet ledger and order history.
-- Online delivery by store courier and in-store pickup.
-- Multi-warehouse inventory, stock movements and audit history.
-- Order workflow with configurable preparation, cashier review and dispatch.
-- Roles: platform super-admin, store manager, cashier, warehouse operator, delivery operator and customer.
-- SMS adapter for 0098.ir and payment adapter for Zarinpal.
-- Store pages: about, contact, policies and operating information.
+This repository contains a visual PHP storefront prototype plus the first database and tenant-aware read API foundation. It is an active development build, **not yet a production-ready commerce service**.
+
+Implemented in this milestone:
+- Persian RTL responsive storefront demo with category navigation, product cards, search and local demo cart.
+- MySQL schema foundation for tenants/domains, users/roles, media, categories/products, virtual-store scenes/hotspots, multi-warehouse stock, stock movements/reservations, orders, payments, wallet ledger, referrals and audit logs.
+- Verified-host tenant resolver and read-only API routes for store profile, categories and product search.
+- Local sample tenant seed and API/setup documentation.
+- GitHub Actions PHP syntax-check workflow.
+
+Not implemented yet:
+- Real customer registration/OTP, persistent cart and checkout.
+- Live stock reservation services and order workflow.
+- Zarinpal and 0098.ir integrations.
+- Wallet transactions and referral reward processing.
+- Super-admin/store/cashier/warehouse/courier panels.
+- Scene editor, linked photo-tour hotspots and the actual WebGL free-movement engine.
+- Production-grade composite tenant foreign keys, authorization policies, CSRF, automated security/integration tests and deployment operations.
 
 ## Architecture principles
 
-1. Tenant isolation is mandatory: every tenant-owned record carries a store/tenant identifier and every request is scoped server-side.
-2. Money is stored as integer rial amounts; display conversion is explicit and never inferred.
-3. Wallets use an append-only ledger. No direct balance edits.
-4. Payment callbacks are signature/authority verified, idempotent and reconciled server-side.
-5. Stock is reserved during checkout and deducted/committed only after verified payment; expired reservations are released.
-6. Inventory changes are recorded as immutable stock movements.
-7. Secrets and provider credentials are environment variables, never committed.
-8. The virtual store is progressive enhancement: conventional category and search shopping remains fully usable on low-end devices.
-9. Store media is configurable data, not hard-coded into the application.
-10. Critical actions are audited and protected by role-based authorization.
+1. Resolve tenant identity from a verified domain mapping; never trust a tenant ID from the browser.
+2. Scope every tenant-owned query and test cross-tenant isolation.
+3. Store money as integer rial values.
+4. Keep wallet entries and stock movements append-only; do not edit balances/history directly.
+5. Reserve stock transactionally at checkout and commit only after server-side payment verification.
+6. Make payment callbacks idempotent and reconcile provider results.
+7. Keep all secrets outside Git.
+8. Keep normal search/catalog shopping usable when 3D is unavailable.
+9. Treat store photography and product imagery as tenant-managed media.
+10. Audit sensitive operations and enforce permission-based access.
 
-## Delivery roadmap
+## Local development
 
-- [ ] Phase 0 — product specification, domain model and threat model
-- [ ] Phase 1 — runnable application shell, tenant foundation and design system
-- [ ] Phase 2 — catalog, media and virtual storefront
-- [ ] Phase 3 — customer identity, cart, checkout and orders
-- [ ] Phase 4 — inventory, warehouses and fulfillment
-- [ ] Phase 5 — wallet, referrals, SMS and payment integrations
-- [ ] Phase 6 — administration, reporting, hardening and deployment
+- Visual demo: place the repository in XAMPP's `htdocs` and open the project root.
+- API: requires PHP 8.1+ with PDO MySQL and MySQL/MariaDB. See `docs/local-setup.md`.
+- Optional sample database: import `database/schema.sql`, then `database/demo-seed.sql` into a fresh local database. The sample domain is `localhost`.
 
-## Development
+## Documentation
 
-The first milestone is a runnable local prototype. Production credentials, merchant photography, SMS account and Zarinpal merchant credentials are supplied only when deploying a real store.
+- `docs/architecture.md` — system topology and design decisions.
+- `docs/data-model.md` — database and transaction rules.
+- `docs/api-contract.md` — planned API surface.
+- `docs/local-setup.md` — local setup and current limitations.
+- `docs/tenant-onboarding.md` — merchant onboarding.
+- `docs/quality-gates.md` — release acceptance gates.
+- `docs/security.md` — security principles.
+- `docs/roadmap.md` — delivery status.
 
-See `docs/architecture.md`, `docs/roadmap.md` and `docs/security.md`.
+Real merchant photography, production domains, SMS credentials and payment-gateway credentials are supplied only for an actual merchant deployment.
