@@ -73,6 +73,19 @@ assert_json() {
       exit(0);
     }
     if ($check === "addresses-empty") { if (!is_array($data["data"] ?? null) || count($data["data"]) !== 0) exit(1); exit(0); }
+    if ($check === "store-settings") {
+      $profile = $data["data"]["profile"] ?? [];
+      $checkout = $data["data"]["checkout"] ?? [];
+      if (($profile["name"] ?? "") !== "فروشگاه آزمایشی" ||
+          (int)($checkout["delivery_fee_rial"] ?? -1) !== 1000 ||
+          (int)($checkout["reservation_minutes"] ?? -1) !== 15) exit(1);
+      exit(0);
+    }
+    if ($check === "public-store-settings") {
+      if (($data["data"]["fulfillment"]["delivery"] ?? null) !== true ||
+          ($data["data"]["settings"]["checkout"]["delivery_fee_rial"] ?? null) != 1000) exit(1);
+      exit(0);
+    }
     if ($check === "cart-empty") {
       if (!is_array($data["data"]["items"] ?? null) || count($data["data"]["items"]) !== 0) exit(1);
       exit(0);
@@ -146,6 +159,14 @@ request GET /admin/reports/overview 200 "" "$TOKEN"
 request GET /admin/warehouses 200 "" "$TOKEN"
 request GET /admin/stock 200 "" "$TOKEN"
 request GET /admin/scenes 200 "" "$TOKEN"
+request GET /admin/settings 403 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
+request GET /admin/settings 200 "" "$TOKEN"
+request PUT /admin/settings 419 '{"profile":{},"checkout":{}}' "$TOKEN"
+request PUT /admin/settings 200 '{"profile":{"name":"فروشگاه آزمایشی","tagline":"تست تنظیمات","support_phone":"02112345678","primary_color":"#173D2D","accent_color":"#E6A23C"},"checkout":{"delivery_enabled":true,"pickup_enabled":true,"delivery_fee_rial":1000,"minimum_order_rial":1,"reservation_minutes":15}}' "$TOKEN" "$CSRF"
+request GET /admin/settings 200 "" "$TOKEN"
+assert_json store-settings
+request GET /store 200
+assert_json public-store-settings
 request GET /admin/products 403 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
 request POST /admin/products 419 '{"sku":"NO-CSRF-1","title":"نباید ثبت شود","price_rial":1000}' "$TOKEN"
 
