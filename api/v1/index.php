@@ -17,6 +17,7 @@ require_once dirname(__DIR__, 2) . '/app/customer_cart.php';
 require_once dirname(__DIR__, 2) . '/app/store_settings.php';
 require_once dirname(__DIR__, 2) . '/app/staff.php';
 require_once dirname(__DIR__, 2) . '/app/delivery_zones.php';
+require_once dirname(__DIR__, 2) . '/app/pickup_slots.php';
 
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
@@ -371,6 +372,25 @@ try {
         app_admin_staff_remove_role($db, $tenant, $session, (int)$staffRoleMatch[1], (int)$staffRoleMatch[2]);
     }
 
+    if ($path === '/admin/pickup-slots') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'store.settings.manage');
+        if ($method === 'GET') app_admin_pickup_slot_list($db, $tenant);
+        if ($method === 'POST') {
+            app_auth_require_csrf($session);
+            app_admin_pickup_slot_create($db, $tenant, $session);
+        }
+        header('Allow: GET, POST');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if (preg_match('#^/admin/pickup-slots/([1-9][0-9]*)$#', $path, $pickupMatch) && $method === 'DELETE') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'store.settings.manage');
+        app_admin_pickup_slot_disable($db, $tenant, $session, (int)$pickupMatch[1]);
+    }
+
     if ($path === '/admin/delivery-zones') {
         $session = app_auth_require($db, $tenant);
         app_auth_require_permission($db, $tenant, $session, 'store.settings.manage');
@@ -413,6 +433,10 @@ try {
     if ($method !== 'GET') {
         header('Allow: GET, POST, PATCH, DELETE');
         app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if ($path === '/pickup-slots' && $method === 'GET') {
+        app_public_pickup_slots($db, $tenant);
     }
 
     if ($path === '/store' || $path === '/') {
