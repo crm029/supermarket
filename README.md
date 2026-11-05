@@ -18,9 +18,10 @@ Implemented in this milestone:
 - Persian RTL responsive storefront demo with category navigation, product cards, search and local demo cart.
 - MySQL schema foundation for tenants/domains, users/roles, media, categories/products, virtual-store scenes/hotspots, multi-warehouse stock, stock movements/reservations, orders, payments, wallet ledger, referrals and audit logs.
 - Verified-host tenant resolver and tenant-scoped catalog API routes for store profile, categories and product search.
+- Role/permission tables, deny-by-default tenant permission checks, audit logging and permission-guarded product/category administration endpoints.
 - Rate-limited OTP login endpoints, hashed one-time challenges, opaque database-backed sessions, HttpOnly cookies and CSRF-protected logout. The development SMS driver logs codes only to the local PHP error log; no production SMS provider is enabled.
 - Local sample tenant seed and API/setup documentation.
-- GitHub Actions PHP/JavaScript checks plus MySQL 8 migration, tenant-isolation and authentication-schema integration tests.
+- GitHub Actions PHP/JavaScript checks plus MySQL 8 migration, tenant-isolation, authentication and permission-scope integration tests.
 - Additive tenant-isolation migration with composite foreign keys for tenant-owned relations and scope guards for role assignments and audit actors.
 
 Not implemented yet:
@@ -29,8 +30,8 @@ Not implemented yet:
 - Zarinpal integration, payment verification, refunds and reconciliation.
 - Live stock reservation services, multi-warehouse workflows and courier operations.
 - Wallet transactions and referral reward processing.
-- Super-admin, store, cashier, warehouse and courier panels with permission-based authorization.
-- Scene editor, linked photo-tour hotspots and the actual WebGL free-movement engine.
+- Super-admin, store, cashier, warehouse and courier panels and a role/permission management UI.
+- Product variants/barcode uniqueness and the scene editor, linked photo-tour hotspots and actual WebGL free-movement engine.
 - Production deployment operations, backups, monitoring, load testing and security review.
 
 ## Architecture principles

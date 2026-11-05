@@ -9,7 +9,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Add initial MySQL schema for commerce, multi-warehouse inventory, media scenes, orders, wallet/referral and audit records.
 - [x] Add verified-host tenant resolver and read-only store/category/product API.
 - [x] Add local sample tenant seed and PHP syntax-check workflow.
-- [ ] Run PHP syntax checks in GitHub Actions and resolve any failures.
+- [x] Run PHP syntax checks in GitHub Actions and resolve any failures.
 - [ ] Validate schema against the selected MySQL/MariaDB versions.
 - [ ] Verify XAMPP installation on a real local machine.
 
@@ -18,12 +18,15 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] OTP login challenge storage, expiry, attempt lockout and phone/IP rate limiting.
 - [x] Opaque database-backed sessions, HttpOnly cookies and CSRF-protected logout.
 - [ ] Production SMS provider adapter, customer registration and password reset.
-- [ ] Permission matrix, policies, CSRF protection and audit service.
+- [x] Tenant/platform permission catalog, role grants, deny-by-default product API checks and product-change audit events.
+- [ ] Role/permission management UI, platform authorization, and CSRF/policy enforcement on all future write routes.
 - [ ] Platform super-admin tenant provisioning and domain verification.
 - [ ] Store settings, branding and secure media library.
 
 ## Phase 2 — catalog and commerce
-- [ ] Complete product/category CRUD, variants, barcode, pricing, promotions and search.
+- [x] Basic tenant-scoped product list/create/update/deactivate API with permission checks.
+- [x] Basic tenant-scoped category list/create/update/deactivate API with parent-cycle and media ownership checks.
+- [ ] Product variants, barcode uniqueness, promotions and advanced search.
 - [ ] Persistent cart and server-side quote validation.
 - [ ] Address book, delivery zones, pickup scheduling and fees.
 - [ ] Transactional checkout, order state machine and customer order tracking.

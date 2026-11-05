@@ -33,6 +33,7 @@ jobs:
             php -l "$file"
           done
           php tests/auth-input.php
+          php tests/admin-catalog-input.php
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -86,3 +87,9 @@ jobs:
 
       - name: Run authentication schema tests
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/auth-schema.sql
+
+      - name: Apply permissions migration
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_05_permissions.sql
+
+      - name: Run permission scope tests
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/permissions.sql

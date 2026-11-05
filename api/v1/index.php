@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 2) . '/app/bootstrap.php';
 require_once dirname(__DIR__, 2) . '/app/auth.php';
+require_once dirname(__DIR__, 2) . '/app/policies.php';
+require_once dirname(__DIR__, 2) . '/app/admin_catalog.php';
 
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
@@ -18,6 +20,72 @@ try {
     $path = preg_replace('#^/api/v1#', '', $path);
     $method = app_method();
     $db = app_db();
+
+    if ($path === '/admin/categories') {
+        if ($method === 'GET') {
+            $session = app_auth_require($db, $tenant);
+            app_auth_require_permission($db, $tenant, $session, 'catalog.categories.read');
+            app_admin_category_list($db, $tenant);
+        }
+        if ($method === 'POST') {
+            $session = app_auth_require($db, $tenant);
+            app_auth_require_csrf($session);
+            app_auth_require_permission($db, $tenant, $session, 'catalog.categories.manage');
+            app_admin_category_create($db, $tenant, $session);
+        }
+        header('Allow: GET, POST');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if (preg_match('#^/admin/categories/([1-9][0-9]*)$#', $path, $categoryMatch)) {
+        $categoryId = (int)$categoryMatch[1];
+        $session = app_auth_require($db, $tenant);
+        if ($method === 'PATCH') {
+            app_auth_require_csrf($session);
+            app_auth_require_permission($db, $tenant, $session, 'catalog.categories.manage');
+            app_admin_category_update($db, $tenant, $session, $categoryId);
+        }
+        if ($method === 'DELETE') {
+            app_auth_require_csrf($session);
+            app_auth_require_permission($db, $tenant, $session, 'catalog.categories.manage');
+            app_admin_category_deactivate($db, $tenant, $session, $categoryId);
+        }
+        header('Allow: PATCH, DELETE');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if ($path === '/admin/products') {
+        if ($method === 'GET') {
+            $session = app_auth_require($db, $tenant);
+            app_auth_require_permission($db, $tenant, $session, 'catalog.products.read');
+            app_admin_product_list($db, $tenant);
+        }
+        if ($method === 'POST') {
+            $session = app_auth_require($db, $tenant);
+            app_auth_require_csrf($session);
+            app_auth_require_permission($db, $tenant, $session, 'catalog.products.manage');
+            app_admin_product_create($db, $tenant, $session);
+        }
+        header('Allow: GET, POST');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if (preg_match('#^/admin/products/([1-9][0-9]*)$#', $path, $productMatch)) {
+        $productId = (int)$productMatch[1];
+        $session = app_auth_require($db, $tenant);
+        if ($method === 'PATCH') {
+            app_auth_require_csrf($session);
+            app_auth_require_permission($db, $tenant, $session, 'catalog.products.manage');
+            app_admin_product_update($db, $tenant, $session, $productId);
+        }
+        if ($method === 'DELETE') {
+            app_auth_require_csrf($session);
+            app_auth_require_permission($db, $tenant, $session, 'catalog.products.manage');
+            app_admin_product_deactivate($db, $tenant, $session, $productId);
+        }
+        header('Allow: PATCH, DELETE');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
 
     if ($path === '/auth/request-otp' && $method === 'POST') {
         app_auth_request_otp($db, $tenant);
@@ -44,7 +112,7 @@ try {
     }
 
     if ($method !== 'GET') {
-        header('Allow: GET, POST');
+        header('Allow: GET, POST, PATCH, DELETE');
         app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
     }
 
@@ -83,8 +151,11 @@ try {
         $where = ['tenant_id = :tenant', 'is_active = 1'];
         $params = ['tenant' => $tenant['id']];
         if ($query !== '') {
-            $where[] = '(title LIKE :q OR sku LIKE :q OR barcode LIKE :q)';
-            $params['q'] = '%' . mb_substr($query, 0, 80) . '%';
+            $where[] = '(title LIKE :q_title OR sku LIKE :q_sku OR barcode LIKE :q_barcode)';
+            $search = '%' . mb_substr($query, 0, 80) . '%';
+            $params['q_title'] = $search;
+            $params['q_sku'] = $search;
+            $params['q_barcode'] = $search;
         }
         if ($category) {
             $where[] = 'category_id = :category';
