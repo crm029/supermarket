@@ -14,7 +14,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [ ] Verify XAMPP installation on a real local machine.
 
 ## Phase 1 — secure production foundation
-- [ ] Finish tenant-aware composite foreign keys and cross-tenant negative tests.
+- [x] Add tenant-aware composite foreign keys, scoped/global role protections and cross-tenant negative tests (MySQL 8 CI verified).
 - [ ] Authentication, mobile OTP, sessions, password reset and rate limits.
 - [ ] Permission matrix, policies, CSRF protection and audit service.
 - [ ] Platform super-admin tenant provisioning and domain verification.
