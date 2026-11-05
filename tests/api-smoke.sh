@@ -144,6 +144,19 @@ assert_json() {
       exit(0);
     }
     if ($check === "addresses-empty") { if (!is_array($data["data"] ?? null) || count($data["data"]) !== 0) exit(1); exit(0); }
+    if ($check === "order-notification") {
+      foreach (($data["data"] ?? []) as $row) {
+        if (($row["notification_type"] ?? "") === "order_created" &&
+            ($row["entity_type"] ?? "") === "order" &&
+            (int)($row["entity_id"] ?? 0) > 0 &&
+            ($row["title"] ?? "") === "سفارش جدید ثبت شد") exit(0);
+      }
+      exit(1);
+    }
+    if ($check === "notifications-read-all") {
+      if ((int)($data["meta"]["unread_count"] ?? -1) !== 0) exit(1);
+      exit(0);
+    }
     if ($check === "store-settings") {
       $profile = $data["data"]["profile"] ?? [];
       $checkout = $data["data"]["checkout"] ?? [];
@@ -342,6 +355,12 @@ request POST /admin/delivery-zones 409 '{"title":"محدوده تکراری","pr
 request PATCH "/admin/delivery-zones/$ZONE_ID" 200 '{"delivery_fee_rial":3000}' "$TOKEN" "$CSRF"
 request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}],"fulfillment":"delivery","address_id":'$ADDRESS_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 ORDER_ID="$(assert_json order-created)"
+request GET /admin/notifications 200 "" "$TOKEN"
+assert_json order-notification
+request POST /admin/notifications/read-all 419 "" "$TOKEN"
+request POST /admin/notifications/read-all 200 "" "$TOKEN" "$CSRF"
+request GET /admin/notifications 200 "" "$TOKEN"
+assert_json notifications-read-all
 ORDER_FEE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT delivery_fee_rial FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
 ORDER_TOTAL="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT total_rial FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
 ORDER_ZONE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT delivery_zone_id FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
