@@ -1,0 +1,69 @@
+<?php
+declare(strict_types=1);
+?><!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#10251d">
+  <title>مدیریت پلتفرم | سوپرمارکت ۳۶۰</title>
+  <link rel="stylesheet" href="assets/css/app.css">
+  <link rel="stylesheet" href="assets/css/platform.css">
+</head>
+<body class="platform-body">
+<header class="topbar platform-topbar">
+  <a class="brand" href="index.php"><span class="brand-mark">۳۶۰</span><span>مدیریت<span class="brand-light"> پلتفرم</span></span></a>
+  <a class="text-button" href="admin.php">پنل فروشگاه ←</a>
+</header>
+<main class="platform-shell">
+  <section id="platformLogin" class="platform-login">
+    <p class="eyebrow">مدیریت سراسری</p>
+    <h1>ورود مدیر پلتفرم</h1>
+    <p>این بخش فقط برای حساب‌هایی است که مجوز سراسری مدیریت فروشگاه‌ها به آن‌ها داده شده است.</p>
+    <label for="platformMobile">شماره موبایل</label>
+    <input id="platformMobile" type="tel" inputmode="tel" autocomplete="tel" placeholder="0912xxxxxxx" maxlength="14">
+    <button id="platformRequestOtp" class="primary-button" type="button">ارسال کد ورود</button>
+    <div id="platformOtpArea" hidden>
+      <label for="platformOtpCode">کد پیامک‌شده</label>
+      <input id="platformOtpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="کد ۶ رقمی">
+      <button id="platformVerifyOtp" class="primary-button" type="button">ورود امن</button>
+    </div>
+    <p id="platformLoginMessage" class="platform-message" role="status" aria-live="polite"></p>
+  </section>
+
+  <section id="platformDashboard" hidden>
+    <div class="platform-heading">
+      <div><p class="eyebrow">کنترل چندفروشگاهی</p><h1>مدیریت فروشگاه‌ها</h1><p id="platformIdentity"></p></div>
+      <div class="platform-actions"><button id="platformReload" class="secondary-button" type="button">به‌روزرسانی</button><button id="platformLogout" class="text-button" type="button">خروج</button></div>
+    </div>
+
+    <section class="platform-create">
+      <h2>ساخت فروشگاه جدید</h2>
+      <p>فروشگاه ابتدا در حالت انتظار ساخته می‌شود. دامنه باید خارج از سامانه بررسی شود؛ تأیید این صفحه یک ثبت دستی توسط مدیر پلتفرم است و سامانه فعلاً DNS یا فایل HTTP را خودکار آزمایش نمی‌کند. در یادداشت، رمز یا توکن محرمانه وارد نکنید.</p>
+      <form id="platformCreateForm">
+        <div class="platform-form-grid">
+          <label>نام فروشگاه<input id="newTenantName" maxlength="160" required placeholder="مثلاً سوپرمارکت بهار"></label>
+          <label>شناسه یکتا<input id="newTenantSlug" maxlength="80" required pattern="[a-z0-9][a-z0-9-]{0,78}[a-z0-9]" placeholder="bahar-market"></label>
+          <label>دامنه اختصاصی<input id="newTenantHost" maxlength="253" required placeholder="shop.example.com" dir="ltr"></label>
+          <label>نام مدیر فروشگاه<input id="newOwnerName" maxlength="160" required placeholder="نام و نام خانوادگی"></label>
+          <label>موبایل مدیر<input id="newOwnerMobile" maxlength="14" required inputmode="tel" placeholder="0912xxxxxxx"></label>
+          <label>منطقه زمانی<select id="newTenantTimezone"><option value="Asia/Tehran">تهران</option><option value="UTC">UTC</option><option value="Europe/Berlin">برلین</option></select></label>
+        </div>
+        <button class="primary-button" type="submit">ساخت فروشگاه در حالت انتظار</button>
+      </form>
+    </section>
+
+    <section class="platform-list-section">
+      <div class="platform-section-heading"><h2>فروشگاه‌های ثبت‌شده</h2><span id="platformTenantCount"></span></div>
+      <div id="platformTenantList" class="platform-tenant-list"><p>در حال بارگذاری...</p></div>
+    </section>
+    <section class="platform-list-section">
+      <div class="platform-section-heading"><h2>گزارش رویدادهای پلتفرم</h2><span>آخرین ۲۰۰ رویداد</span></div>
+      <div id="platformAuditList" class="platform-audit-list"><p>در حال بارگذاری...</p></div>
+    </section>
+    <p id="platformMessage" class="platform-message" role="status" aria-live="polite"></p>
+  </section>
+</main>
+<script src="assets/js/platform.js" defer></script>
+</body>
+</html>

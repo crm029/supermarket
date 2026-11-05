@@ -32,6 +32,29 @@ function app_auth_require_permission(PDO $db, array $tenant, array $session, str
     }
 }
 
+function app_auth_has_platform_permission(PDO $db, array $tenant, array $session, string $permission): bool {
+    if (!preg_match('/^[a-z0-9][a-z0-9._-]{1,99}$/', $permission)) return false;
+    $stmt=$db->prepare(
+        "SELECT 1
+         FROM user_roles ur
+         JOIN roles r ON r.role_scope_id=ur.role_scope_id AND r.id=ur.role_id
+         JOIN role_permissions rp ON rp.role_scope_id=r.role_scope_id AND rp.role_id=r.id
+         JOIN permissions p ON p.id=rp.permission_id
+         WHERE ur.tenant_id=:tenant AND ur.user_id=:user
+           AND ur.role_scope_id=0 AND r.tenant_id IS NULL
+           AND p.scope='platform' AND p.permission_key=:permission
+         LIMIT 1"
+    );
+    $stmt->execute(['tenant'=>$tenant['id'],'user'=>$session['id'],'permission'=>$permission]);
+    return (bool)$stmt->fetchColumn();
+}
+
+function app_auth_require_platform_permission(PDO $db, array $tenant, array $session, string $permission): void {
+    if (!app_auth_has_platform_permission($db,$tenant,$session,$permission)) {
+        app_json(['error'=>'برای مدیریت پلتفرم دسترسی کافی ندارید.'],403);
+    }
+}
+
 function app_audit_log(
     PDO $db,
     int $tenantId,
