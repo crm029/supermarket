@@ -1,0 +1,45 @@
+name: Quality and security checks
+
+on:
+  push:
+    branches: [main, "security/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  php-and-js:
+    name: PHP and JavaScript validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          coverage: none
+
+      - name: Lint all PHP files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(find . -type f -name '*.php' -not -path './vendor/*')
+          test "${#files[@]}" -gt 0
+          for file in "${files[@]}"; do
+            php -l "$file"
+          done
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Check storefront JavaScript syntax
+        run: node --check assets/js/app.js
+
+      - name: Check patch whitespace
+        run: git diff --check
