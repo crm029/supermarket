@@ -76,3 +76,6 @@ Real merchant photography, production domains, SMS credentials and payment-gatew
 - Checkout validates the cart on the server, saves the customer's delivery address, creates a pending-payment order and reserves stock for 20 minutes.
 - Configure the ZarinPal merchant ID and exact public callback origin before testing payment. See docs/local-setup.md.
 - Schedule bin/expire-reservations.php every minute to release stock for unpaid orders.
+
+
+For first-time tenant setup, apply database/bootstrap-store-owner.sql after all migrations (edit its tenant and owner variables first). See docs/local-setup.md.
