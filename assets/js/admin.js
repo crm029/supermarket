@@ -52,6 +52,7 @@ async function loadAll() {
     await loadOrders();
     await loadInventory();
     await loadScenes();
+    await loadReport();
     document.getElementById("statProducts").textContent=new Intl.NumberFormat("fa-IR").format(products.filter(x=>Number(x.is_active)).length);
     document.getElementById("statCategories").textContent=new Intl.NumberFormat("fa-IR").format(categories.filter(x=>Number(x.is_active)).length);
     document.getElementById("statConnection").textContent="متصل";
@@ -60,6 +61,20 @@ async function loadAll() {
   } catch(error) {
     document.getElementById("statConnection").textContent="محدود";
     message(error.message,"error");
+  }
+}
+async function loadReport() {
+  try {
+    const result=await request("admin/reports/overview");
+    const data=result.data||{};
+    document.getElementById("statRevenue").textContent=money(Number(data.paid_revenue_rial_30d)/10);
+    document.getElementById("statPending").textContent=new Intl.NumberFormat("fa-IR").format(Number(data.pending_payment_count)||0);
+    document.getElementById("statLowStock").textContent=new Intl.NumberFormat("fa-IR").format(Number(data.low_stock_count)||0);
+    const days=data.daily_sales||[];
+    const max=Math.max(1,...days.map(d=>Number(d.revenue_rial)||0));
+    document.getElementById("salesChart").innerHTML=days.map(d=>'<div class="sales-bar-row"><span>'+escapeText(d.day)+'</span><div><i style="width:'+Math.max(2,(Number(d.revenue_rial)||0)/max*100)+'%"></i></div><strong>'+money(Number(d.revenue_rial)/10)+'</strong></div>').join("")||'<p>در این بازه فروشی ثبت نشده است.</p>';
+  } catch(error) {
+    document.getElementById("salesChart").textContent=error.message;
   }
 }
 async function loadScenes() {
