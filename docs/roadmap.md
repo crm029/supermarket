@@ -17,7 +17,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Add tenant-aware composite foreign keys, scoped/global role protections and cross-tenant negative tests (MySQL 8 CI verified).
 - [x] OTP login challenge storage, expiry, attempt lockout and phone/IP rate limiting.
 - [x] Opaque database-backed sessions, HttpOnly cookies and CSRF-protected logout.
-- [ ] Production SMS provider adapter, customer registration and password reset.
+- [x] Customer registration with pending status, OTP activation and optional referral attribution.\n- [ ] Production SMS provider adapter, password reset and delivery reports.
 - [x] Tenant/platform permission catalog, role grants, deny-by-default product API checks and product-change audit events.
 - [ ] Role/permission management UI, platform authorization, and CSRF/policy enforcement on all future write routes.
 - [ ] Platform super-admin tenant provisioning and domain verification.
