@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/stock_batches.php';
 
 function app_commerce_body(): array {
     return app_auth_request_body();
@@ -376,6 +377,8 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
                 $updateStock->execute([$take, $tenant['id'], $stock['warehouse_id'], $item['product_id'], $take]);
                 if ($updateStock->rowCount() !== 1) throw new RuntimeException('Stock changed during reservation.');
                 $reserve->execute([$tenant['id'], $orderId, $stock['warehouse_id'], $item['product_id'], $take, $reservationMinutes]);
+                $reservationId=(int)$db->lastInsertId();
+                app_stock_batch_reserve($db,(int)$tenant['id'],$reservationId,(int)$stock['warehouse_id'],(int)$item['product_id'],$take);
                 $reservationMovement->execute([$tenant['id'],$stock['warehouse_id'],$item['product_id'],$session['id'],$take,$orderId]);
                 $remaining -= $take;
             }
