@@ -122,7 +122,9 @@ ALTER TABLE audit_logs
 -- A trigger is used because tenant_id is nullable for platform-level events.
 -- Keep global roles (scope 0) usable across tenants while making tenant-scoped
 -- role ownership enforceable with a composite foreign key.
-ALTER TABLE roles ADD COLUMN role_scope_id BIGINT UNSIGNED NOT NULL DEFAULT 0;
+ALTER TABLE roles
+  ADD CONSTRAINT fk_roles_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id),
+  ADD COLUMN role_scope_id BIGINT UNSIGNED NOT NULL DEFAULT 0;
 UPDATE roles SET role_scope_id = COALESCE(tenant_id, 0);
 ALTER TABLE roles ADD UNIQUE KEY uq_roles_scope_id (role_scope_id, id);
 
