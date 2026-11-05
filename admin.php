@@ -24,6 +24,7 @@ declare(strict_types=1);
     <button class="admin-nav" data-panel="products">مدیریت محصولات</button>
     <button class="admin-nav" data-panel="categories">دسته‌بندی‌ها</button>
     <button class="admin-nav" data-panel="orders">مدیریت سفارش‌ها</button>
+    <button class="admin-nav" data-panel="inventory">انبار و موجودی</button>
     <div class="admin-sidebar-note">دسترسی‌ها بر اساس نقش و مجوز حساب شما از سمت سرور کنترل می‌شوند.</div>
   </aside>
   <section class="admin-content">
@@ -63,6 +64,22 @@ declare(strict_types=1);
       <div class="admin-heading"><div><p class="eyebrow">آماده‌سازی و ارسال</p><h2>مدیریت سفارش‌ها</h2></div><button class="text-button" id="reloadOrders">به‌روزرسانی</button></div>
       <div class="admin-toolbar"><select id="orderStatusFilter"><option value="">همه وضعیت‌ها</option><option value="paid">پرداخت‌شده</option><option value="accepted">پذیرفته‌شده</option><option value="picking">در حال جمع‌آوری</option><option value="packed">بسته‌بندی‌شده</option><option value="dispatched">ارسال‌شده</option><option value="ready_pickup">آماده تحویل حضوری</option><option value="delivered">تحویل‌شده</option></select></div>
       <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>شماره سفارش</th><th>مشتری</th><th>اقلام</th><th>مبلغ (تومان)</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody id="orderRows"><tr><td colspan="6">در حال بارگذاری...</td></tr></tbody></table></div>
+    </section>
+    <section class="admin-panel" id="panel-inventory">
+      <div class="admin-heading"><div><p class="eyebrow">کنترل موجودی</p><h2>انبار و کالاها</h2></div><button class="text-button" id="reloadInventory">به‌روزرسانی</button></div>
+      <form id="warehouseForm" class="admin-form">
+        <h3>افزودن انبار</h3><div class="admin-form-grid"><label>نام انبار<input id="warehouseTitle" maxlength="120" required></label><label>نوع انبار<select id="warehouseType"><option value="main">اصلی</option><option value="store">فروشگاه</option><option value="cold">سردخانه</option><option value="other">سایر</option></select></label></div><button class="primary-button" type="submit">ثبت انبار</button>
+      </form>
+      <form id="receiptForm" class="admin-form">
+        <h3>ثبت رسید موجودی</h3><div class="admin-form-grid"><label>انبار<select id="receiptWarehouse" required></select></label><label>محصول<select id="receiptProduct" required></select></label><label>تعداد ورودی<input id="receiptQuantity" type="number" min="1" max="1000000" required></label><label>شرح رسید<input id="receiptReason" maxlength="255"></label></div><button class="primary-button" type="submit">افزایش موجودی</button>
+      </form>
+      <form id="adjustmentForm" class="admin-form">
+        <h3>اصلاح موجودی</h3><div class="admin-form-grid"><label>انبار<select id="adjustWarehouse" required></select></label><label>محصول<select id="adjustProduct" required></select></label><label>تغییر تعداد (+ یا -)<input id="adjustQuantity" type="number" step="1" required></label><label>دلیل اصلاح<input id="adjustReason" maxlength="255" required></label></div><button class="primary-button" type="submit">ثبت اصلاح</button>
+      </form>
+      <form id="transferForm" class="admin-form">
+        <h3>انتقال بین انبارها</h3><div class="admin-form-grid"><label>از انبار<select id="transferFrom" required></select></label><label>به انبار<select id="transferTo" required></select></label><label>محصول<select id="transferProduct" required></select></label><label>تعداد انتقال<input id="transferQuantity" type="number" min="1" max="1000000" required></label></div><button class="primary-button" type="submit">ثبت انتقال</button>
+      </form>
+      <h3>موجودی فعلی</h3><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>محصول</th><th>انبار</th><th>موجودی</th><th>رزروشده</th><th>قابل فروش</th></tr></thead><tbody id="stockRows"><tr><td colspan="5">در حال بارگذاری...</td></tr></tbody></table></div>
     </section>
     <p id="adminMessage" class="form-message" role="status"></p>
   </section>
