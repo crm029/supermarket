@@ -104,3 +104,10 @@ Checkout intentionally does not mark an order paid. Reservations expire after 20
 - POST /admin/stock/receipts — add stock and write a receipt movement; requires inventory.manage and CSRF.
 - POST /admin/stock/adjustments — signed stock correction with mandatory reason and reserved-stock protection.
 - POST /admin/stock/transfers — atomic transfer between two active warehouses; available stock only.
+
+
+## Media and scene authoring
+- POST /admin/media — authenticated, CSRF-protected image upload; requires media.manage.
+- GET /admin/scenes, POST /admin/scenes, PATCH /admin/scenes/{id}, DELETE /admin/scenes/{id} — tenant-scoped scene management; DELETE unpublishes rather than deleting.
+- POST /admin/scenes/{id}/hotspots — create a product, category or navigation hotspot with normalized x/y coordinates.
+- DELETE /admin/hotspots/{id} — remove a hotspot.
