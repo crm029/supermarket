@@ -38,6 +38,7 @@ jobs:
           php tests/commerce-input.php
           php tests/payment-config.php
           php tests/wallet-input.php
+          php tests/report-csv.php
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
