@@ -49,3 +49,13 @@
 .staff-role-tag{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;background:#edf2e7;color:var(--forest);font-size:11px}
 .staff-role-tag button{border:0;background:transparent;color:#a33;font:700 15px Vazirmatn;cursor:pointer}
 .admin-hint{font-size:11px;color:var(--muted);line-height:1.9}
+
+
+/* Tenant media library */
+.media-library-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;margin-top:18px}
+.media-library-card{display:grid;gap:10px;padding:12px;border:1px solid var(--line);border-radius:16px;background:var(--paper);min-width:0}
+.media-library-card>img,.media-library-placeholder{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:11px;background:#edf0e9}
+.media-library-placeholder{display:grid;place-items:center;color:var(--muted);font-size:12px}
+.media-library-meta{display:grid;gap:4px;min-width:0}
+.media-library-meta strong{font-size:13px;overflow-wrap:anywhere}
+.media-library-meta small{font-size:11px;color:var(--muted);line-height:1.7}

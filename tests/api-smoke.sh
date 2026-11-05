@@ -87,6 +87,7 @@ assert_json() {
       exit(0);
     }
     if ($check === "staff-list") { if (!is_array($data["data"]["roles"] ?? null) || !is_array($data["data"]["staff"] ?? null)) exit(1); exit(0); }
+    if ($check === "media-library") { if (!is_array($data["data"] ?? null) || count($data["data"]) < 1 || (int)($data["data"][0]["usage_count"] ?? 0) < 1) exit(1); exit(0); }
     if ($check === "cart-empty") {
       if (!is_array($data["data"]["items"] ?? null) || count($data["data"]["items"]) !== 0) exit(1);
       exit(0);
@@ -160,6 +161,8 @@ request GET /admin/reports/overview 200 "" "$TOKEN"
 request GET /admin/warehouses 200 "" "$TOKEN"
 request GET /admin/stock 200 "" "$TOKEN"
 request GET /admin/scenes 200 "" "$TOKEN"
+request GET /admin/media 200 "" "$TOKEN"
+assert_json media-library
 request GET /admin/settings 403 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
 request GET /admin/settings 200 "" "$TOKEN"
 request PUT /admin/settings 419 '{"profile":{},"checkout":{}}' "$TOKEN"

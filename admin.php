@@ -27,6 +27,7 @@ declare(strict_types=1);
     <button class="admin-nav" data-panel="inventory">انبار و موجودی</button>
     <button class="admin-nav" data-panel="settings">تنظیمات و ظاهر فروشگاه</button>
     <button class="admin-nav" data-panel="staff">کارکنان و سطح دسترسی</button>
+    <button class="admin-nav" data-panel="media-library">کتابخانه رسانه</button>
     <button class="admin-nav" data-panel="scenes">طراحی فروشگاه مجازی</button>
     <div class="admin-sidebar-note">دسترسی‌ها بر اساس نقش و مجوز حساب شما از سمت سرور کنترل می‌شوند.</div>
   </aside>
@@ -127,6 +128,11 @@ declare(strict_types=1);
         <div class="admin-form-actions"><button class="primary-button" type="submit">ذخیره تنظیمات فروشگاه</button></div>
         <p id="storeSettingsMessage" class="form-message" role="status"></p>
       </form>
+    </section>
+    <section class="admin-panel" id="panel-media-library">
+      <div class="admin-heading"><div><p class="eyebrow">فایل‌های تصویری فروشگاه</p><h2>کتابخانه رسانه</h2></div><button class="text-button" id="reloadMediaLibrary" type="button">به‌روزرسانی</button></div>
+      <p class="admin-hint">شناسه هر تصویر برای اتصال به محصول، دسته‌بندی یا صحنه قابل استفاده است. رسانه‌های در حال استفاده مشخص شده‌اند؛ پاک‌سازی امن فایل‌ها در مرحله بعد اضافه می‌شود.</p>
+      <div id="mediaLibraryRows" class="media-library-grid"><p>در حال بارگذاری...</p></div>
     </section>
     <section class="admin-panel" id="panel-scenes">
       <div class="admin-heading"><div><p class="eyebrow">تجربه خرید تعاملی</p><h2>طراحی فروشگاه مجازی</h2></div><button class="text-button" id="reloadScenes">به‌روزرسانی</button></div>

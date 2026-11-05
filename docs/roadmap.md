@@ -27,7 +27,8 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [ ] Platform super-admin tenant provisioning and domain verification.
 - [x] Secure tenant-scoped image upload with MIME, size, dimension and storage-key validation.
 - [x] Store settings UI, branding controls, fulfillment availability, delivery fee, minimum order and reservation duration.
-- [ ] Media library browsing/cleanup.
+- [x] Tenant media library browsing with usage counts and reusable media IDs.
+- [ ] Safe cleanup of unused media files and orphan reconciliation.
 
 ## Phase 2 — catalog and commerce
 - [x] Basic tenant-scoped product list/create/update/deactivate API with permission checks.

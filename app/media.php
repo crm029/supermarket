@@ -50,6 +50,32 @@ function app_media_public_data(PDO $db, int $tenantId, ?int $mediaId): ?array {
 }
 
 
+function app_admin_media_list(PDO $db, array $tenant): never {
+    $stmt = $db->prepare(
+        "SELECT m.id,m.media_type,m.storage_key,m.alt_text,m.width,m.height,m.created_at,
+          ((SELECT COUNT(*) FROM products p WHERE p.tenant_id=m.tenant_id AND p.image_media_id=m.id) +
+           (SELECT COUNT(*) FROM categories c WHERE c.tenant_id=m.tenant_id AND c.image_media_id=m.id) +
+           (SELECT COUNT(*) FROM store_scenes s WHERE s.tenant_id=m.tenant_id AND (s.media_id=m.id OR s.fallback_media_id=m.id))) AS usage_count
+         FROM media_assets m WHERE m.tenant_id = ?
+         ORDER BY m.created_at DESC,m.id DESC LIMIT 200"
+    );
+    $stmt->execute([$tenant['id']]);
+    $items = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $items[] = [
+            'id' => (int)$row['id'],
+            'media_type' => $row['media_type'],
+            'alt_text' => $row['alt_text'],
+            'width' => $row['width'] === null ? null : (int)$row['width'],
+            'height' => $row['height'] === null ? null : (int)$row['height'],
+            'created_at' => $row['created_at'],
+            'usage_count' => (int)$row['usage_count'],
+            'url' => app_media_public_url((string)$row['storage_key']),
+        ];
+    }
+    app_json(['data' => $items]);
+}
+
 function app_media_upload(PDO $db, array $tenant, array $session): never {
     if (!isset($_FILES['file']) || !is_array($_FILES['file'])) {
         app_json(['error' => 'فایل تصویر ارسال نشده است.'], 422);
