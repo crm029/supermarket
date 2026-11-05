@@ -15,7 +15,7 @@ $valid = [
 ];
 
 foreach ($valid as $input => $expected) {
-    if (app_auth_mobile($input) !== $expected) {
+    if (app_auth_mobile((string)$input) !== $expected) {
         throw new RuntimeException('Mobile normalization failed for: ' . $input);
     }
 }
