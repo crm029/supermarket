@@ -24,7 +24,7 @@ A feature is not considered complete until it passes its relevant gates.
 - OTP and login endpoints are rate-limited.
 - Passwords use PHP password_hash/password_verify.
 - Sessions use secure, HTTP-only, SameSite cookies over HTTPS.
-- Logs do not contain passwords, OTPs, tokens or payment secrets.
+- Production logs do not contain passwords, OTPs, tokens or payment secrets. The local-only development SMS driver is the sole exception and must never be enabled in production.
 - Uploads validate MIME, dimensions and size; filenames are generated server-side.
 
 ## Experience
