@@ -5,6 +5,7 @@ BEGIN
   DECLARE missing_allocations INT DEFAULT 0;
   DECLARE mismatched_allocations INT DEFAULT 0;
   DECLARE batch_reservation_mismatches INT DEFAULT 0;
+  DECLARE writeoff_movement_type_present INT DEFAULT 0;
 
   SELECT COUNT(*) INTO missing_allocations
   FROM stock_reservations sr
@@ -34,6 +35,14 @@ BEGIN
   ) a ON a.tenant_id=b.tenant_id AND a.batch_id=b.id
   WHERE b.reserved<>COALESCE(a.allocated,0);
 
+  SELECT COUNT(*) INTO writeoff_movement_type_present
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='stock_movements'
+    AND COLUMN_NAME='movement_type' AND COLUMN_TYPE LIKE '%expiry_writeoff%';
+
+  IF writeoff_movement_type_present<>1 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Expired stock write-off movement type is missing';
+  END IF;
   IF missing_allocations>0 THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='An active stock reservation is not fully allocated to batches';
   END IF;
