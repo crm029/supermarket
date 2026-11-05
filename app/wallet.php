@@ -163,6 +163,17 @@ function app_wallet_pay_order(PDO $db, array $tenant, array $session, int $order
             $db->rollBack();
             app_json(['error'=>'مبلغ سفارش برای پرداخت معتبر نیست.'],422);
         }
+        $gatewayAttempt=$db->prepare(
+            "SELECT id FROM payment_attempts
+             WHERE tenant_id=? AND order_id=? AND provider<>'wallet'
+               AND status IN ('created','redirected','verified')
+             ORDER BY id DESC LIMIT 1 FOR UPDATE"
+        );
+        $gatewayAttempt->execute([$tenant['id'],$orderId]);
+        if($gatewayAttempt->fetchColumn()){
+            $db->rollBack();
+            app_json(['error'=>'برای این سفارش تلاش پرداخت بانکی ثبت شده است؛ ابتدا وضعیت آن را مشخص کنید.'],409);
+        }
 
         $walletId=app_wallet_ensure_account($db,(int)$tenant['id'],(int)$session['id']);
         $walletLock=$db->prepare('SELECT id FROM wallet_accounts WHERE tenant_id=? AND id=? FOR UPDATE');
