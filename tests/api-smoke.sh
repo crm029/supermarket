@@ -237,11 +237,16 @@ request POST /me/addresses 201 '{"title":"خانه تست","recipient":"مشتر
 ADDRESS_ID="$(assert_json created-id)"
 request PATCH "/me/addresses/$ADDRESS_ID" 419 "" "$CUSTOMER_TOKEN"
 request PATCH "/me/addresses/$ADDRESS_ID" 200 '{"title":"خانه ویرایش‌شده","city":"کرج"}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+request POST /admin/delivery-zones 201 '{"title":"کل شهر کرج","province":"تهران","city":"کرج","postal_prefix":"","delivery_fee_rial":5000,"minimum_order_rial":1,"sort_order":1,"is_active":true}' "$TOKEN" "$CSRF"
+GENERAL_ZONE_ID="$(assert_json created-id)"
+request POST /admin/delivery-zones 201 '{"title":"مرکز کرج","province":"تهران","city":"کرج","postal_prefix":"123","delivery_fee_rial":3000,"minimum_order_rial":1,"sort_order":2,"is_active":true}' "$TOKEN" "$CSRF"
+ZONE_ID="$(assert_json created-id)"
 request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}],"fulfillment":"delivery","address_id":'$ADDRESS_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 ORDER_ID="$(assert_json order-created)"
 ORDER_FEE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT delivery_fee_rial FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
 ORDER_TOTAL="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT total_rial FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
-if [[ "$ORDER_FEE" != "1000" || "$ORDER_TOTAL" != "251000" ]]; then echo "Store checkout settings were not applied to the order."; exit 1; fi
+ORDER_ZONE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT delivery_zone_id FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
+if [[ "$ORDER_FEE" != "3000" || "$ORDER_TOTAL" != "253000" || "$ORDER_ZONE" != "$ZONE_ID" ]]; then echo "Most-specific delivery zone fee was not applied to the order."; exit 1; fi
 RESERVED="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT reserved FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID LIMIT 1")"
 if [[ "$RESERVED" != "2" ]]; then echo "Expected 2 reserved units, received $RESERVED"; exit 1; fi
 request POST "/me/orders/$ORDER_ID/cancel" 200 "" "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
