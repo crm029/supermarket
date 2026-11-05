@@ -191,6 +191,9 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
             "INSERT INTO stock_reservations (tenant_id,order_id,warehouse_id,product_id,quantity,status,expires_at)
              VALUES (?,?,?,?,?,'active',DATE_ADD(UTC_TIMESTAMP(), INTERVAL 20 MINUTE))"
         );
+        $reservationMovement = $db->prepare(
+            "INSERT INTO stock_movements (tenant_id,warehouse_id,product_id,actor_user_id,movement_type,quantity,reference_type,reference_id,reason) VALUES (?,?,?,?,'reservation',?,'order',?,'رزرو برای پرداخت')"
+        );
         $updateStock = $db->prepare(
             'UPDATE stock_levels SET reserved = reserved + ? WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ? AND on_hand - reserved >= ?'
         );
@@ -214,6 +217,7 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
                 $updateStock->execute([$take, $tenant['id'], $stock['warehouse_id'], $item['product_id'], $take]);
                 if ($updateStock->rowCount() !== 1) throw new RuntimeException('Stock changed during reservation.');
                 $reserve->execute([$tenant['id'], $orderId, $stock['warehouse_id'], $item['product_id'], $take]);
+                $reservationMovement->execute([$tenant['id'],$stock['warehouse_id'],$item['product_id'],$session['id'],$take,$orderId]);
                 $remaining -= $take;
             }
             if ($remaining > 0) {
