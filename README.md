@@ -31,7 +31,7 @@ Still in progress:
 - Wallet spending, refunds/reversals, advanced referral fraud controls and reward policy approval for each merchant.
 - Cashier/picker/courier assignment, courier tracking, operational notifications and report exports.
 - Real-store photography/onboarding and responsive image delivery.
-- Stable product slugs and redirects, Google Search Console/GA4 setup and production Core Web Vitals review.
+- Google Search Console/GA4 setup and production Core Web Vitals review.
 - Live merchant SMS/payment credentials, settlement reconciliation, refund acceptance, hosting, backups, monitoring, load/device/accessibility testing and production sign-off.
 
 ## Architecture principles
