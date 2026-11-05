@@ -558,7 +558,8 @@ document.getElementById("orderRows").addEventListener("click",async e=>{
   if(detail){
     const order=orders.find(o=>Number(o.id)===Number(detail.dataset.adminOrderDetail));
     if(order){
-      const address=order.fulfillment==="delivery"?[order.delivery_recipient,order.delivery_mobile,order.province,order.city,order.delivery_address,order.postal_code].filter(Boolean).join(" · "):"تحویل حضوری";
+      const pickupTime=order.pickup_slot_starts_at_label?(order.pickup_slot_title+" · "+order.pickup_slot_starts_at_label+" تا "+order.pickup_slot_ends_at_label):"";
+      const address=order.fulfillment==="delivery"?[order.delivery_recipient,order.delivery_mobile,order.province,order.city,order.delivery_address,order.postal_code].filter(Boolean).join(" · "):("تحویل حضوری"+(pickupTime?" · "+pickupTime:""));
       const box=document.getElementById("adminOrderDetail");
       box.hidden=false;
       box.innerHTML='<h3>سفارش '+escapeText(order.order_number)+'</h3><p>مشتری: '+escapeText(order.customer_name)+' · '+escapeText(order.customer_mobile)+'</p><p>نشانی / روش دریافت: '+escapeText(address)+'</p><p>توضیحات: '+escapeText(order.customer_note||"—")+'</p>';
