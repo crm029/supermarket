@@ -30,7 +30,7 @@ function app_admin_staff_list(PDO $db, array $tenant): never {
          FROM users u
          JOIN user_roles ur ON ur.tenant_id = u.tenant_id AND ur.user_id = u.id
          JOIN roles r ON r.role_scope_id = ur.role_scope_id AND r.id = ur.role_id
-         WHERE u.tenant_id = ? AND r.role_key <> 'store_owner'
+         WHERE u.tenant_id = ? AND r.tenant_id = ? AND r.role_key <> 'store_owner'
            AND NOT EXISTS (
              SELECT 1 FROM user_roles owner_ur
              JOIN roles owner_role ON owner_role.role_scope_id = owner_ur.role_scope_id
@@ -40,7 +40,7 @@ function app_admin_staff_list(PDO $db, array $tenant): never {
            )
          GROUP BY u.id,u.full_name,u.mobile,u.status ORDER BY u.full_name"
     );
-    $staff->execute([$tenant['id']]);
+    $staff->execute([$tenant['id'], $tenant['id']]);
     $staffRows = $staff->fetchAll(PDO::FETCH_ASSOC);
     foreach ($staffRows as &$person) {
         $person['id'] = (int)$person['id'];
@@ -68,7 +68,12 @@ function app_admin_staff_create_role(PDO $db, array $tenant, array $session): ne
         !is_array($permissionKeys) || count($permissionKeys) > 20) {
         app_json(['error' => 'اطلاعات نقش معتبر نیست.'], 422);
     }
-    $permissionKeys = array_values(array_unique(array_filter($permissionKeys, 'is_string')));
+    foreach ($permissionKeys as $permissionKey) {
+        if (!is_string($permissionKey) || !preg_match('/^[a-z0-9][a-z0-9._-]{1,99}$/', $permissionKey)) {
+            app_json(['error' => 'فهرست مجوزهای نقش معتبر نیست.'], 422);
+        }
+    }
+    $permissionKeys = array_values(array_unique($permissionKeys));
     if (in_array('staff.manage', $permissionKeys, true)) {
         app_json(['error' => 'مجوز مدیریت کارکنان فقط برای مدیر اصلی محفوظ است.'], 422);
     }
