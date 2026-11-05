@@ -39,8 +39,9 @@ $env = static fn(string $key, ?string $default = null): ?string => app_env($key,
 $production = strtolower((string)$env('APP_ENV', '')) === 'production';
 $check($production, 'APP_ENV is production', 'APP_ENV must be set explicitly to production.');
 
-$debug = filter_var($env('APP_DEBUG', 'true'), FILTER_VALIDATE_BOOLEAN);
-$check(!$debug, 'Application debug mode is disabled', 'Set APP_DEBUG=false.');
+$debugValue = strtolower(trim((string)$env('APP_DEBUG', 'true')));
+$debugDisabled = in_array($debugValue, ['false', '0', 'off', 'no'], true);
+$check($debugDisabled, 'Application debug mode is disabled', 'Set APP_DEBUG=false.');
 
 $key = (string)$env('APP_KEY', '');
 $check(strlen($key) >= 32, 'Application key is configured', 'APP_KEY must be a unique secret with at least 32 characters.');
@@ -50,7 +51,7 @@ $parts = $baseUrl !== '' ? parse_url($baseUrl) : false;
 $validBaseUrl = is_array($parts)
     && strtolower((string)($parts['scheme'] ?? '')) === 'https'
     && !empty($parts['host'])
-    && !isset($parts['user'], $parts['pass'], $parts['query'], $parts['fragment']);
+    && !isset($parts['user']) && !isset($parts['pass']) && !isset($parts['query']) && !isset($parts['fragment']);
 $check($validBaseUrl, 'Public application URL uses HTTPS', 'APP_BASE_URL must be the exact public HTTPS origin, without credentials, query or fragment.');
 
 foreach (['pdo_mysql', 'mbstring', 'curl', 'fileinfo'] as $extension) {
@@ -69,7 +70,7 @@ $check($merchant !== '', 'ZarinPal merchant ID is configured', 'Set ZARINPAL_MER
 $check(!$sandbox, 'ZarinPal live mode is selected', 'Set ZARINPAL_SANDBOX=false after sandbox acceptance tests.');
 
 $mediaRoot = trim((string)$env('MEDIA_STORAGE_PATH', ''));
-$isWindowsDrive = preg_match('/^[A-Za-z]:[\\\\\\/]/', $mediaRoot) === 1;
+$isWindowsDrive = strlen($mediaRoot) >= 3 && ctype_alpha($mediaRoot[0]) && $mediaRoot[1] === ':' && ($mediaRoot[2] === '/' || $mediaRoot[2] === '\\\\');
 $isAbsolute = $mediaRoot !== '' && (str_starts_with($mediaRoot, DIRECTORY_SEPARATOR) || $isWindowsDrive);
 $mediaReal = $isAbsolute ? realpath($mediaRoot) : false;
 $docRoot = isset($_SERVER['DOCUMENT_ROOT']) ? realpath((string)$_SERVER['DOCUMENT_ROOT']) : false;
