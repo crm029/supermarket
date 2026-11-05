@@ -18,7 +18,7 @@ function app_media_public_url(string $storageKey): ?string {
     if ($scheme !== 'https' && !($development && $scheme === 'http')) return null;
 
     $key = trim($storageKey, '/');
-    if ($key === '' || strlen($key) > 500 || preg_match('/[\x00-\x20\\\\]/', $key)) return null;
+    if ($key === '' || strlen($key) > 500 || preg_match('/[\x00-\x1F\x7F\\\\]/', $key)) return null;
     $segments = explode('/', $key);
     foreach ($segments as $segment) {
         if ($segment === '' || $segment === '.' || $segment === '..') return null;
