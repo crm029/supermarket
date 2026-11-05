@@ -122,6 +122,18 @@ declare(strict_types=1);
       </div>
       <div id="stockExpirySummary" class="admin-welcome" aria-live="polite">در حال دریافت گزارش انقضا...</div>
       <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>کالا</th><th>انبار</th><th>شماره بچ</th><th>تاریخ انقضا</th><th>موجودی</th><th>رزروشده</th><th>قابل استفاده</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody id="stockBatchRows"><tr><td colspan="9">در حال بارگذاری...</td></tr></tbody></table></div>
+      <div class="admin-heading"><div><h3>گردش و سوابق موجودی</h3><p class="admin-hint">تمام ورودها، خروج‌ها، انتقال‌ها، فروش، مرجوعی و امحا با کاربر ثبت‌کننده و شرح عملیات قابل پیگیری است.</p></div><button class="text-button" id="reloadStockMovements" type="button">به‌روزرسانی گردش</button></div>
+      <div class="admin-toolbar">
+        <select id="movementWarehouseFilter" aria-label="فیلتر انبار"><option value="">همه انبارها</option></select>
+        <select id="movementProductFilter" aria-label="فیلتر کالا"><option value="">همه کالاها</option></select>
+        <select id="movementTypeFilter" aria-label="نوع گردش">
+          <option value="">همه عملیات</option><option value="receipt">ورود موجودی</option><option value="transfer_in">ورود انتقال</option><option value="transfer_out">خروج انتقال</option><option value="adjustment">اصلاح موجودی</option><option value="reservation">رزرو سفارش</option><option value="release">آزادسازی رزرو</option><option value="sale">فروش</option><option value="return">مرجوعی مشتری</option><option value="supplier_return">مرجوعی تأمین‌کننده</option><option value="expiry_writeoff">امحای کالای منقضی</option>
+        </select>
+        <label>از تاریخ <input id="movementFromDate" type="date"></label><label>تا تاریخ <input id="movementToDate" type="date"></label>
+        <button class="primary-button" id="applyMovementFilters" type="button">اعمال فیلتر</button>
+      </div>
+      <div id="stockMovementSummary" class="admin-welcome" aria-live="polite">در حال دریافت سوابق...</div>
+      <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>زمان ثبت</th><th>کالا</th><th>انبار</th><th>نوع عملیات</th><th>تغییر تعداد</th><th>ثبت‌کننده</th><th>شرح / مرجع</th></tr></thead><tbody id="stockMovementRows"><tr><td colspan="7">در حال بارگذاری...</td></tr></tbody></table></div>
     </section>
 
     <section class="admin-panel" id="panel-purchasing">

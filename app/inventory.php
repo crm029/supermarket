@@ -92,6 +92,73 @@ function app_inventory_low_stock_list(PDO $db, array $tenant): never {
     app_json(['data'=>$stmt->fetchAll()]);
 }
 
+function app_inventory_movement_list(PDO $db, array $tenant): never {
+    $where = ['sm.tenant_id = ?'];
+    $params = [(int)$tenant['id']];
+    $warehouseRaw = $_GET['warehouse_id'] ?? null;
+    if ($warehouseRaw !== null && $warehouseRaw !== '') {
+        $warehouseId = filter_var($warehouseRaw, FILTER_VALIDATE_INT);
+        if ($warehouseId === false || $warehouseId < 1) app_json(['error'=>'شناسه انبار معتبر نیست.'],422);
+        $where[] = 'sm.warehouse_id = ?';
+        $params[] = $warehouseId;
+    }
+    $productRaw = $_GET['product_id'] ?? null;
+    if ($productRaw !== null && $productRaw !== '') {
+        $productId = filter_var($productRaw, FILTER_VALIDATE_INT);
+        if ($productId === false || $productId < 1) app_json(['error'=>'شناسه کالا معتبر نیست.'],422);
+        $where[] = 'sm.product_id = ?';
+        $params[] = $productId;
+    }
+    $movementTypes = ['receipt','transfer_in','transfer_out','adjustment','reservation','release','sale','return','supplier_return','expiry_writeoff'];
+    $movementType = $_GET['movement_type'] ?? '';
+    if ($movementType !== '') {
+        if (!is_string($movementType) || !in_array($movementType,$movementTypes,true)) {
+            app_json(['error'=>'نوع گردش موجودی معتبر نیست.'],422);
+        }
+        $where[] = 'sm.movement_type = ?';
+        $params[] = $movementType;
+    }
+    $tenantTimezone = new DateTimeZone((string)($tenant['timezone'] ?? 'Asia/Tehran'));
+    $parseDate = static function(mixed $value, string $label) use ($tenantTimezone): ?DateTimeImmutable {
+        if ($value === null || $value === '') return null;
+        if (!is_string($value)) app_json(['error'=>$label.' معتبر نیست.'],422);
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d',$value,$tenantTimezone);
+        $errors = DateTimeImmutable::getLastErrors();
+        if (!$date || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0)) || $date->format('Y-m-d') !== $value) {
+            app_json(['error'=>$label.' معتبر نیست.'],422);
+        }
+        return $date;
+    };
+    $from = $parseDate($_GET['from'] ?? null,'تاریخ شروع');
+    $to = $parseDate($_GET['to'] ?? null,'تاریخ پایان');
+    if ($from !== null && $to !== null && $from->format('Y-m-d') > $to->format('Y-m-d')) app_json(['error'=>'تاریخ شروع نباید بعد از تاریخ پایان باشد.'],422);
+    $utc = new DateTimeZone('UTC');
+    if ($from !== null) {
+        $where[] = 'sm.created_at >= ?';
+        $params[] = $from->setTimezone($utc)->format('Y-m-d H:i:s');
+    }
+    if ($to !== null) {
+        $where[] = 'sm.created_at < ?';
+        $params[] = $to->modify('+1 day')->setTimezone($utc)->format('Y-m-d H:i:s');
+    }
+    $stmt = $db->prepare(
+        "SELECT sm.id,sm.movement_type,sm.quantity,sm.reference_type,sm.reference_id,sm.reason,sm.created_at,
+                w.title AS warehouse_title,p.sku,
+                CASE WHEN p.product_kind='variant' THEN CONCAT(parent.title,' · ',p.variant_label) ELSE p.title END AS product_title,
+                COALESCE(u.full_name,'سیستم') AS actor_name
+         FROM stock_movements sm
+         JOIN warehouses w ON w.tenant_id=sm.tenant_id AND w.id=sm.warehouse_id
+         JOIN products p ON p.tenant_id=sm.tenant_id AND p.id=sm.product_id
+         LEFT JOIN products parent ON parent.tenant_id=p.tenant_id AND parent.id=p.parent_product_id
+         LEFT JOIN users u ON u.tenant_id=sm.tenant_id AND u.id=sm.actor_user_id
+         WHERE ".implode(' AND ',$where)."
+         ORDER BY sm.created_at DESC,sm.id DESC LIMIT 300"
+    );
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    app_json(['data'=>$rows,'meta'=>['count'=>count($rows),'limit'=>300]]);
+}
+
 function app_inventory_validate_refs(PDO $db, int $tenantId, int $warehouseId, int $productId): void {
     $stmt=$db->prepare(
         "SELECT 1 FROM warehouses w JOIN products p ON p.tenant_id=w.tenant_id
