@@ -16,14 +16,17 @@ function app_admin_orders_list(PDO $db, array $tenant): never {
     }
     $stmt = $db->prepare(
         "SELECT o.id, o.order_number, o.status, o.fulfillment, o.subtotal_rial, o.delivery_fee_rial,
-                o.total_rial, o.created_at, u.full_name AS customer_name, u.mobile AS customer_mobile,
+                o.total_rial, o.created_at, o.customer_note, u.full_name AS customer_name, u.mobile AS customer_mobile,
+                ca.recipient AS delivery_recipient, ca.mobile AS delivery_mobile, ca.province, ca.city, ca.address AS delivery_address, ca.postal_code,
                 COUNT(oi.id) AS item_count
          FROM orders o
          JOIN users u ON u.tenant_id = o.tenant_id AND u.id = o.user_id
+         LEFT JOIN customer_addresses ca ON ca.tenant_id = o.tenant_id AND ca.id = o.address_id
          LEFT JOIN order_items oi ON oi.tenant_id = o.tenant_id AND oi.order_id = o.id
          WHERE {$where}
          GROUP BY o.id, o.order_number, o.status, o.fulfillment, o.subtotal_rial,
-                  o.delivery_fee_rial, o.total_rial, o.created_at, u.full_name, u.mobile
+                  o.delivery_fee_rial, o.total_rial, o.created_at, o.customer_note, u.full_name, u.mobile,
+                  ca.recipient, ca.mobile, ca.province, ca.city, ca.address, ca.postal_code
          ORDER BY o.id DESC LIMIT 200"
     );
     $stmt->execute($params);
