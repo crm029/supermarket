@@ -92,6 +92,7 @@
         const id=Number(verify.dataset.verifyTenant);
         const note=document.querySelector('[data-verification-note="'+id+'"]').value.trim();
         const method=document.querySelector('[data-verification-method="'+id+'"]').value;
+        if(!window.confirm("تأیید می‌کنید که مالکیت این دامنه را خارج از سامانه بررسی کرده‌اید؟ این عملیات فروشگاه را فعال می‌کند."))return;
         const result=await api("platform/tenants/"+id+"/verify-domain",{method:"POST",body:JSON.stringify({ownership_confirmed:true,verification_method:method,verification_note:note}),csrf:true});
         message("platformMessage",result.message);await loadTenants();
       }else if(suspend){
