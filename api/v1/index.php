@@ -9,6 +9,7 @@ require_once dirname(__DIR__, 2) . '/app/media.php';
 require_once dirname(__DIR__, 2) . '/app/commerce.php';
 require_once dirname(__DIR__, 2) . '/app/payments.php';
 require_once dirname(__DIR__, 2) . '/app/admin_orders.php';
+require_once dirname(__DIR__, 2) . '/app/inventory.php';
 
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
@@ -30,6 +31,48 @@ try {
     }
     $method = app_method();
     $db = app_db();
+
+    if ($path === '/admin/warehouses') {
+        $session = app_auth_require($db, $tenant);
+        if ($method === 'GET') {
+            app_auth_require_permission($db, $tenant, $session, 'inventory.read');
+            app_inventory_warehouse_list($db, $tenant);
+        }
+        if ($method === 'POST') {
+            app_auth_require_csrf($session);
+            app_auth_require_permission($db, $tenant, $session, 'inventory.manage');
+            app_inventory_warehouse_create($db, $tenant, $session);
+        }
+        header('Allow: GET, POST');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if ($path === '/admin/stock' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'inventory.read');
+        app_inventory_stock_list($db, $tenant);
+    }
+
+    if ($path === '/admin/stock/receipts' && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'inventory.manage');
+        app_inventory_receipt($db, $tenant, $session);
+    }
+
+    if ($path === '/admin/stock/adjustments' && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'inventory.manage');
+        app_inventory_adjustment($db, $tenant, $session);
+    }
+
+    if ($path === '/admin/stock/transfers' && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'inventory.manage');
+        app_inventory_transfer($db, $tenant, $session);
+    }
 
     if ($path === '/admin/orders' && $method === 'GET') {
         $session = app_auth_require($db, $tenant);
