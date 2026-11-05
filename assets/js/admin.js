@@ -72,18 +72,29 @@ async function loadScenes() {
     document.getElementById("hotspotTarget").innerHTML=scenes.filter(s=>s.is_published).map(s=>'<option value="'+Number(s.id)+'">'+escapeText(s.title)+'</option>').join("");
     document.getElementById("hotspotProduct").innerHTML=products.filter(p=>Number(p.is_active)).map(p=>'<option value="'+Number(p.id)+'">'+escapeText(p.title)+'</option>').join("");
     document.getElementById("hotspotCategory").innerHTML=categories.filter(c=>Number(c.is_active)).map(c=>'<option value="'+Number(c.id)+'">'+escapeText(c.title)+'</option>').join("");
-    if(scenes.length)await loadHotspots(scenes[0].id);else document.getElementById("hotspotRows").innerHTML="";
+    if(scenes.length){document.getElementById("hotspotScene").value=String(scenes[0].id);await loadHotspots(scenes[0].id);}else{document.getElementById("hotspotRows").innerHTML="";renderScenePreview(null);}
   } catch(error) {
     document.getElementById("sceneRows").textContent=error.message;
   }
 }
 function renderScenes() {
-  document.getElementById("sceneRows").innerHTML=scenes.map(s=>'<article><div><strong>'+escapeText(s.title)+'</strong><small>'+escapeText(s.scene_type)+' · '+Number(s.hotspot_count)+' نقطه · رسانه '+(s.media_id||"ندارد")+'</small></div><span class="admin-status '+(s.is_published?"active":"inactive")+'">'+(s.is_published?"منتشرشده":"پیش‌نویس")+'</span><button class="admin-row-action" data-publish-scene="'+Number(s.id)+'" data-published="'+(s.is_published?"1":"0")+'">'+(s.is_published?"خروج از انتشار":"انتشار")+'</button></article>').join("")||'<p>هنوز صحنه‌ای ساخته نشده است. ابتدا تصویر راهرو را بارگذاری کنید.</p>';
+  document.getElementById("sceneRows").innerHTML=scenes.map(s=>'<article><div><strong>'+escapeText(s.title)+'</strong><small>'+escapeText(s.scene_type)+' · '+Number(s.hotspot_count)+' نقطه · رسانه '+(s.media_id||"ندارد")+'</small></div><span class="admin-status '+(s.is_published?"active":"inactive")+'">'+(s.is_published?"منتشرشده":"پیش‌نویس")+'</span><button class="admin-row-action" data-select-scene="'+Number(s.id)+'">انتخاب صحنه</button><button class="admin-row-action" data-publish-scene="'+Number(s.id)+'" data-published="'+(s.is_published?"1":"0")+'">'+(s.is_published?"خروج از انتشار":"انتشار")+'</button></article>').join("")||'<p>هنوز صحنه‌ای ساخته نشده است. ابتدا تصویر راهرو را بارگذاری کنید.</p>';
+}
+function renderScenePreview(scene) {
+  const preview=document.getElementById("scenePreview");
+  if(!scene||!scene.media?.url){preview.innerHTML='<p>این صحنه تصویر ندارد. ابتدا تصویر بارگذاری و به صحنه متصل کنید.</p>';return;}
+  preview.innerHTML='<img src="'+escapeText(scene.media.url)+'" alt="'+escapeText(scene.title)+'">'+(hotspots||[]).map(h=>'<span class="scene-preview-hotspot" style="left:'+(Number(h.x)*100)+'%;top:'+(Number(h.y)*100)+'%">'+escapeText(h.label)+'</span>').join("");
+}
+function renderScenePreview(scene) {
+  const preview=document.getElementById("scenePreview");
+  if(!scene||!scene.media?.url){preview.innerHTML='<p>این صحنه تصویر ندارد. ابتدا تصویر بارگذاری و به صحنه متصل کنید.</p>';return;}
+  preview.innerHTML='<img src="'+escapeText(scene.media.url)+'" alt="'+escapeText(scene.title)+'">'+(hotspots||[]).map(h=>'<span class="scene-preview-hotspot" style="left:'+(Number(h.x)*100)+'%;top:'+(Number(h.y)*100)+'%">'+escapeText(h.label)+'</span>').join("");
 }
 async function loadHotspots(sceneId) {
   try {
     const result=await request("admin/scenes/"+sceneId+"/hotspots");
     hotspots=result.data||[];
+    renderScenePreview(scenes.find(s=>Number(s.id)===Number(sceneId))||null);
     document.getElementById("hotspotRows").innerHTML=hotspots.map(h=>'<article><div><strong>'+escapeText(h.label)+'</strong><small>'+escapeText(h.action)+' · X '+Number(h.x).toFixed(2)+' / Y '+Number(h.y).toFixed(2)+'</small></div><button class="admin-row-action danger" data-delete-hotspot="'+Number(h.id)+'">حذف نقطه</button></article>').join("")||'<p>برای این صحنه نقطه تعاملی ثبت نشده است.</p>';
   } catch(error) { document.getElementById("hotspotRows").textContent=error.message; }
 }
@@ -322,6 +333,8 @@ document.getElementById("sceneForm").addEventListener("submit",async e=>{
   }catch(error){message(error.message,"error");}
 });
 document.getElementById("sceneRows").addEventListener("click",async e=>{
+  const select=e.target.closest("[data-select-scene]");
+  if(select){document.getElementById("hotspotScene").value=select.dataset.selectScene;await loadHotspots(Number(select.dataset.selectScene));return;}
   const b=e.target.closest("[data-publish-scene]");if(!b)return;
   const id=Number(b.dataset.publishScene);const currently=b.dataset.published==="1";
   try{
@@ -331,6 +344,13 @@ document.getElementById("sceneRows").addEventListener("click",async e=>{
   }catch(error){message(error.message,"error");}
 });
 document.getElementById("hotspotScene").addEventListener("change",e=>loadHotspots(Number(e.target.value)));
+document.getElementById("scenePreview").addEventListener("click",event=>{
+  if(event.target.closest(".scene-preview-hotspot"))return;
+  const rect=event.currentTarget.getBoundingClientRect();
+  document.getElementById("hotspotX").value=Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width)).toFixed(2);
+  document.getElementById("hotspotY").value=Math.max(0,Math.min(1,(event.clientY-rect.top)/rect.height)).toFixed(2);
+  message("موقعیت نقطه روی تصویر انتخاب شد؛ حالا عنوان و عملکرد آن را ثبت کنید.","success");
+});
 document.getElementById("hotspotAction").addEventListener("change",updateHotspotFields);
 document.getElementById("hotspotForm").addEventListener("submit",async e=>{
   e.preventDefault();
