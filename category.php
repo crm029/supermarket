@@ -16,7 +16,21 @@ $stmt = $seo['db']->prepare(
 );
 $stmt->execute([(int)$seo['tenant']['id'],$slug]);
 $category = $stmt->fetch(PDO::FETCH_ASSOC);
-if (!$category) { http_response_code(404); exit('دسته‌بندی پیدا نشد.'); }
+if (!$category) {
+    $sourcePath = '/category/'.rawurlencode($slug);
+    $redirectQuery = $seo['db']->prepare(
+        'SELECT target_path FROM seo_url_redirects WHERE tenant_id=? AND source_path=? LIMIT 1'
+    );
+    $redirectQuery->execute([(int)$seo['tenant']['id'],$sourcePath]);
+    $targetPath = (string)($redirectQuery->fetchColumn() ?: '');
+    if ($targetPath !== '' && $targetPath !== $sourcePath &&
+        preg_match('#^/category/[a-z0-9][a-z0-9-]{0,139}$#',$targetPath)) {
+        header('Location: '.app_seo_url($seo,ltrim($targetPath,'/')),true,301);
+        exit;
+    }
+    http_response_code(404);
+    exit('دسته‌بندی پیدا نشد.');
+}
 
 $productsQuery = $seo['db']->prepare(
     "SELECT p.id,p.title,p.sku,p.seo_slug,p.brand,p.description,p.unit_label,p.price_rial,p.image_media_id,
