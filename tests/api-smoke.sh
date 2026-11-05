@@ -8,6 +8,8 @@ CSRF="$(printf 'C%.0s' {1..43})"
 UNPRIVILEGED_TOKEN="$(printf 'T%.0s' {1..43})"
 CUSTOMER_TOKEN="$(printf 'U%.0s' {1..43})"
 CUSTOMER_CSRF="$(printf 'W%.0s' {1..43})"
+WORKER_TOKEN="$(printf 'V%.0s' {1..43})"
+WORKER_CSRF="$(printf 'X%.0s' {1..43})"
 
 request() {
   local method="$1"
@@ -214,6 +216,16 @@ assert_json() {
       echo $id;
       exit(0);
     }
+    if ($check === "worker-tasks") {
+      $tasks = $data["data"] ?? [];
+      $picker = false; $courier = false;
+      foreach ($tasks as $task) {
+        if (($task["assignment_type"] ?? "") === "picker" && count($task["items"] ?? []) > 0) $picker = true;
+        if (($task["assignment_type"] ?? "") === "courier" && !empty($task["delivery_address"])) $courier = true;
+      }
+      if (!$picker || !$courier) exit(1);
+      exit(0);
+    }
     exit(0);
   ' "$OUT" "$1"
 }
@@ -364,6 +376,8 @@ mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "
   INSERT INTO role_permissions (role_scope_id,role_id,permission_id)
     SELECT 1,@worker_role,id FROM permissions
     WHERE permission_key IN ('orders.pick','orders.deliver') AND scope='tenant';
+  INSERT INTO auth_sessions (tenant_id,user_id,token_hash,csrf_hash,expires_at)
+    VALUES (1,@worker_id,SHA2(REPEAT('V',43),256),SHA2(REPEAT('X',43),256),DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 DAY));
 "
 WORKER_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM users WHERE tenant_id=1 AND mobile='09120000993' LIMIT 1")"
 request GET "/admin/orders/$ASSIGNMENT_ORDER_ID/assignments" 200 "" "$TOKEN"
@@ -371,9 +385,12 @@ request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/assignments" 201 '{"assignment_
 PICKER_ASSIGNMENT_ID="$(assert_json created-id)"
 request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/assignments" 201 '{"assignment_type":"courier","assignee_user_id":'$WORKER_ID'}' "$TOKEN" "$CSRF"
 COURIER_ASSIGNMENT_ID="$(assert_json created-id)"
+request GET /me/tasks 200 "" "$WORKER_TOKEN"
+assert_json worker-tasks
+request POST "/me/tasks/$PICKER_ASSIGNMENT_ID/complete" 404 '{}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+request POST "/me/tasks/$PICKER_ASSIGNMENT_ID/complete" 200 '{}' "$WORKER_TOKEN" "$WORKER_CSRF"
 request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/assignments/$COURIER_ASSIGNMENT_ID/complete" 200 '{}' "$TOKEN" "$CSRF"
 request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/assignments" 422 '{"assignment_type":"courier","assignee_user_id":999999999}' "$TOKEN" "$CSRF"
-request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/assignments/$PICKER_ASSIGNMENT_ID/complete" 200 '{}' "$TOKEN" "$CSRF"
 mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "UPDATE orders SET status='pending_payment' WHERE tenant_id=1 AND id=$ASSIGNMENT_ORDER_ID; UPDATE stock_reservations SET expires_at=DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 MINUTE) WHERE tenant_id=1 AND order_id=$ASSIGNMENT_ORDER_ID AND status='active'"
 php bin/expire-reservations.php
 request POST /admin/coupons 201 '{"code":"WELCOME10","title":"تخفیف خوش‌آمدگویی","discount_type":"percentage","discount_value":10,"max_discount_rial":15000,"minimum_order_rial":1,"usage_limit":1,"per_user_limit":1,"starts_at":"2020-01-01T00:00","ends_at":"2030-01-01T00:00","is_active":true}' "$TOKEN" "$CSRF"
