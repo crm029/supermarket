@@ -5,7 +5,7 @@ CREATE TABLE coupons (
   code VARCHAR(40) NOT NULL,
   title VARCHAR(120) NOT NULL,
   discount_type ENUM('percentage','fixed') NOT NULL,
-  discount_value INT UNSIGNED NOT NULL,
+  discount_value BIGINT UNSIGNED NOT NULL,
   max_discount_rial BIGINT UNSIGNED NULL,
   minimum_order_rial BIGINT UNSIGNED NOT NULL DEFAULT 0,
   usage_limit INT UNSIGNED NULL,
