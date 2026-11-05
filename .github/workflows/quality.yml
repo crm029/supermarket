@@ -208,3 +208,26 @@ jobs:
           done
           curl -fsS -H "Host: localhost" http://127.0.0.1:8100/index.php >/dev/null
           bash tests/seo-smoke.sh
+
+      - name: Run read-only production deployment preflight
+        env:
+          APP_ENV: production
+          APP_DEBUG: "false"
+          APP_KEY: ci-production-preflight-secret-with-more-than-32-characters
+          APP_BASE_URL: https://store.example.test
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: supermarket360
+          DB_USERNAME: preflight
+          DB_PASSWORD: preflight-test-password
+          SMS_PROVIDER: kavenegar
+          KAVENEGAR_API_KEY: ci-placeholder-api-key
+          KAVENEGAR_VERIFY_TEMPLATE: ci-placeholder-template
+          ZARINPAL_MERCHANT_ID: ci-placeholder-merchant-id
+          ZARINPAL_SANDBOX: "false"
+          MEDIA_BASE_URL: https://cdn.example.test/assets
+          MEDIA_STORAGE_PATH: /tmp/supermarket-preflight-media
+        run: |
+          set -euo pipefail
+          mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "CREATE USER IF NOT EXISTS 'preflight'@'%' IDENTIFIED BY 'preflight-test-password'; GRANT SELECT ON supermarket360.* TO 'preflight'@'%';"
+          mkdir -p /tmp/supermarket-preflight-media
+          php bin/production-preflight.php
