@@ -55,6 +55,7 @@ async function loadAll() {
     await loadMediaLibrary();
     await loadReport();
     await loadSettings();
+    await loadDeliveryZones();
     await loadStaff();
     document.getElementById("statProducts").textContent=new Intl.NumberFormat("fa-IR").format(products.filter(x=>Number(x.is_active)).length);
     document.getElementById("statCategories").textContent=new Intl.NumberFormat("fa-IR").format(categories.filter(x=>Number(x.is_active)).length);
@@ -136,6 +137,89 @@ document.getElementById("staffRows").addEventListener("click",async event=>{
   }catch(error){
     document.getElementById("staffMessage").textContent=error.message;
     document.getElementById("staffMessage").className="form-message error";
+  }
+});
+let deliveryZones = [];
+async function loadDeliveryZones() {
+  try {
+    const result=await request("admin/delivery-zones");
+    deliveryZones=result.data||[];
+    document.getElementById("deliveryZoneRows").innerHTML=deliveryZones.map(zone=>
+      '<article><div><strong>'+escapeText(zone.title)+'</strong><small>'+escapeText(zone.province)+'، '+escapeText(zone.city)+' · پیش‌شماره: '+escapeText(zone.postal_prefix||"همه")+'</small><small>ارسال: '+money(Number(zone.delivery_fee_rial)/10)+' · حداقل سفارش: '+money(Number(zone.minimum_order_rial)/10)+'</small></div><span class="admin-status '+(Number(zone.is_active)?"active":"inactive")+'">'+(Number(zone.is_active)?"فعال":"غیرفعال")+'</span><button class="admin-row-action" data-edit-delivery-zone="'+Number(zone.id)+'">ویرایش</button>'+(Number(zone.is_active)?'<button class="admin-row-action danger" data-disable-delivery-zone="'+Number(zone.id)+'">غیرفعال‌سازی</button>':"")+'</article>'
+    ).join("")||'<p>هنوز محدوده ارسالی تعریف نشده است.</p>';
+  }catch(error){
+    document.getElementById("deliveryZoneMessage").textContent=error.message;
+    document.getElementById("deliveryZoneMessage").className="form-message error";
+  }
+}
+function resetDeliveryZoneForm(){
+  document.getElementById("deliveryZoneForm").reset();
+  document.getElementById("deliveryZoneId").value="";
+  document.getElementById("deliveryZoneActive").checked=true;
+  document.getElementById("deliveryZoneSort").value="0";
+  document.getElementById("deliveryZoneFormTitle").textContent="افزودن محدوده جدید";
+}
+document.getElementById("reloadDeliveryZones").addEventListener("click",loadDeliveryZones);
+document.getElementById("cancelDeliveryZoneEdit").addEventListener("click",resetDeliveryZoneForm);
+document.getElementById("deliveryZoneForm").addEventListener("submit",async event=>{
+  event.preventDefault();
+  const id=document.getElementById("deliveryZoneId").value;
+  const fee=Number(document.getElementById("deliveryZoneFee").value);
+  const minimum=Number(document.getElementById("deliveryZoneMinimum").value);
+  const sort=Number(document.getElementById("deliveryZoneSort").value);
+  if(!Number.isSafeInteger(fee)||!Number.isSafeInteger(minimum)||!Number.isInteger(sort)){
+    document.getElementById("deliveryZoneMessage").textContent="هزینه، حداقل سفارش و ترتیب باید عدد صحیح باشند.";return;
+  }
+  const payload={
+    title:document.getElementById("deliveryZoneTitle").value.trim(),
+    province:document.getElementById("deliveryZoneProvince").value.trim(),
+    city:document.getElementById("deliveryZoneCity").value.trim(),
+    postal_prefix:document.getElementById("deliveryZonePostalPrefix").value.trim(),
+    delivery_fee_rial:fee*10,
+    minimum_order_rial:minimum*10,
+    sort_order:sort,
+    is_active:document.getElementById("deliveryZoneActive").checked
+  };
+  try{
+    await request(id?"admin/delivery-zones/"+id:"admin/delivery-zones",{
+      method:id?"PATCH":"POST",csrf:true,body:JSON.stringify(payload)
+    });
+    resetDeliveryZoneForm();await loadDeliveryZones();
+    document.getElementById("deliveryZoneMessage").textContent="محدوده ارسال ذخیره شد.";
+    document.getElementById("deliveryZoneMessage").className="form-message success";
+  }catch(error){
+    document.getElementById("deliveryZoneMessage").textContent=error.message;
+    document.getElementById("deliveryZoneMessage").className="form-message error";
+  }
+});
+document.getElementById("deliveryZoneRows").addEventListener("click",async event=>{
+  const edit=event.target.closest("[data-edit-delivery-zone]");
+  const disable=event.target.closest("[data-disable-delivery-zone]");
+  if(edit){
+    const zone=deliveryZones.find(item=>Number(item.id)===Number(edit.dataset.editDeliveryZone));
+    if(!zone)return;
+    document.getElementById("deliveryZoneId").value=zone.id;
+    document.getElementById("deliveryZoneTitle").value=zone.title;
+    document.getElementById("deliveryZoneProvince").value=zone.province;
+    document.getElementById("deliveryZoneCity").value=zone.city;
+    document.getElementById("deliveryZonePostalPrefix").value=zone.postal_prefix||"";
+    document.getElementById("deliveryZoneFee").value=Math.round(Number(zone.delivery_fee_rial)/10);
+    document.getElementById("deliveryZoneMinimum").value=Math.round(Number(zone.minimum_order_rial)/10);
+    document.getElementById("deliveryZoneSort").value=Number(zone.sort_order);
+    document.getElementById("deliveryZoneActive").checked=Boolean(Number(zone.is_active));
+    document.getElementById("deliveryZoneFormTitle").textContent="ویرایش محدوده ارسال";
+    document.getElementById("deliveryZoneForm").scrollIntoView({behavior:"smooth"});
+  }
+  if(disable&&confirm("این محدوده ارسال غیرفعال شود؟")){
+    try{
+      await request("admin/delivery-zones/"+Number(disable.dataset.disableDeliveryZone),{method:"DELETE",csrf:true});
+      await loadDeliveryZones();
+      document.getElementById("deliveryZoneMessage").textContent="محدوده ارسال غیرفعال شد.";
+      document.getElementById("deliveryZoneMessage").className="form-message success";
+    }catch(error){
+      document.getElementById("deliveryZoneMessage").textContent=error.message;
+      document.getElementById("deliveryZoneMessage").className="form-message error";
+    }
   }
 });
 async function loadSettings() {
