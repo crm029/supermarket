@@ -99,6 +99,9 @@ jobs:
       - name: Run permission scope tests
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/permissions.sql
 
+      - name: Test initial store owner bootstrap
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/bootstrap-store-owner.sql
+
       - name: Set up PHP for HTTP API tests
         uses: shivammathur/setup-php@v2
         with:
