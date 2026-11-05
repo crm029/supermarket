@@ -131,6 +131,12 @@ try {
         app_inventory_stock_list($db, $tenant);
     }
 
+    if ($path === '/admin/stock/low' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'inventory.read');
+        app_inventory_low_stock_list($db, $tenant);
+    }
+
     if ($path === '/admin/stock/receipts' && $method === 'POST') {
         $session = app_auth_require($db, $tenant);
         app_auth_require_csrf($session);
