@@ -96,6 +96,7 @@ declare(strict_types=1);
         <button class="primary-button" type="submit">ساخت صحنه</button>
       </form>
       <div id="sceneRows" class="admin-category-list"></div>
+      <div id="scenePreview" class="scene-preview"><p>برای تعیین محل نقاط تعاملی، یک صحنه انتخاب کنید.</p></div>
       <form id="hotspotForm" class="admin-form">
         <h3>افزودن نقطه تعاملی به صحنه</h3>
         <div class="admin-form-grid"><label>صحنه<select id="hotspotScene" required></select></label><label>نوع عملکرد<select id="hotspotAction"><option value="product">بازکردن محصول</option><option value="category">رفتن به دسته‌بندی</option><option value="navigate">رفتن به راهرو</option></select></label><label>عنوان نقطه<input id="hotspotLabel" maxlength="120" required></label><label>موقعیت افقی X (۰ تا ۱)<input id="hotspotX" type="number" min="0" max="1" step="0.01" value="0.5" required></label><label>موقعیت عمودی Y (۰ تا ۱)<input id="hotspotY" type="number" min="0" max="1" step="0.01" value="0.5" required></label><label id="hotspotProductField">محصول<select id="hotspotProduct"></select></label><label id="hotspotCategoryField" hidden>دسته‌بندی<select id="hotspotCategory"></select></label><label id="hotspotTargetField" hidden>صحنه مقصد<select id="hotspotTarget"></select></label></div>
