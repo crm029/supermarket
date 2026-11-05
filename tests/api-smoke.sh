@@ -222,6 +222,13 @@ assert_json() {
       echo $id;
       exit(0);
     }
+    if ($check === "platform-audit-events") {
+      $actions = array_column($data["data"] ?? [], "action");
+      foreach (["platform.tenant.created","platform.tenant.domain_verified","platform.tenant.suspended"] as $expected) {
+        if (!in_array($expected, $actions, true)) exit(1);
+      }
+      exit(0);
+    }
     if ($check === "worker-tasks") {
       $tasks = $data["data"] ?? [];
       $picker = false; $courier = false;
@@ -272,6 +279,7 @@ request GET /admin/orders 200 "" "$TOKEN"
 # Global platform tenant provisioning and lifecycle.
 request GET /platform/tenants 200 "" "$TOKEN"
 request GET /platform/tenants 403 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
+request GET /platform/audit 403 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
 request POST /platform/tenants 419 '{"name":"نباید ساخته شود","slug":"csrf-store","host":"csrf.example.test","owner_name":"مالک تست","owner_mobile":"09120000995","timezone":"Asia/Tehran"}' "$TOKEN"
 request POST /platform/tenants 422 '{"name":"دامنه نامعتبر","slug":"invalid-host-store","host":"https://invalid.example.test/path","owner_name":"مالک تست","owner_mobile":"09120000995","timezone":"Asia/Tehran"}' "$TOKEN" "$CSRF"
 request POST /platform/tenants 201 '{"name":"فروشگاه تست پلتفرم","slug":"ci-platform-store","host":"ci-platform-store.example.test","owner_name":"مالک فروشگاه CI","owner_mobile":"09120000995","timezone":"Asia/Tehran"}' "$TOKEN" "$CSRF"
@@ -289,6 +297,8 @@ request POST "/platform/tenants/$NEW_TENANT_ID/suspend" 200 '{"reason":"تعلی
 request POST /platform/tenants/1/suspend 409 '{"reason":"نباید فروشگاه میزبان تعلیق شود"}' "$TOKEN" "$CSRF"
 TENANT_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM tenants WHERE id=$NEW_TENANT_ID")"
 if [[ "$TENANT_STATUS" != "suspended" ]]; then echo "Platform tenant suspension did not persist."; exit 1; fi
+request GET /platform/audit 200 "" "$TOKEN"
+assert_json platform-audit-events
 request GET /admin/reports/overview 200 "" "$TOKEN"
 request GET /admin/reports/orders.csv 200 "" "$TOKEN"
 grep -Fq "شماره سفارش" "$OUT"
