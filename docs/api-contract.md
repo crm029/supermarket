@@ -88,3 +88,10 @@ Checkout intentionally does not mark an order paid. Reservations expire after 20
 - GET /payments/zarinpal/callback — provider callback; server-side verification is required before an order is marked paid. The amount sent to the provider is the stored Rial total, never a browser-supplied amount.
 - Configure ZARINPAL_MERCHANT_ID, ZARINPAL_SANDBOX, and APP_BASE_URL. The callback origin must be registered with the payment provider; production requires HTTPS. PHP cURL must be enabled.
 - Payment verification consumes active stock reservations and records stock movements. If payment arrives after reservations have expired, the payment is recorded and an audit event flags the order for manual fulfilment review.
+
+
+## Order operations
+- GET /admin/orders — tenant-scoped order queue; requires orders.read.
+- POST /admin/orders/{id}/transition — permission-checked fulfilment workflow; requires orders.manage and CSRF.
+- GET /me/orders/{id} — full order detail for its owning customer only.
+- POST /me/orders/{id}/cancel — cancel a pending-payment order and release active stock reservations; requires CSRF.
