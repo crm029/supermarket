@@ -3,7 +3,7 @@
 This schema is the initial relational foundation for Supermarket 360. Apply `database/schema.sql` to a new MySQL 8 or compatible MariaDB database.
 
 ## Tenant boundary
-Every store-owned row has `tenant_id`. Tenant identity must be resolved from a verified request host via `tenant_domains`; never accept a tenant ID from form fields, query strings, or JSON. Every query must include the resolved tenant ID. The initial schema uses foreign keys for integrity; production hardening should add composite tenant-aware foreign keys to every tenant-owned relation and automated cross-tenant isolation tests.
+Every store-owned row has `tenant_id`. Tenant identity must be resolved from a verified request host via `tenant_domains`; never accept a tenant ID from form fields, query strings, or JSON. Every query must include the resolved tenant ID. The additive tenant-isolation migration adds composite tenant-aware foreign keys and role/audit scope guards for tenant-owned relations. Apply it only after a backup and after correcting any legacy cross-tenant references; MySQL 8 CI runs negative tests for the enforced boundaries.
 
 ## Money and stock
 - All amounts are integer rial.
