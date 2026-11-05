@@ -154,7 +154,7 @@ function app_admin_product_create(PDO $db, array $tenant, array $session): never
         app_json(['data' => ['id' => $id, 'sku' => $data['sku']], 'message' => 'کالا با موفقیت ثبت شد.'], 201);
     } catch (PDOException $e) {
         if ($db->inTransaction()) $db->rollBack();
-        if ($e->getCode() === '23000') {
+        if ($e->getCode() === '23000' && (int)($e->errorInfo[1] ?? 0) === 1062) {
             app_json(['error' => 'کد کالا قبلاً در این فروشگاه ثبت شده است.'], 409);
         }
         throw $e;
