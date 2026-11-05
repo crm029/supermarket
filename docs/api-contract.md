@@ -111,3 +111,7 @@ Checkout intentionally does not mark an order paid. Reservations expire after 20
 - GET /admin/scenes, POST /admin/scenes, PATCH /admin/scenes/{id}, DELETE /admin/scenes/{id} — tenant-scoped scene management; DELETE unpublishes rather than deleting.
 - POST /admin/scenes/{id}/hotspots — create a product, category or navigation hotspot with normalized x/y coordinates.
 - DELETE /admin/hotspots/{id} — remove a hotspot.
+
+
+## Reporting
+- GET /admin/reports/overview — tenant-scoped 30-day revenue/order totals, pending-payment count, low-stock count and seven-day sales series; requires reports.read.
