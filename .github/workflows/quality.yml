@@ -2,7 +2,7 @@ name: Quality and security checks
 
 on:
   push:
-    branches: [main, "security/**"]
+    branches: [main, "security/**", "feature/**"]
   pull_request:
   workflow_dispatch:
 
