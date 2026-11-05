@@ -6,6 +6,8 @@ require_once dirname(__DIR__) . '/app/admin_catalog.php';
 $data = app_admin_product_payload([
     'sku' => 'milk-1',
     'title' => 'شیر کم‌چرب',
+    'barcode' => '6260000000001',
+    'low_stock_threshold' => 3,
     'price_rial' => 125000,
     'compare_at_rial' => 150000,
     'category_id' => 12,
@@ -19,7 +21,9 @@ if ($data['sku'] !== 'MILK-1' ||
     $data['compare_at_rial'] !== 150000 ||
     $data['category_id'] !== 12 ||
     $data['is_weighted'] !== 0 ||
-    $data['is_active'] !== 1) {
+    $data['is_active'] !== 1 ||
+    $data['barcode'] !== '6260000000001' ||
+    $data['low_stock_threshold'] !== 3) {
     throw new RuntimeException('Product create payload normalization failed.');
 }
 
