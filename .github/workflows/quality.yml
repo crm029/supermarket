@@ -191,4 +191,9 @@ jobs:
           php -S 127.0.0.1:8100 -t . >/tmp/supermarket-seo.log 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS -H "Host: localhost" http://127.0.0.1:8100/index.php >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          curl -fsS -H "Host: localhost" http://127.0.0.1:8100/index.php >/dev/null
           bash tests/seo-smoke.sh
