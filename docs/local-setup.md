@@ -157,7 +157,7 @@ Create future pickup windows in the seller panel with store-local start/end time
 
 
 ## Immersive 3D storefront
-The optional free-movement mode loads the pinned Three.js 0.160.0 runtime from jsDelivr. It builds a lightweight procedural aisle and supports WASD/arrow keys, touch controls and drag-to-look. If the runtime cannot load or WebGL is unavailable, the storefront falls back to guided category navigation and the photo tour. Real-store photography and physical-device visual acceptance remain deployment tasks.
+The optional free-movement mode loads the pinned Three.js 0.160.0 runtime from jsDelivr. It builds three connected procedural aisles with front/back cross-aisle passages and supports WASD/arrow keys, touch controls and drag-to-look. If the runtime cannot load or WebGL is unavailable, the storefront falls back to guided category navigation and the photo tour. Real-store photography and physical-device visual acceptance remain deployment tasks.
 
 
 ## Promotion coupons
