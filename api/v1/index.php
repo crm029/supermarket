@@ -16,6 +16,7 @@ require_once dirname(__DIR__, 2) . '/app/wallet.php';
 require_once dirname(__DIR__, 2) . '/app/customer_cart.php';
 require_once dirname(__DIR__, 2) . '/app/store_settings.php';
 require_once dirname(__DIR__, 2) . '/app/staff.php';
+require_once dirname(__DIR__, 2) . '/app/delivery_zones.php';
 
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
@@ -368,6 +369,33 @@ try {
         app_auth_require_csrf($session);
         app_auth_require_permission($db, $tenant, $session, 'staff.manage');
         app_admin_staff_remove_role($db, $tenant, $session, (int)$staffRoleMatch[1], (int)$staffRoleMatch[2]);
+    }
+
+    if ($path === '/admin/delivery-zones') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'store.settings.manage');
+        if ($method === 'GET') app_admin_delivery_zone_list($db, $tenant);
+        if ($method === 'POST') {
+            app_auth_require_csrf($session);
+            app_admin_delivery_zone_create($db, $tenant, $session);
+        }
+        header('Allow: GET, POST');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if (preg_match('#^/admin/delivery-zones/([1-9][0-9]*)$#', $path, $zoneMatch)) {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'store.settings.manage');
+        if ($method === 'PATCH') {
+            app_auth_require_csrf($session);
+            app_admin_delivery_zone_update($db, $tenant, $session, (int)$zoneMatch[1]);
+        }
+        if ($method === 'DELETE') {
+            app_auth_require_csrf($session);
+            app_admin_delivery_zone_disable($db, $tenant, $session, (int)$zoneMatch[1]);
+        }
+        header('Allow: PATCH, DELETE');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
     }
 
     if ($path === '/admin/settings') {
