@@ -129,3 +129,7 @@ The store owner can configure the public store name, tagline, support phone, pri
 
 ## Staff role management
 A store owner can create limited tenant roles and assign them to active OTP-verified accounts from the staff panel in `admin.php`. Create the employee's account first, then assign their mobile number a role. The `staff.manage` privilege is intentionally non-delegable in this panel; platform super-admin role management is not included.
+
+
+## Media library
+The seller panel includes a tenant-scoped media library under `admin.php`. It shows the latest 200 images, safe public URL when configured, dimensions, media type and reference count across products, categories and store scenes. Uploads and browsing require the `media.manage` permission. Unused file cleanup is intentionally not enabled yet.
