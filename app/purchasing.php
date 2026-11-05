@@ -201,8 +201,16 @@ function app_admin_purchase_order_receive(PDO $db,array $tenant,array $session,i
         if(!is_array($raw))app_json(['error'=>'قلم دریافتی معتبر نیست.'],422);
         $itemId=app_inventory_positive_int($raw['item_id']??null,'شناسه قلم سفارش');
         $quantity=app_inventory_positive_int($raw['quantity']??null,'تعداد دریافتی',1000000);
+        $batchNumber=trim((string)($raw['batch_number']??''));
+        $expiryDate=trim((string)($raw['expiry_date']??''));
+        if($batchNumber!==''&&mb_strlen($batchNumber)>80)app_json(['error'=>'شماره بچ حداکثر ۸۰ نویسه است.'],422);
+        if($expiryDate!==''){
+            $date=DateTimeImmutable::createFromFormat('!Y-m-d',$expiryDate,new DateTimeZone('UTC'));
+            $errors=DateTimeImmutable::getLastErrors();
+            if(!$date||($errors!==false&&($errors['warning_count']>0||$errors['error_count']>0))||$date->format('Y-m-d')!==$expiryDate)app_json(['error'=>'تاریخ انقضا معتبر نیست.'],422);
+        }else{$expiryDate=null;}
         if(isset($seen[$itemId]))app_json(['error'=>'هر قلم سفارش فقط یک بار در رسید وارد شود.'],422);
-        $seen[$itemId]=true;$requested[]=['item_id'=>$itemId,'quantity'=>$quantity];
+        $seen[$itemId]=true;$requested[]=['item_id'=>$itemId,'quantity'=>$quantity,'batch_number'=>$batchNumber,'expiry_date'=>$expiryDate];
     }
     $db->beginTransaction();
     try{
@@ -223,6 +231,7 @@ function app_admin_purchase_order_receive(PDO $db,array $tenant,array $session,i
         $stock=$db->prepare('INSERT INTO stock_levels (tenant_id,warehouse_id,product_id,on_hand,reserved) VALUES (?,?,?, ?,0) ON DUPLICATE KEY UPDATE on_hand=on_hand+VALUES(on_hand)');
         $movement=$db->prepare("INSERT INTO stock_movements (tenant_id,warehouse_id,product_id,actor_user_id,movement_type,quantity,reference_type,reference_id,reason) VALUES (?,?,?,?,'receipt',?,'purchase_order',?,?)");
         $receiptItem=$db->prepare('INSERT INTO purchase_order_receipt_items (tenant_id,receipt_id,purchase_order_item_id,product_id,quantity,unit_cost_rial) VALUES (?,?,?,?,?,?)');
+        $batchInsert=$db->prepare('INSERT INTO stock_batches (tenant_id,warehouse_id,product_id,receipt_item_id,batch_number,expiry_date,received_quantity,on_hand,reserved,unit_cost_rial) VALUES (?,?,?,?,?,?,?, ?,0,?)');
         foreach($requested as $request){
             $itemQuery->execute([$tenant['id'],$orderId,$request['item_id']]);
             $item=$itemQuery->fetch(PDO::FETCH_ASSOC);
@@ -234,6 +243,9 @@ function app_admin_purchase_order_receive(PDO $db,array $tenant,array $session,i
             $stock->execute([$tenant['id'],$warehouseId,$item['product_id'],$request['quantity']]);
             $movement->execute([$tenant['id'],$warehouseId,$item['product_id'],$session['id'],$request['quantity'],$orderId,$notes===''?'دریافت سفارش '.$order['order_number']:$notes]);
             $receiptItem->execute([$tenant['id'],$receiptId,$item['id'],$item['product_id'],$request['quantity'],$item['unit_cost_rial']]);
+            $receiptItemId=(int)$db->lastInsertId();
+            $batchNumber=$request['batch_number']!==''?$request['batch_number']:$receiptNumber.'-'.$item['id'];
+            $batchInsert->execute([$tenant['id'],$warehouseId,$item['product_id'],$receiptItemId,$batchNumber,$request['expiry_date'],$request['quantity'],$request['quantity'],$item['unit_cost_rial']]);
         }
         $remainingQuery=$db->prepare('SELECT COUNT(*) FROM purchase_order_items WHERE tenant_id=? AND purchase_order_id=? AND received_quantity<ordered_quantity');
         $remainingQuery->execute([$tenant['id'],$orderId]);
