@@ -16,7 +16,7 @@ const cart=new Map();try{const saved=JSON.parse(localStorage.getItem("sm360_cart
 const grid=document.getElementById("productGrid");
 function renderProducts(list=products){grid.innerHTML=list.map(p=>{const image=safeImageURL(p.image);return `<article class="product-card" data-id="${Number(p.id)}" tabindex="0"><div class="product-image">${image?`<img src="${escapeHTML(image)}" alt="${escapeHTML(p.name)}" loading="lazy" decoding="async" referrerpolicy="no-referrer">`:""}</div><h4>${escapeHTML(p.name)}</h4><p>${escapeHTML(p.unit)}</p><div class="product-bottom"><span class="price">${money(Number(p.price)||0)}</span><button class="add-button" data-add="${Number(p.id)}" aria-label="افزودن ${escapeHTML(p.name)}">+</button></div></article>`;}).join("");document.getElementById("productCount").textContent=new Intl.NumberFormat("fa-IR").format(list.length)+" محصول";}
 function selectCategory(category){activeCategory=category;document.querySelectorAll(".category").forEach(b=>b.classList.toggle("active",b.dataset.category===category));document.getElementById("aisleTitle").textContent=categoryNames[category];const list=category==="all"?products:products.filter(p=>p.category===category);renderProducts(list);aisleIndex=Object.keys(categoryNames).indexOf(category);document.getElementById("aisleScene").style.backgroundPosition=`${50+(aisleIndex%3-1)*8}% center`;}
-function addToCart(id){const p=products.find(x=>x.id===Number(id));if(!p)return;cart.set(p.id,(cart.get(p.id)||0)+1);updateCart();}
+function addToCart(id){const p=products.find(x=>x.id===Number(id));if(!p)return;cart.set(p.id,Math.min(99,(cart.get(p.id)||0)+1));updateCart();persistCustomerCart();}
 function updateCart(){const count=[...cart.values()].reduce((a,b)=>a+b,0);document.getElementById("cartCount").textContent=new Intl.NumberFormat("fa-IR").format(count);try{localStorage.setItem("sm360_cart",JSON.stringify([...cart]));}catch(_){}}
 async function openProduct(id){
   let p=products.find(x=>x.id===Number(id));
@@ -66,7 +66,7 @@ document.getElementById("categoryList").addEventListener("click",e=>{const b=e.t
 grid.addEventListener("click",e=>{const add=e.target.closest("[data-add]");if(add){e.stopPropagation();addToCart(add.dataset.add);return;}const card=e.target.closest("[data-id]");if(card)openProduct(card.dataset.id);});
 grid.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.matches("[data-id]"))openProduct(e.target.dataset.id);});
 document.getElementById("cartButton").addEventListener("click",showCart);
-document.getElementById("cartItems").addEventListener("click",e=>{const b=e.target.closest("[data-remove]");if(b){cart.delete(Number(b.dataset.remove));updateCart();showCart();}});
+document.getElementById("cartItems").addEventListener("click",e=>{const b=e.target.closest("[data-remove]");if(b){cart.delete(Number(b.dataset.remove));updateCart();persistCustomerCart();showCart();}});
 document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",()=>document.getElementById(b.dataset.close).close()));
 document.getElementById("searchInput").addEventListener("input",e=>{const q=e.target.value.trim();renderProducts(products.filter(p=>(activeCategory==="all"||p.category===activeCategory)&&p.name.includes(q)));});
 document.getElementById("enterStore").addEventListener("click",()=>document.getElementById("store").scrollIntoView({behavior:"smooth"}));
@@ -86,6 +86,8 @@ renderProducts();
 const apiBase = new URL("api/v1/", document.baseURI).toString();
 let csrfToken = "";
 let currentUser = null;
+let cartSyncReady = false;
+let cartSaveChain = Promise.resolve();
 let pendingCheckout = false;
 let pendingPaymentOrderId = null;
 let savedAddresses = [];
@@ -102,6 +104,43 @@ async function apiPost(path, body, withCsrf = false) {
   if (!response.ok) throw new Error(payload.error || "درخواست انجام نشد.");
   return payload;
 }
+async function apiPut(path, body, withCsrf = false) {
+  const headers = { Accept: "application/json", "Content-Type": "application/json" };
+  if (withCsrf && csrfToken) headers["X-CSRF-Token"] = csrfToken;
+  const response = await fetch(apiBase + path, { method: "PUT", headers, credentials: "same-origin", body: JSON.stringify(body) });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "درخواست انجام نشد.");
+  return payload;
+}
+async function syncCustomerCart() {
+  let synchronized = false;
+  try {
+    const owner = localStorage.getItem("sm360_cart_owner");
+    const remote = await apiGet("me/cart");
+    if (owner) cart.clear();
+    (remote?.items || []).forEach(item => {
+      const id = Number(item.product_id), quantity = Number(item.quantity);
+      if (Number.isInteger(id) && id > 0 && Number.isInteger(quantity) && quantity > 0) {
+        cart.set(id, Math.min(99, Math.max(cart.get(id) || 0, quantity)));
+      }
+    });
+    updateCart();
+    await apiPut("me/cart", {items:[...cart].map(([product_id,quantity])=>({product_id,quantity}))}, true);
+    localStorage.setItem("sm360_cart_owner", String(currentUser.id));
+    synchronized = true;
+  } catch (_) {
+    // Keep the local cart usable if the server cart is temporarily unavailable.
+  } finally {
+    cartSyncReady = synchronized;
+    if (synchronized) persistCustomerCart();
+  }
+}
+function persistCustomerCart() {
+  if (!currentUser || !csrfToken || !cartSyncReady) return;
+  const items = [...cart].map(([product_id,quantity])=>({product_id,quantity}));
+  cartSaveChain = cartSaveChain.catch(() => {}).then(() => apiPut("me/cart", {items}, true)).catch(() => {});
+}
+
 async function ensureAccount() {
   try {
     currentUser = await apiGet("me");
@@ -110,8 +149,9 @@ async function ensureAccount() {
     document.getElementById("accountButton").textContent = currentUser?.full_name || "حساب کاربری";
     document.getElementById("ordersButton").hidden = false;
     document.getElementById("walletButton").hidden = false;
+    if (!cartSyncReady) await syncCustomerCart();
     return Boolean(currentUser && csrfToken);
-  } catch (_) { currentUser = null; csrfToken = ""; document.getElementById("ordersButton").hidden = true; document.getElementById("walletButton").hidden = true; return false; }
+  } catch (_) { currentUser = null; csrfToken = ""; cartSyncReady = false; document.getElementById("ordersButton").hidden = true; document.getElementById("walletButton").hidden = true; return false; }
 }
 function setFormMessage(id, message, type = "") {
   const node = document.getElementById(id);
@@ -328,7 +368,7 @@ document.getElementById("placeOrderButton").addEventListener("click",async()=>{
       customer_note:document.getElementById("orderNote").value.trim()
     },true);
     pendingPaymentOrderId=Number(order.data.id);
-    cart.clear();updateCart();
+    cart.clear();updateCart();persistCustomerCart();
     document.getElementById("cartItems").innerHTML='<p class="empty-cart">سفارش با موفقیت ثبت شد.</p>';
     document.getElementById("cartTotal").textContent=money(0);
     setFormMessage("checkoutMessage","سفارش "+order.data.order_number+" ثبت شد؛ در حال انتقال به درگاه پرداخت...","success");

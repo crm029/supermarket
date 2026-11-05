@@ -100,6 +100,9 @@ jobs:
       - name: Run permission scope tests
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/permissions.sql
 
+      - name: Apply persistent customer cart migration
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_05_customer_carts.sql
+
       - name: Test initial store owner bootstrap
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/bootstrap-store-owner.sql
 

@@ -32,7 +32,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Basic tenant-scoped category list/create/update/deactivate API with parent-cycle and media ownership checks.
 - [ ] Product variants, barcode uniqueness, promotions and advanced search.
 - [x] Server-side cart quote validation against live prices and available stock.
-- [ ] Persistent browser cart across devices and sessions.
+- [x] Tenant-scoped persistent customer cart across devices, with guest-cart merge and server-side replacement.
 - [x] Customer address book API (list/create, tenant and owner scoped).
 - [ ] Address editing/deletion, delivery zones, pickup scheduling and configurable fees.
 - [x] Transactional pending-order creation with cross-warehouse stock reservations and customer order history API.
