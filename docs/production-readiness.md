@@ -27,6 +27,13 @@ The application code includes customer registration, catalogue management, inven
 - [ ] Complete sandbox and low-value live tests for success, cancellation, duplicate callbacks, delayed callbacks and provider outages.
 - [ ] Configure settlement reconciliation and a manual refund procedure. Refund API integration is not included.
 
+## Refunds and wallet ledger
+
+- [ ] Grant orders.refund only to trusted managers; the current refund flow credits the full verified order amount to the customer's wallet.
+- [ ] Reconcile the credit with the original payment and communicate that this is store credit, not a reversal to the bank card or gateway.
+- [ ] Inspect and receive returned goods through the stock-return workflow separately; wallet refunds do not automatically increase inventory.
+- [ ] Verify referral reward reversals and review any negative referrer wallet balances after refund.
+
 ## Notifications
 
 - [ ] Apply database/migrations/2026_11_06_notifications.sql after tenant isolation and verify customer, staff and manager inbox permissions on the real tenant.
