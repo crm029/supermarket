@@ -106,6 +106,12 @@ jobs:
       - name: Apply customer address management migration
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_05_customer_address_management.sql
 
+      - name: Apply barcode and low-stock threshold migration
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_05_barcode_stock_thresholds.sql
+
+      - name: Test tenant barcode uniqueness and stock thresholds
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/barcode-stock.sql
+
       - name: Test initial store owner bootstrap
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/bootstrap-store-owner.sql
 
