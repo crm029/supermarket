@@ -72,11 +72,24 @@ function app_auth_request_body(): array {
     if ($length > 8192) app_json(['error' => 'حجم درخواست بیش از حد مجاز است.'], 413);
     $raw = file_get_contents('php://input');
     if (!is_string($raw) || $raw === '') app_json(['error' => 'بدنه درخواست معتبر نیست.'], 400);
+    if (strlen($raw) > 8192) app_json(['error' => 'حجم درخواست بیش از حد مجاز است.'], 413);
     $body = json_decode($raw, true);
     if (!is_array($body) || array_is_list($body)) {
         app_json(['error' => 'ساختار JSON درخواست معتبر نیست.'], 400);
     }
     return $body;
+}
+
+function app_auth_prune(PDO $db, int $tenantId): void {
+    $challenges = $db->prepare(
+        'DELETE FROM auth_challenges WHERE tenant_id = ? AND expires_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 DAY)'
+    );
+    $challenges->execute([$tenantId]);
+
+    $limits = $db->prepare(
+        'DELETE FROM auth_rate_limits WHERE tenant_id = ? AND updated_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY)'
+    );
+    $limits->execute([$tenantId]);
 }
 
 function app_auth_request_otp(PDO $db, array $tenant): never {
@@ -87,6 +100,8 @@ function app_auth_request_otp(PDO $db, array $tenant): never {
     $body = app_auth_request_body();
     $mobile = app_auth_mobile((string)($body['mobile'] ?? ''));
     if ($mobile === null) app_json(['error' => 'شماره موبایل معتبر نیست.'], 422);
+
+    app_auth_prune($db, (int)$tenant['id']);
 
     $phoneBucket = app_auth_hash('phone:' . $mobile);
     $ipBucket = app_auth_hash('ip:' . (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
@@ -194,7 +209,9 @@ function app_auth_verify_otp(PDO $db, array $tenant): never {
         $userQuery->execute([$tenant['id'], $mobile]);
         $user = $userQuery->fetch();
         if (!$user) {
-            $db->rollBack();
+            $consume = $db->prepare('UPDATE auth_challenges SET consumed_at = UTC_TIMESTAMP() WHERE id = ?');
+            $consume->execute([$challenge['id']]);
+            $db->commit();
             app_json(['error' => 'حساب کاربری فعال نیست.'], 403);
         }
 
