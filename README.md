@@ -29,7 +29,7 @@ Implemented and covered by repository tests:
 Still in progress:
 - Platform super-admin authorization and tenant/domain provisioning.
 - Wallet spending, refunds/reversals, advanced referral fraud controls and reward policy approval for each merchant.
-- Cashier/picker/courier assignment, courier tracking, operational notifications and report exports.
+- Cashier/picker/courier assignment, courier tracking and operational notifications.
 - Real-store photography/onboarding and responsive image delivery.
 - Google Search Console/GA4 setup and production Core Web Vitals review.
 - Live merchant SMS/payment credentials, settlement reconciliation, refund acceptance, hosting, backups, monitoring, load/device/accessibility testing and production sign-off.

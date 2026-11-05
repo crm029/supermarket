@@ -39,6 +39,11 @@ declare(strict_types=1);
     <section class="admin-panel active" id="panel-overview">
       <p class="eyebrow">داشبورد فروشگاه</p><h2>خلاصه وضعیت</h2>
       <div class="admin-stats"><article><small>محصولات فعال</small><strong id="statProducts">—</strong></article><article><small>دسته‌بندی‌ها</small><strong id="statCategories">—</strong></article><article><small>وضعیت اتصال</small><strong id="statConnection">—</strong></article><article><small>فروش تأییدشده ۳۰ روز</small><strong id="statRevenue">—</strong></article><article><small>در انتظار پرداخت</small><strong id="statPending">—</strong></article><article><small>هشدار موجودی کم</small><strong id="statLowStock">—</strong></article></div><div class="admin-welcome"><h3>فروش روزانه ۷ روز اخیر</h3><div id="salesChart" class="sales-chart">در حال بارگذاری...</div></div>
+      <div class="admin-toolbar">
+        <label>از تاریخ <input id="reportFromDate" type="date"></label>
+        <label>تا تاریخ <input id="reportToDate" type="date"></label>
+        <button class="primary-button" id="exportOrdersCsv" type="button">دانلود گزارش سفارش‌ها (CSV)</button>
+      </div>
       <div class="admin-welcome"><h3>به مرکز مدیریت خوش آمدید</h3><p>از اینجا می‌توانید کاتالوگ فروشگاه را مدیریت کنید. قیمت‌ها در API بر اساس ریال ذخیره می‌شوند و در پنل با تومان وارد می‌شوند.</p></div>
     </section>
     <section class="admin-panel" id="panel-products">
@@ -132,7 +137,7 @@ declare(strict_types=1);
       </div>
       <div id="stockExpirySummary" class="admin-welcome" aria-live="polite">در حال دریافت گزارش انقضا...</div>
       <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>کالا</th><th>انبار</th><th>شماره بچ</th><th>تاریخ انقضا</th><th>موجودی</th><th>رزروشده</th><th>قابل استفاده</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody id="stockBatchRows"><tr><td colspan="9">در حال بارگذاری...</td></tr></tbody></table></div>
-      <div class="admin-heading"><div><h3>گردش و سوابق موجودی</h3><p class="admin-hint">تمام ورودها، خروج‌ها، انتقال‌ها، فروش، مرجوعی و امحا با کاربر ثبت‌کننده و شرح عملیات قابل پیگیری است.</p></div><button class="text-button" id="reloadStockMovements" type="button">به‌روزرسانی گردش</button></div>
+      <div class="admin-heading"><div><h3>گردش و سوابق موجودی</h3><p class="admin-hint">تمام ورودها، خروج‌ها، انتقال‌ها، فروش، مرجوعی و امحا با کاربر ثبت‌کننده و شرح عملیات قابل پیگیری است.</p></div><div class="admin-actions"><button class="text-button" id="reloadStockMovements" type="button">به‌روزرسانی گردش</button><button class="primary-button" id="exportStockMovementsCsv" type="button">دانلود گردش موجودی (CSV)</button></div></div>
       <div class="admin-toolbar">
         <select id="movementWarehouseFilter" aria-label="فیلتر انبار"><option value="">همه انبارها</option></select>
         <select id="movementProductFilter" aria-label="فیلتر کالا"><option value="">همه کالاها</option></select>

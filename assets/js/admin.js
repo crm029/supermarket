@@ -20,6 +20,26 @@ async function request(path, options = {}) {
   if (!response.ok) throw new Error(payload.error || "درخواست انجام نشد.");
   return payload;
 }
+
+async function downloadCsv(path, fallbackName) {
+  const response = await fetch(apiBase + path, {credentials:"same-origin",headers:{Accept:"text/csv"}});
+  if (!response.ok) {
+    const payload = await response.json().catch(()=>({}));
+    throw new Error(payload.error || "دریافت فایل گزارش ناموفق بود.");
+  }
+  const blob = await response.blob();
+  const disposition = response.headers.get("Content-Disposition") || "";
+  const match = disposition.match(/filename="([^"]+)"/i);
+  const filename = match?.[1] || fallbackName;
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
 function message(value,type="") {
   const node=document.getElementById("adminMessage");
   node.textContent=value;node.className="form-message"+(type?" "+type:"");
@@ -671,6 +691,39 @@ document.getElementById("storeSettingsForm").addEventListener("submit",async eve
     document.getElementById("storeSettingsMessage").className="form-message error";
   }
 });
+document.getElementById("exportOrdersCsv").addEventListener("click",async()=>{
+  const query=new URLSearchParams();
+  const from=document.getElementById("reportFromDate").value;
+  const to=document.getElementById("reportToDate").value;
+  if(from)query.set("from",from);
+  if(to)query.set("to",to);
+  const button=document.getElementById("exportOrdersCsv");
+  button.disabled=true;
+  try{
+    await downloadCsv("admin/reports/orders.csv"+(query.toString()?"?"+query.toString():""),"orders.csv");
+    message("گزارش سفارش‌ها آماده شد.","success");
+  }catch(error){message(error.message,"error");}
+  finally{button.disabled=false;}
+});
+document.getElementById("exportStockMovementsCsv").addEventListener("click",async()=>{
+  const query=new URLSearchParams();
+  const values={
+    warehouse_id:document.getElementById("movementWarehouseFilter").value,
+    product_id:document.getElementById("movementProductFilter").value,
+    movement_type:document.getElementById("movementTypeFilter").value,
+    from:document.getElementById("movementFromDate").value,
+    to:document.getElementById("movementToDate").value
+  };
+  Object.entries(values).forEach(([key,value])=>{if(value)query.set(key,value);});
+  const button=document.getElementById("exportStockMovementsCsv");
+  button.disabled=true;
+  try{
+    await downloadCsv("admin/reports/stock-movements.csv"+(query.toString()?"?"+query.toString():""),"stock-movements.csv");
+    message("گزارش گردش موجودی آماده شد.","success");
+  }catch(error){message(error.message,"error");}
+  finally{button.disabled=false;}
+});
+
 async function loadReport() {
   try {
     const result=await request("admin/reports/overview");

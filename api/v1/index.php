@@ -266,6 +266,18 @@ try {
         app_admin_purchase_order_receive($db, $tenant, $session, (int)$purchaseReceiveMatch[1]);
     }
 
+    if ($path === '/admin/reports/orders.csv' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'reports.read');
+        app_admin_report_orders_csv($db, $tenant);
+    }
+
+    if ($path === '/admin/reports/stock-movements.csv' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'inventory.read');
+        app_admin_report_stock_movements_csv($db, $tenant);
+    }
+
     if ($path === '/admin/reports/overview' && $method === 'GET') {
         $session = app_auth_require($db, $tenant);
         app_auth_require_permission($db, $tenant, $session, 'reports.read');
