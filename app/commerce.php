@@ -92,7 +92,7 @@ function app_commerce_public_quote(PDO $db, array $tenant): never {
 function app_commerce_list_addresses(PDO $db, array $tenant, array $session): never {
     $stmt = $db->prepare(
         'SELECT id, title, recipient, mobile, province, city, address, postal_code, latitude, longitude
-         FROM customer_addresses WHERE tenant_id = ? AND user_id = ? ORDER BY id DESC'
+         FROM customer_addresses WHERE tenant_id = ? AND user_id = ? AND is_active = 1 ORDER BY id DESC'
     );
     $stmt->execute([$tenant['id'], $session['id']]);
     app_json(['data' => $stmt->fetchAll()]);
@@ -134,6 +134,58 @@ function app_commerce_create_address(PDO $db, array $tenant, array $session): ne
     app_json(['data' => ['id' => (int)$db->lastInsertId()], 'message' => 'نشانی ذخیره شد.'], 201);
 }
 
+function app_commerce_update_address(PDO $db, array $tenant, array $session, int $addressId): never {
+    $body = app_commerce_body();
+    $find = $db->prepare(
+        'SELECT title,recipient,mobile,province,city,address,postal_code,latitude,longitude
+         FROM customer_addresses WHERE tenant_id = ? AND user_id = ? AND id = ? AND is_active = 1 LIMIT 1'
+    );
+    $find->execute([$tenant['id'], $session['id'], $addressId]);
+    $current = $find->fetch(PDO::FETCH_ASSOC);
+    if (!$current) app_json(['error' => 'نشانی پیدا نشد.'], 404);
+    $values = array_merge($current, $body);
+    $title = trim((string)$values['title']);
+    $recipient = trim((string)$values['recipient']);
+    $mobile = app_auth_mobile((string)$values['mobile']);
+    $address = trim((string)$values['address']);
+    $province = trim((string)($values['province'] ?? ''));
+    $city = trim((string)($values['city'] ?? ''));
+    $postal = preg_replace('/\\s+/', '', (string)($values['postal_code'] ?? ''));
+    if ($title === '' || mb_strlen($title) > 80 || $recipient === '' || mb_strlen($recipient) > 160 ||
+        $mobile === null || $address === '' || mb_strlen($address) > 2000 ||
+        mb_strlen($province) > 100 || mb_strlen($city) > 100 ||
+        ($postal !== '' && !preg_match('/^[0-9]{10}$/', $postal))) {
+        app_json(['error' => 'اطلاعات نشانی کامل یا معتبر نیست.'], 422);
+    }
+    $lat = $values['latitude'] ?? null;
+    $lng = $values['longitude'] ?? null;
+    if (($lat === null) !== ($lng === null) ||
+        ($lat !== null && (!is_numeric($lat) || (float)$lat < -90 || (float)$lat > 90)) ||
+        ($lng !== null && (!is_numeric($lng) || (float)$lng < -180 || (float)$lng > 180))) {
+        app_json(['error' => 'مختصات نشانی معتبر نیست.'], 422);
+    }
+    $update = $db->prepare(
+        'UPDATE customer_addresses SET title=?,recipient=?,mobile=?,province=?,city=?,address=?,postal_code=?,latitude=?,longitude=?
+         WHERE tenant_id=? AND user_id=? AND id=? AND is_active=1'
+    );
+    $update->execute([
+        $title,$recipient,$mobile,$province === '' ? null : $province,$city === '' ? null : $city,
+        $address,$postal === '' ? null : $postal,$lat === null ? null : (float)$lat,
+        $lng === null ? null : (float)$lng,$tenant['id'],$session['id'],$addressId
+    ]);
+    app_json(['data' => ['id' => $addressId], 'message' => 'نشانی ویرایش شد.']);
+}
+
+function app_commerce_delete_address(PDO $db, array $tenant, array $session, int $addressId): never {
+    $stmt = $db->prepare(
+        'UPDATE customer_addresses SET is_active = 0
+         WHERE tenant_id = ? AND user_id = ? AND id = ? AND is_active = 1'
+    );
+    $stmt->execute([$tenant['id'], $session['id'], $addressId]);
+    if ($stmt->rowCount() !== 1) app_json(['error' => 'نشانی پیدا نشد.'], 404);
+    app_json(['data' => ['id' => $addressId], 'message' => 'نشانی از فهرست فعال حذف شد.']);
+}
+
 function app_commerce_create_order(PDO $db, array $tenant, array $session): never {
     $body = app_commerce_body();
     $lines = app_commerce_lines($body);
@@ -152,7 +204,7 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
     $db->beginTransaction();
     try {
         if ($addressId !== null) {
-            $address = $db->prepare('SELECT id FROM customer_addresses WHERE tenant_id = ? AND user_id = ? AND id = ? FOR UPDATE');
+            $address = $db->prepare('SELECT id FROM customer_addresses WHERE tenant_id = ? AND user_id = ? AND id = ? AND is_active = 1 FOR UPDATE');
             $address->execute([$tenant['id'], $session['id'], $addressId]);
             if (!$address->fetchColumn()) {
                 $db->rollBack();

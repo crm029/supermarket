@@ -243,6 +243,20 @@ try {
         app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
     }
 
+    if (preg_match('#^/me/addresses/([1-9][0-9]*)$#', $path, $addressMatch)) {
+        $session = app_auth_require($db, $tenant);
+        if ($method === 'PATCH') {
+            app_auth_require_csrf($session);
+            app_commerce_update_address($db, $tenant, $session, (int)$addressMatch[1]);
+        }
+        if ($method === 'DELETE') {
+            app_auth_require_csrf($session);
+            app_commerce_delete_address($db, $tenant, $session, (int)$addressMatch[1]);
+        }
+        header('Allow: PATCH, DELETE');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
     if ($path === '/payments/zarinpal/request' && $method === 'POST') {
         $session = app_auth_require($db, $tenant);
         app_auth_require_csrf($session);

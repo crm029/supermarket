@@ -72,6 +72,7 @@ assert_json() {
       if (!$product || !$category) exit(1);
       exit(0);
     }
+    if ($check === "addresses-empty") { if (!is_array($data["data"] ?? null) || count($data["data"]) !== 0) exit(1); exit(0); }
     if ($check === "cart-empty") {
       if (!is_array($data["data"]["items"] ?? null) || count($data["data"]["items"]) !== 0) exit(1);
       exit(0);
@@ -179,6 +180,8 @@ request GET /me/cart 200 "" "$CUSTOMER_TOKEN"
 assert_json cart-empty
 request POST /me/addresses 201 '{"title":"خانه تست","recipient":"مشتری تست","mobile":"09120000003","province":"تهران","city":"تهران","address":"خیابان نمونه، پلاک ۱","postal_code":"1234567890"}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 ADDRESS_ID="$(assert_json created-id)"
+request PATCH "/me/addresses/$ADDRESS_ID" 419 "" "$CUSTOMER_TOKEN"
+request PATCH "/me/addresses/$ADDRESS_ID" 200 '{"title":"خانه ویرایش‌شده","city":"کرج"}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}],"fulfillment":"delivery","address_id":'$ADDRESS_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 ORDER_ID="$(assert_json order-created)"
 RESERVED="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT reserved FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID LIMIT 1")"
