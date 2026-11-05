@@ -226,16 +226,22 @@ try {
             "SELECT h.id, h.scene_id, h.target_scene_id, h.product_id, h.label,
                     h.x, h.y, h.action, h.payload,
                     p.title AS product_title, p.price_rial AS product_price_rial, p.image_media_id AS product_image_media_id,
-                    target.title AS target_scene_title
+                    target.title AS target_scene_title,
+                    category.id AS target_category_id, category.title AS target_category_title, category.slug AS target_category_slug
              FROM scene_hotspots h
              LEFT JOIN products p
                ON p.tenant_id = h.tenant_id AND p.id = h.product_id AND p.is_active = 1
              LEFT JOIN store_scenes target
                ON target.tenant_id = h.tenant_id AND target.id = h.target_scene_id AND target.is_published = 1
+             LEFT JOIN categories category
+               ON category.tenant_id = h.tenant_id
+              AND category.id = CAST(JSON_UNQUOTE(JSON_EXTRACT(h.payload, '$.category_id')) AS UNSIGNED)
+              AND category.is_active = 1
              WHERE h.tenant_id = ?
                AND h.scene_id IN (SELECT id FROM store_scenes WHERE tenant_id = ? AND is_published = 1)
                AND (h.action <> 'product' OR p.id IS NOT NULL)
                AND (h.action <> 'navigate' OR target.id IS NOT NULL)
+               AND (h.action <> 'category' OR category.id IS NOT NULL)
              ORDER BY h.scene_id, h.id"
         );
         $hotspotsQuery->execute([$tenant['id'], $tenant['id']]);
@@ -255,6 +261,11 @@ try {
                 'id' => (int)$hotspot['target_scene_id'],
                 'title' => $hotspot['target_scene_title'],
             ];
+            $categoryData = $hotspot['target_category_id'] === null ? null : [
+                'id' => (int)$hotspot['target_category_id'],
+                'title' => $hotspot['target_category_title'],
+                'slug' => $hotspot['target_category_slug'],
+            ];
             $hotspotsByScene[(int)$hotspot['scene_id']][] = [
                 'id' => (int)$hotspot['id'],
                 'label' => $hotspot['label'],
@@ -263,6 +274,7 @@ try {
                 'action' => $hotspot['action'],
                 'product' => $productData,
                 'target_scene' => $targetData,
+                'category' => $categoryData,
                 'payload' => $hotspot['payload'] === null ? null : json_decode($hotspot['payload'], true),
             ];
         }
