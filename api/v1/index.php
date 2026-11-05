@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 2) . '/app/bootstrap.php';
 require_once dirname(__DIR__, 2) . '/app/auth.php';
+require_once dirname(__DIR__, 2) . '/app/policies.php';
+require_once dirname(__DIR__, 2) . '/app/admin_catalog.php';
 
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
@@ -18,6 +20,39 @@ try {
     $path = preg_replace('#^/api/v1#', '', $path);
     $method = app_method();
     $db = app_db();
+
+    if ($path === '/admin/products') {
+        if ($method === 'GET') {
+            $session = app_auth_require($db, $tenant);
+            app_auth_require_permission($db, $tenant, $session, 'catalog.products.read');
+            app_admin_product_list($db, $tenant);
+        }
+        if ($method === 'POST') {
+            $session = app_auth_require($db, $tenant);
+            app_auth_require_csrf($session);
+            app_auth_require_permission($db, $tenant, $session, 'catalog.products.manage');
+            app_admin_product_create($db, $tenant, $session);
+        }
+        header('Allow: GET, POST');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if (preg_match('#^/admin/products/([1-9][0-9]*)$#', $path, $productMatch)) {
+        $productId = (int)$productMatch[1];
+        $session = app_auth_require($db, $tenant);
+        if ($method === 'PATCH') {
+            app_auth_require_csrf($session);
+            app_auth_require_permission($db, $tenant, $session, 'catalog.products.manage');
+            app_admin_product_update($db, $tenant, $session, $productId);
+        }
+        if ($method === 'DELETE') {
+            app_auth_require_csrf($session);
+            app_auth_require_permission($db, $tenant, $session, 'catalog.products.manage');
+            app_admin_product_deactivate($db, $tenant, $session, $productId);
+        }
+        header('Allow: PATCH, DELETE');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
 
     if ($path === '/auth/request-otp' && $method === 'POST') {
         app_auth_request_otp($db, $tenant);
@@ -44,7 +79,7 @@ try {
     }
 
     if ($method !== 'GET') {
-        header('Allow: GET, POST');
+        header('Allow: GET, POST, PATCH, DELETE');
         app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
     }
 
