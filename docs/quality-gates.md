@@ -1,0 +1,35 @@
+# Release quality gates
+
+A feature is not considered complete until it passes its relevant gates.
+
+## Tenant isolation
+- Tenant A cannot read, modify, enumerate or infer Tenant B records through IDs, filters, search, exports, media URLs or background jobs.
+- Tenant resolution uses verified host mappings only.
+- Automated negative tests cover every tenant-owned resource and cross-tenant foreign-key attempt.
+
+## Payments and orders
+- Price, stock, delivery zone and store status are recalculated on the server at checkout.
+- Duplicate callbacks do not duplicate orders, stock movements or wallet entries.
+- Failed/expired payments release reservations.
+- Browser return URLs never mark an order paid.
+- Refund and cancellation paths reconcile inventory and wallet/payment ledgers.
+
+## Inventory
+- Concurrent checkouts cannot oversell.
+- All stock changes have actor, reason and source document.
+- Transfers are paired outbound/inbound movements.
+- Manual adjustments require permission and audit history.
+
+## Customer privacy and security
+- OTP and login endpoints are rate-limited.
+- Passwords use PHP password_hash/password_verify.
+- Sessions use secure, HTTP-only, SameSite cookies over HTTPS.
+- Logs do not contain passwords, OTPs, tokens or payment secrets.
+- Uploads validate MIME, dimensions and size; filenames are generated server-side.
+
+## Experience
+- Search and standard product listing work without WebGL.
+- Keyboard and touch navigation are supported.
+- Images have useful alt text, responsive sizes and lazy loading.
+- Store scenes have a clear fallback when an image or 3D asset fails.
+- Mobile performance and accessibility are tested on real devices.
