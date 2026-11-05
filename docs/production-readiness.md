@@ -1,6 +1,6 @@
 # Production readiness checklist
 
-The application code includes customer registration, catalogue management, inventory, interactive scenes, order workflow and provider adapters. A live store is not production-ready until every external service and the real tenant data below are configured and tested.
+The application code includes customer registration, catalogue management, inventory, interactive scenes, order workflow and provider adapters. A live store is not production-ready until every external service and the real tenant data below are configured and tested. Run the read-only deployment preflight with `APP_ENV=production php bin/production-preflight.php` after configuring the server environment. It checks PHP extensions/version, core database tables, a verified active tenant domain, production HTTPS origins, SMS/payment configuration and media storage. A passing result is necessary but does not replace live provider, restore, security or device acceptance.
 
 ## Server
 
