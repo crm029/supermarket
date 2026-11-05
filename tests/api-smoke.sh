@@ -218,13 +218,24 @@ assert_json() {
     }
     if ($check === "platform-tenant-created") {
       $id = (int)($data["data"]["tenant_id"] ?? 0);
-      if ($id < 1 || ($data["data"]["status"] ?? "") !== "pending") exit(1);
+      $verification=$data["data"]["verification"]??[];
+      if ($id < 1 || ($data["data"]["status"] ?? "") !== "pending" ||
+          ($verification["record_type"]??"")!=="TXT" ||
+          ($verification["record_name"]??"")!=="_supermarket360-verification.ci-platform-store.example.test" ||
+          ($verification["record_value"]??"")!=="ci-only-domain-proof-2026") exit(1);
       echo $id;
+      exit(0);
+    }
+    if ($check === "platform-challenge") {
+      $verification=$data["data"]??[];
+      if (($verification["record_type"]??"")!=="TXT" ||
+          ($verification["record_name"]??"")!=="_supermarket360-verification.ci-platform-store.example.test" ||
+          ($verification["record_value"]??"")!=="ci-only-domain-proof-2026") exit(1);
       exit(0);
     }
     if ($check === "platform-audit-events") {
       $actions = array_column($data["data"] ?? [], "action");
-      foreach (["platform.tenant.created","platform.tenant.domain_verified","platform.tenant.suspended"] as $expected) {
+      foreach (["platform.tenant.created","platform.tenant.domain_challenge_issued","platform.tenant.domain_verified","platform.tenant.suspended"] as $expected) {
         if (!in_array($expected, $actions, true)) exit(1);
       }
       exit(0);
@@ -331,8 +342,13 @@ NEW_OWNER_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-co
 NEW_WAREHOUSE_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM warehouses WHERE tenant_id=$NEW_TENANT_ID AND warehouse_type='main' AND is_active=1")"
 NEW_OWNER_ROLE_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM user_roles ur JOIN roles r ON r.id=ur.role_id AND r.role_scope_id=ur.role_scope_id WHERE ur.tenant_id=$NEW_TENANT_ID AND r.role_key='store_owner'")"
 if [[ "$NEW_OWNER_STATUS" != "pending" || "$NEW_WAREHOUSE_COUNT" != "1" || "$NEW_OWNER_ROLE_COUNT" != "1" ]]; then echo "Platform tenant bootstrap did not create pending owner, owner role and main warehouse."; exit 1; fi
-request POST "/platform/tenants/$NEW_TENANT_ID/verify-domain" 422 '{"ownership_confirmed":false,"verification_method":"dns_txt","verification_note":"مالکیت دامنه بررسی شد"}' "$TOKEN" "$CSRF"
-request POST "/platform/tenants/$NEW_TENANT_ID/verify-domain" 200 '{"ownership_confirmed":true,"verification_method":"dns_txt","verification_note":"CI validated the DNS TXT ownership record"}' "$TOKEN" "$CSRF"
+mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "UPDATE tenant_domains SET verification_token_hash=SHA2('incorrect-ci-token',256) WHERE tenant_id=$NEW_TENANT_ID AND is_primary=1"
+request POST "/platform/tenants/$NEW_TENANT_ID/verify-domain" 422 '{}' "$TOKEN" "$CSRF"
+ATTEMPTS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT verification_attempts FROM tenant_domains WHERE tenant_id=$NEW_TENANT_ID AND is_primary=1")"
+if [[ "$ATTEMPTS" != "1" ]]; then echo "DNS verification mismatch was not counted."; exit 1; fi
+request POST "/platform/tenants/$NEW_TENANT_ID/verification-challenge" 200 '{}' "$TOKEN" "$CSRF"
+assert_json platform-challenge
+request POST "/platform/tenants/$NEW_TENANT_ID/verify-domain" 200 '{}' "$TOKEN" "$CSRF"
 TENANT_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM tenants WHERE id=$NEW_TENANT_ID")"
 DOMAIN_VERIFIED="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM tenant_domains WHERE tenant_id=$NEW_TENANT_ID AND verified_at IS NOT NULL")"
 if [[ "$TENANT_STATUS" != "active" || "$DOMAIN_VERIFIED" != "1" ]]; then echo "Verified domain did not activate the tenant."; exit 1; fi
