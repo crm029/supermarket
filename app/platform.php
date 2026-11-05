@@ -18,10 +18,11 @@ function app_platform_normalize_host(mixed $value): ?string {
 
 function app_platform_audit_list(PDO $db): never {
     $stmt=$db->query(
-        "SELECT id,action,entity_type,entity_id,details,created_at
-         FROM audit_logs
-         WHERE action LIKE 'platform.%'
-         ORDER BY id DESC LIMIT 200"
+        "SELECT a.id,a.action,a.entity_type,a.entity_id,a.details,a.created_at,u.full_name AS actor_name
+         FROM audit_logs a
+         LEFT JOIN users u ON u.tenant_id=a.tenant_id AND u.id=a.actor_user_id
+         WHERE a.action LIKE 'platform.%'
+         ORDER BY a.id DESC LIMIT 200"
     );
     $rows=$stmt->fetchAll(PDO::FETCH_ASSOC);
     foreach($rows as &$row){
