@@ -87,7 +87,7 @@ function startFreeMovement(){
   const view=document.getElementById("aisleScene"),controls=document.getElementById("freeMovementControls");
   controls.hidden=false;view.classList.add("free-movement-active");view.classList.remove("free-movement-fallback");
   view.querySelectorAll(".scene-hotspot").forEach(node=>node.hidden=true);
-  if(!window.THREE){view.classList.add("free-movement-fallback");controls.hidden=true;document.getElementById("freeMovementStatus").textContent="مرورگر امکان اجرای سه‌بعدی را فراهم نکرد؛ از تور تصویری و فلش‌های راهرو استفاده کن.";document.getElementById("modeHint").textContent="حالت سه‌بعدی روی این دستگاه در دسترس نیست؛ تور تصویری و راهنمای دسته‌ها همچنان فعال‌اند.";view.classList.remove("free-movement-active");return;}
+  if(!window.THREE){movementMode="tour";document.querySelectorAll("[data-mode]").forEach(button=>button.classList.toggle("active",button.dataset.mode==="tour"));view.classList.add("free-movement-fallback");controls.hidden=true;document.getElementById("freeMovementStatus").textContent="مرورگر امکان اجرای سه‌بعدی را فراهم نکرد؛ از تور تصویری و فلش‌های راهرو استفاده کن.";document.getElementById("modeHint").textContent="حالت سه‌بعدی روی این دستگاه در دسترس نیست؛ تور تصویری و راهنمای دسته‌ها همچنان فعال‌اند.";view.classList.remove("free-movement-active");return;}
   if(freeWorld)return;
   try{
     freeWorld=buildFreeMovementWorld();const canvas=freeWorld.renderer.domElement;
@@ -129,7 +129,7 @@ function startFreeMovement(){
       freeWorld.renderer.render(freeWorld.scene,freeWorld.camera);
     };
     animate();
-  }catch(error){stopFreeMovement();view.classList.add("free-movement-fallback");document.getElementById("modeHint").textContent="اجرای سه‌بعدی در این دستگاه ممکن نشد؛ از تور تصویری یا راهنمای دسته‌ها استفاده کن.";console.warn("3D store mode unavailable",error);}
+  }catch(error){stopFreeMovement();movementMode="tour";document.querySelectorAll("[data-mode]").forEach(button=>button.classList.toggle("active",button.dataset.mode==="tour"));view.classList.add("free-movement-fallback");document.getElementById("modeHint").textContent="اجرای سه‌بعدی در این دستگاه ممکن نشد؛ از تور تصویری یا راهنمای دسته‌ها استفاده کن.";console.warn("3D store mode unavailable",error);}
 }
 function stopFreeMovement(){
   cancelAnimationFrame(freeAnimationFrame);freeAnimationFrame=0;freeMovementKeys.clear();freePointerLook=null;
