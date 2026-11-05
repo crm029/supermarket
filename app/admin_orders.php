@@ -130,7 +130,7 @@ function app_customer_cancel_order(PDO $db, array $tenant, array $session, int $
     $db->beginTransaction();
     try {
         $stmt = $db->prepare(
-            'SELECT id, status FROM orders WHERE tenant_id = ? AND user_id = ? AND id = ? FOR UPDATE'
+            'SELECT id, order_number, status FROM orders WHERE tenant_id = ? AND user_id = ? AND id = ? FOR UPDATE'
         );
         $stmt->execute([$tenant['id'], $session['id'], $orderId]);
         $order = $stmt->fetch();
@@ -164,6 +164,9 @@ function app_customer_cancel_order(PDO $db, array $tenant, array $session, int $
         }
         $update = $db->prepare("UPDATE orders SET status = 'cancelled' WHERE tenant_id = ? AND id = ? AND status = 'pending_payment'");
         $update->execute([$tenant['id'], $orderId]);
+        app_notification_notify_permission($db,(int)$tenant['id'],'orders.manage','order-cancelled-'.$orderId,'order',
+            'سفارش توسط مشتری لغو شد','سفارش '.$order['order_number'].' توسط مشتری لغو شد و موجودی رزروشده آزاد شد.',
+            'order',$orderId);
         $db->commit();
         app_json(['message' => 'سفارش لغو شد و موجودی رزروشده آزاد شد.']);
     } catch (Throwable $e) {
