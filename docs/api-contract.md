@@ -162,3 +162,7 @@ Checkout intentionally does not mark an order paid. Reservations expire after 20
 - `low_stock_threshold` is an integer from 0 to 1,000,000. A value of `0` disables the warning; the default is `5`.
 - The seller inventory view shows per-warehouse available quantity against the product threshold. The dashboard low-stock count aggregates available stock across active warehouses and counts products at or below their threshold.
 - Existing duplicate non-empty barcodes must be resolved before applying `2026_11_05_barcode_stock_thresholds.sql`; blank legacy barcodes are normalized to NULL by the migration.
+
+
+## Advanced public product search
+`GET /products` supports `q` (title/SKU/barcode), `brand` (partial match), `category` (tenant category ID), `min_price` and `max_price` (IRR), `in_stock=1|0`, `sort=title_asc|price_asc|price_desc|newest`, `page`, and `per_page` (1–48). The response includes available quantity and `in_stock`; all filters are tenant-scoped and numeric ranges are validated server-side.
