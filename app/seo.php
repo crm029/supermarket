@@ -15,9 +15,13 @@ function app_seo_context(): ?array {
         $host = app_host();
         $db = app_db();
         $stmt = $db->prepare(
-            "SELECT t.id,t.name,t.slug,t.timezone,t.currency,d.host
+            "SELECT t.id,t.name,t.slug,t.timezone,t.currency,d.host AS request_host,
+                    COALESCE(primary_domain.host,d.host) AS canonical_host
              FROM tenant_domains d
              JOIN tenants t ON t.id=d.tenant_id
+             LEFT JOIN tenant_domains primary_domain
+               ON primary_domain.tenant_id=t.id AND primary_domain.is_primary=1
+              AND primary_domain.verified_at IS NOT NULL
              WHERE d.host=? AND d.verified_at IS NOT NULL AND t.status='active'
              LIMIT 1"
         );
@@ -30,9 +34,10 @@ function app_seo_context(): ?array {
         return [
             'db' => $db,
             'tenant' => $tenant,
-            'host' => $host,
+            'host' => (string)($tenant['canonical_host'] ?? $host),
+            'request_host' => $host,
             'scheme' => $scheme,
-            'base_url' => $scheme . '://' . $host,
+            'base_url' => $scheme . '://' . (string)($tenant['canonical_host'] ?? $host),
         ];
     } catch (Throwable $error) {
         return null;
