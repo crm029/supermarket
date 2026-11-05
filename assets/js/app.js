@@ -138,7 +138,7 @@ function stopFreeMovement(){
   if(freeWorld){window.removeEventListener("resize",freeWorld.resizeHandler);freeWorld.renderer.dispose();freeWorld.renderer.domElement.remove();freeWorld.scene.traverse(object=>{if(object.geometry)object.geometry.dispose();if(object.material){const materials=Array.isArray(object.material)?object.material:[object.material];materials.forEach(material=>{if(material.map)material.map.dispose();material.dispose();});}});freeWorld=null;}
 }
 document.addEventListener("keydown",event=>{
-  if(movementMode!=="free"||event.target.matches("input,textarea,select,[contenteditable=true]"))return;
+  if(movementMode!=="free"||document.querySelector("dialog[open]")||event.target.matches("input,textarea,select,[contenteditable=true]"))return;
   const key=event.key.toLowerCase();if(["w","a","s","d","arrowup","arrowdown","arrowleft","arrowright"].includes(key)){freeMovementKeys.add(key);event.preventDefault();}
 });
 document.addEventListener("keyup",event=>freeMovementKeys.delete(event.key.toLowerCase()));
