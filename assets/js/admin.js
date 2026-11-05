@@ -802,6 +802,7 @@ function renderInventory() {
     '<td><strong>'+formatQuantity(item.shortage_quantity)+'</strong></td>'+
     '<td><button class="admin-row-action" type="button" data-reorder-product="'+Number(item.product_id)+'" data-reorder-quantity="'+Number(item.shortage_quantity)+'">آماده‌سازی سفارش خرید</button></td></tr>'
   ).join("")||'<tr><td colspan="6">هشدار کمبود موجودی ثبت نشده است.</td></tr>';
+}
 
 async function loadStockMovements(){
   const params=new URLSearchParams();
@@ -834,7 +835,6 @@ async function loadStockMovements(){
     document.getElementById("stockMovementSummary").textContent=error.message;
     rows.innerHTML='<tr><td colspan="7">'+escapeText(error.message)+'</td></tr>';
   }
-}
 }
 async function loadOrders() {
   try {
