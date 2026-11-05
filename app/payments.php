@@ -218,7 +218,10 @@ function app_payment_callback(PDO $db, array $tenant): never {
         );
         $reservations->execute([$tenant['id'], $order['id']]);
         $active = $reservations->fetchAll();
-        if ($active !== []) {
+        $expiredCountQuery = $db->prepare("SELECT COUNT(*) FROM stock_reservations WHERE tenant_id = ? AND order_id = ? AND status = 'expired'");
+        $expiredCountQuery->execute([$tenant['id'], $order['id']]);
+        $hasExpired = (int)$expiredCountQuery->fetchColumn() > 0;
+        if ($active !== [] && !$hasExpired) {
             $consume = $db->prepare(
                 'UPDATE stock_levels SET on_hand = on_hand - ?, reserved = reserved - ?
                  WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ? AND on_hand >= ? AND reserved >= ?'
@@ -237,7 +240,20 @@ function app_payment_callback(PDO $db, array $tenant): never {
                 $commitReservation->execute([$row['id']]);
             }
         } else {
-            // Payment may arrive after an expiry worker ran. Record it as paid and flag it for manual fulfilment.
+            // If expiry processing handled only part of an order, release remaining reservations and require manual fulfilment.
+            if ($active !== []) {
+                $releaseStock = $db->prepare(
+                    'UPDATE stock_levels SET reserved = reserved - ? WHERE tenant_id = ? AND warehouse_id = ? AND product_id = ? AND reserved >= ?'
+                );
+                $releaseReservation = $db->prepare("UPDATE stock_reservations SET status = 'released' WHERE id = ? AND status = 'active'");
+                foreach ($active as $row) {
+                    $qty = (int)$row['quantity'];
+                    $releaseStock->execute([$qty,$tenant['id'],$row['warehouse_id'],$row['product_id'],$qty]);
+                    if ($releaseStock->rowCount() !== 1) throw new RuntimeException('Unable to release remaining stock reservation.');
+                    $releaseReservation->execute([$row['id']]);
+                }
+            }
+            // Payment may arrive after an expiry worker ran. Record it as paid and flag it for manual fulfilment review.
             $audit = $db->prepare(
                 "INSERT INTO audit_logs (tenant_id,actor_user_id,action,entity_type,entity_id,details)
                  VALUES (?,?,'payment.paid_without_active_reservation','order',?,JSON_OBJECT('authority',?))"
