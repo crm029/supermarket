@@ -44,6 +44,7 @@ jobs:
 
       - name: Check storefront JavaScript syntax
         run: node --check assets/js/app.js
+          node --check assets/js/admin.js
 
       - name: Check patch whitespace
         run: git diff --check
