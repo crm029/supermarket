@@ -35,6 +35,7 @@ jobs:
           php tests/auth-input.php
           php tests/admin-catalog-input.php
           php tests/media-url.php
+          php tests/commerce-input.php
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
