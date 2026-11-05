@@ -1,9 +1,7 @@
 -- Order assignment tenant-boundary integration checks.
 -- Run after 2026_11_06_order_assignments.sql on a disposable CI database.
 
-INSERT INTO tenants (id,name,slug,status,timezone,currency)
-VALUES (2,'فروشگاه دوم برای تست تخصیص','assignment-tenant-two','active','Asia/Tehran','IRR');
-
+-- Tenant 2 is created by database/tests/tenant-isolation.sql earlier in CI.
 INSERT INTO users (tenant_id,full_name,mobile,referral_code,status)
 VALUES (1,'کارمند تست تخصیص','09120000991','ASSIGNMENT001','active');
 SET @assignment_user_one=LAST_INSERT_ID();
