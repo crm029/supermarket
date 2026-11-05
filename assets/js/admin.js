@@ -137,7 +137,7 @@ function renderOrders() {
   document.getElementById("orderRows").innerHTML=orders.map(o=>{
     let nextStatus=next[o.status];
     if(o.status==="packed"&&o.fulfillment==="pickup")nextStatus="ready_pickup";
-    const action=nextStatus?'<button class="admin-row-action" data-next-order="'+Number(o.id)+'" data-next-status="'+nextStatus+'">مرحله بعد</button>':"—";
+    const action='<button class="admin-row-action" data-admin-order-detail="'+Number(o.id)+'">جزئیات</button>'+(nextStatus?'<button class="admin-row-action" data-next-order="'+Number(o.id)+'" data-next-status="'+nextStatus+'">مرحله بعد</button>':"");
     return '<tr><td><strong>'+escapeText(o.order_number)+'</strong><small>'+escapeText(o.created_at||"")+'</small></td><td>'+escapeText(o.customer_name)+'<small>'+escapeText(o.customer_mobile)+'</small></td><td>'+new Intl.NumberFormat("fa-IR").format(Number(o.item_count)||0)+'</td><td>'+money(Number(o.total_rial)/10)+'</td><td><span class="admin-status '+(o.status==="delivered"?"active":"inactive")+'">'+(labels[o.status]||escapeText(o.status))+'</span></td><td>'+action+'</td></tr>';
   }).join("")||'<tr><td colspan="6">هنوز سفارشی ثبت نشده است.</td></tr>';
 }
@@ -244,6 +244,17 @@ document.getElementById("orderStatusFilter").addEventListener("change",async e=>
   catch(error){message(error.message,"error");}
 });
 document.getElementById("orderRows").addEventListener("click",async e=>{
+  const detail=e.target.closest("[data-admin-order-detail]");
+  if(detail){
+    const order=orders.find(o=>Number(o.id)===Number(detail.dataset.adminOrderDetail));
+    if(order){
+      const address=order.fulfillment==="delivery"?[order.delivery_recipient,order.delivery_mobile,order.province,order.city,order.delivery_address,order.postal_code].filter(Boolean).join(" · "):"تحویل حضوری";
+      const box=document.getElementById("adminOrderDetail");
+      box.hidden=false;
+      box.innerHTML='<h3>سفارش '+escapeText(order.order_number)+'</h3><p>مشتری: '+escapeText(order.customer_name)+' · '+escapeText(order.customer_mobile)+'</p><p>نشانی / روش دریافت: '+escapeText(address)+'</p><p>توضیحات: '+escapeText(order.customer_note||"—")+'</p>';
+    }
+    return;
+  }
   const b=e.target.closest("[data-next-order]");if(!b)return;
   try{
     await request("admin/orders/"+b.dataset.nextOrder+"/transition",{method:"POST",body:JSON.stringify({status:b.dataset.nextStatus}),csrf:true});
