@@ -109,8 +109,9 @@ async function ensureAccount() {
     csrfToken = csrf?.csrf_token || "";
     document.getElementById("accountButton").textContent = currentUser?.full_name || "حساب کاربری";
     document.getElementById("ordersButton").hidden = false;
+    document.getElementById("walletButton").hidden = false;
     return Boolean(currentUser && csrfToken);
-  } catch (_) { currentUser = null; csrfToken = ""; document.getElementById("ordersButton").hidden = true; return false; }
+  } catch (_) { currentUser = null; csrfToken = ""; document.getElementById("ordersButton").hidden = true; document.getElementById("walletButton").hidden = true; return false; }
 }
 function setFormMessage(id, message, type = "") {
   const node = document.getElementById(id);
@@ -340,6 +341,30 @@ document.getElementById("placeOrderButton").addEventListener("click",async()=>{
   }finally{button.disabled=false;}
 });
 updateCart();
+
+// Customer wallet: balance is server-derived from the append-only ledger.
+async function loadCustomerWallet() {
+  const wallet = await apiGet("me/wallet");
+  document.getElementById("walletBalance").textContent = money(Math.round(Number(wallet.balance_rial || 0) / 10));
+  const typeLabels = {credit:"افزایش اعتبار",debit:"مصرف اعتبار",reversal:"برگشت اعتبار"};
+  const sourceLabels = {referral_reward:"پاداش دعوت دوستان"};
+  const entries = Array.isArray(wallet.entries) ? wallet.entries : [];
+  document.getElementById("walletEntries").innerHTML = entries.map(entry =>
+    '<article class="customer-order"><div><strong>'+escapeHTML(sourceLabels[entry.source_type]||typeLabels[entry.entry_type]||"تراکنش کیف پول")+'</strong><small>'+escapeHTML(entry.note||"")+' · '+escapeHTML(entry.created_at||"")+'</small></div><strong>'+money(Math.round(Number(entry.amount_rial||0)/10))+'</strong></article>'
+  ).join("") || '<p class="empty-cart">هنوز تراکنشی ثبت نشده است.</p>';
+  const statusLabels = {pending:"در انتظار خرید واجد شرایط",qualified:"واجد شرایط",rewarded:"پاداش واریز شد",rejected:"دعوت تأیید نشد"};
+  const referrals = Array.isArray(wallet.referrals) ? wallet.referrals : [];
+  document.getElementById("walletReferrals").innerHTML = referrals.map(referral =>
+    '<article class="customer-order"><div><strong>'+escapeHTML(statusLabels[referral.status]||referral.status)+'</strong><small>'+escapeHTML(referral.created_at||"")+'</small></div><strong>'+money(Math.round(Number(referral.reward_rial||0)/10))+'</strong></article>'
+  ).join("") || '<p class="empty-cart">هنوز دعوتی ثبت نشده است.</p>';
+}
+document.getElementById("walletButton").addEventListener("click",async()=>{
+  if(!(await ensureAccount())){openAccountDialog();return;}
+  document.getElementById("walletDialog").showModal();
+  document.getElementById("walletBalance").textContent="در حال بارگذاری...";
+  try{await loadCustomerWallet();}
+  catch(error){document.getElementById("walletEntries").textContent=error.message;document.getElementById("walletReferrals").textContent="";}
+});
 
 // Customer order history and owner-only order detail/cancellation.
 async function loadCustomerOrders() {
