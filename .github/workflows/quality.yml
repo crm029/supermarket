@@ -108,6 +108,9 @@ jobs:
       - name: Apply in-app notifications migration
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_06_notifications.sql
 
+      - name: Apply order wallet refund migration
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_06_order_wallet_refunds.sql
+
       - name: Run permission scope tests
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/permissions.sql
 
