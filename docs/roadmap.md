@@ -25,7 +25,8 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [ ] Role/permission management UI and platform super-admin authorization.
 - [ ] Platform super-admin tenant provisioning and domain verification.
 - [x] Secure tenant-scoped image upload with MIME, size, dimension and storage-key validation.
-- [ ] Store settings UI, branding controls and media library browsing/cleanup.
+- [x] Store settings UI, branding controls, fulfillment availability, delivery fee, minimum order and reservation duration.
+- [ ] Media library browsing/cleanup.
 
 ## Phase 2 — catalog and commerce
 - [x] Basic tenant-scoped product list/create/update/deactivate API with permission checks.
