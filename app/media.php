@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/policies.php';
 
 function app_media_public_url(string $storageKey): ?string {
     $base = trim((string)app_env('MEDIA_BASE_URL', ''));
@@ -84,7 +85,9 @@ function app_media_upload(PDO $db, array $tenant, array $session): never {
     if (mb_strlen($alt) > 255) app_json(['error' => 'متن جایگزین تصویر بیش از حد طولانی است.'], 422);
 
     $storageRoot = trim((string)(app_env('MEDIA_STORAGE_PATH') ?? ''));
-    if ($storageRoot === '' || !str_starts_with($storageRoot, DIRECTORY_SEPARATOR)) {
+    $absolutePath = str_starts_with($storageRoot, DIRECTORY_SEPARATOR) ||
+        (DIRECTORY_SEPARATOR === '\\\\' && preg_match('/^[A-Za-z]:[\\\\\\/]/', $storageRoot) === 1);
+    if ($storageRoot === '' || !$absolutePath) {
         app_json(['error' => 'مسیر ذخیره‌سازی رسانه در سرور پیکربندی نشده است.'], 503);
     }
     if (!is_dir($storageRoot) && !@mkdir($storageRoot, 0750, true) && !is_dir($storageRoot)) {
