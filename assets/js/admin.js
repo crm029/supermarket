@@ -53,6 +53,7 @@ async function loadAll() {
     renderProducts();renderCategories();
     await loadOrders();
     await loadInventory();
+    await loadPurchasing();
     await loadScenes();
     await loadMediaLibrary();
     await loadReport();
@@ -71,6 +72,145 @@ async function loadAll() {
     message(error.message,"error");
   }
 }
+
+let suppliers=[],purchaseOrders=[],selectedPurchaseOrder=null;
+async function loadPurchasing(){
+  try{
+    const [supplierResult,orderResult]=await Promise.all([
+      request("admin/suppliers"),request("admin/purchase-orders")
+    ]);
+    suppliers=supplierResult.data||[];
+    purchaseOrders=orderResult.data||[];
+    const supplierOptions=suppliers.filter(s=>Number(s.is_active)).map(s=>'<option value="'+Number(s.id)+'">'+escapeText(s.name)+'</option>').join("");
+    document.getElementById("purchaseSupplier").innerHTML='<option value="">انتخاب تأمین‌کننده</option>'+supplierOptions;
+    const purchaseProducts=products.filter(p=>Number(p.is_active)&&p.product_kind!=="variant_parent").map(p=>
+      '<option value="'+Number(p.id)+'">'+escapeText(p.product_kind==="variant"?(p.parent_title||p.title)+" · "+(p.variant_label||"تنوع"):p.title)+' · '+escapeText(p.sku)+'</option>'
+    ).join("");
+    document.getElementById("purchaseProduct").innerHTML='<option value="">انتخاب کالا</option>'+purchaseProducts;
+    document.getElementById("supplierRows").innerHTML=suppliers.map(s=>
+      '<article><div><strong>'+escapeText(s.name)+'</strong><small>'+escapeText(s.contact_person||"بدون رابط")+' · '+escapeText(s.phone||"بدون تلفن")+'</small><small>'+escapeText(s.email||"")+'</small></div><span class="admin-status '+(s.is_active?"active":"inactive")+'">'+(s.is_active?"فعال":"غیرفعال")+'</span></article>'
+    ).join("")||'<p>هنوز تأمین‌کننده‌ای ثبت نشده است.</p>';
+    const orderOptions=purchaseOrders.filter(o=>["ordered","partially_received"].includes(o.status)).map(o=>'<option value="'+Number(o.id)+'">'+escapeText(o.order_number)+' · '+escapeText(o.supplier_name)+'</option>').join("");
+    document.getElementById("receivePurchaseOrder").innerHTML='<option value="">انتخاب سفارش</option>'+orderOptions;
+    document.getElementById("purchaseOrderRows").innerHTML=purchaseOrders.map(o=>{
+      const status={ordered:"ثبت‌شده",partially_received:"دریافت ناقص",received:"دریافت کامل",cancelled:"لغوشده"}[o.status]||o.status;
+      const canReceive=["ordered","partially_received"].includes(o.status);
+      return '<article><div><strong>'+escapeText(o.order_number)+'</strong><small>'+escapeText(o.supplier_name)+' · '+escapeText(status)+'</small><small>اقلام: '+Number(o.item_count)+' · تعداد سفارش: '+Number(o.ordered_quantity)+' · دریافت‌شده: '+Number(o.received_quantity)+'</small><small>ارزش برآوردی: '+money(Number(o.estimated_cost_rial)/10)+'</small></div><span class="admin-status '+(o.status==="received"?"active":"inactive")+'">'+escapeText(status)+'</span>'+(canReceive?'<button class="admin-row-action" type="button" data-select-purchase-order="'+Number(o.id)+'">ثبت دریافت</button>':"")+'</article>';
+    }).join("")||'<p>هنوز سفارش خریدی ثبت نشده است.</p>';
+    const warehouseOptions=warehouses.filter(w=>Number(w.is_active)).map(w=>'<option value="'+Number(w.id)+'">'+escapeText(w.title)+'</option>').join("");
+    document.getElementById("receiveWarehouse").innerHTML='<option value="">انتخاب انبار</option>'+warehouseOptions;
+    if(selectedPurchaseOrder) await loadPurchaseOrderItems(selectedPurchaseOrder);
+  }catch(error){
+    document.getElementById("purchaseOrderMessage").textContent=error.message;
+    document.getElementById("purchaseOrderMessage").className="form-message error";
+  }
+}
+async function loadPurchaseOrderItems(orderId){
+  try{
+    const result=await request("admin/purchase-orders/"+Number(orderId));
+    selectedPurchaseOrder=Number(orderId);
+    const items=(result.data.items||[]).filter(i=>Number(i.remaining_quantity)>0);
+    document.getElementById("receivePurchaseItem").innerHTML=items.map(i=>
+      '<option value="'+Number(i.id)+'" data-remaining="'+Number(i.remaining_quantity)+'">'+escapeText(i.product_title)+' · مانده '+Number(i.remaining_quantity)+'</option>'
+    ).join("")||'<option value="">همه اقلام دریافت شده‌اند</option>';
+    const selected=items[0];
+    document.getElementById("receiveQuantity").max=selected?String(Number(selected.remaining_quantity)):"1";
+    document.getElementById("receiveQuantity").value=selected?String(Number(selected.remaining_quantity)):"";
+    document.getElementById("purchaseReceiveForm").scrollIntoView({behavior:"smooth"});
+  }catch(error){
+    document.getElementById("purchaseReceiveMessage").textContent=error.message;
+    document.getElementById("purchaseReceiveMessage").className="form-message error";
+  }
+}
+document.getElementById("reloadPurchasing").addEventListener("click",loadPurchasing);
+document.getElementById("supplierForm").addEventListener("submit",async event=>{
+  event.preventDefault();
+  const payload={
+    name:document.getElementById("supplierName").value.trim(),
+    contact_person:document.getElementById("supplierContact").value.trim(),
+    phone:document.getElementById("supplierPhone").value.trim(),
+    email:document.getElementById("supplierEmail").value.trim(),
+    address:document.getElementById("supplierAddress").value.trim(),
+    notes:document.getElementById("supplierNotes").value.trim()
+  };
+  try{
+    await request("admin/suppliers",{method:"POST",csrf:true,body:JSON.stringify(payload)});
+    event.target.reset();await loadPurchasing();
+    document.getElementById("supplierMessage").textContent="تأمین‌کننده ثبت شد.";
+    document.getElementById("supplierMessage").className="form-message success";
+  }catch(error){
+    document.getElementById("supplierMessage").textContent=error.message;
+    document.getElementById("supplierMessage").className="form-message error";
+  }
+});
+document.getElementById("purchaseOrderForm").addEventListener("submit",async event=>{
+  event.preventDefault();
+  const quantity=Number(document.getElementById("purchaseQuantity").value);
+  const cost=Number(document.getElementById("purchaseUnitCost").value);
+  const costRial=Math.round(cost*10);
+  if(!Number.isInteger(quantity)||quantity<1||quantity>1000000||!Number.isSafeInteger(costRial)||costRial<0){
+    document.getElementById("purchaseOrderMessage").textContent="تعداد و قیمت خرید را بررسی کنید.";
+    document.getElementById("purchaseOrderMessage").className="form-message error";return;
+  }
+  const payload={
+    supplier_id:Number(document.getElementById("purchaseSupplier").value),
+    expected_at:document.getElementById("purchaseExpected").value||null,
+    notes:document.getElementById("purchaseNotes").value.trim(),
+    items:[{product_id:Number(document.getElementById("purchaseProduct").value),quantity,unit_cost_rial:costRial}]
+  };
+  try{
+    await request("admin/purchase-orders",{method:"POST",csrf:true,body:JSON.stringify(payload)});
+    event.target.reset();document.getElementById("purchaseQuantity").value="1";document.getElementById("purchaseUnitCost").value="0";
+    await loadPurchasing();
+    document.getElementById("purchaseOrderMessage").textContent="سفارش خرید ثبت شد.";
+    document.getElementById("purchaseOrderMessage").className="form-message success";
+  }catch(error){
+    document.getElementById("purchaseOrderMessage").textContent=error.message;
+    document.getElementById("purchaseOrderMessage").className="form-message error";
+  }
+});
+document.getElementById("purchaseOrderRows").addEventListener("click",event=>{
+  const button=event.target.closest("[data-select-purchase-order]");
+  if(!button)return;
+  const id=Number(button.dataset.selectPurchaseOrder);
+  document.getElementById("receivePurchaseOrder").value=String(id);
+  loadPurchaseOrderItems(id);
+});
+document.getElementById("receivePurchaseOrder").addEventListener("change",event=>{
+  const id=Number(event.target.value);
+  if(id)loadPurchaseOrderItems(id);
+  else{selectedPurchaseOrder=null;document.getElementById("receivePurchaseItem").innerHTML="";}
+});
+document.getElementById("receivePurchaseItem").addEventListener("change",event=>{
+  const option=event.target.selectedOptions[0];
+  if(!option)return;
+  document.getElementById("receiveQuantity").max=option.dataset.remaining||"1";
+  document.getElementById("receiveQuantity").value=option.dataset.remaining||"";
+});
+document.getElementById("purchaseReceiveForm").addEventListener("submit",async event=>{
+  event.preventDefault();
+  const orderId=Number(document.getElementById("receivePurchaseOrder").value);
+  const itemId=Number(document.getElementById("receivePurchaseItem").value);
+  const quantity=Number(document.getElementById("receiveQuantity").value);
+  const max=Number(document.getElementById("receivePurchaseItem").selectedOptions[0]?.dataset.remaining||0);
+  if(!orderId||!itemId||!Number.isInteger(quantity)||quantity<1||quantity>max){
+    document.getElementById("purchaseReceiveMessage").textContent="سفارش، قلم کالا و تعداد دریافتی را بررسی کنید.";
+    document.getElementById("purchaseReceiveMessage").className="form-message error";return;
+  }
+  try{
+    await request("admin/purchase-orders/"+orderId+"/receive",{
+      method:"POST",csrf:true,
+      body:JSON.stringify({warehouse_id:Number(document.getElementById("receiveWarehouse").value),notes:document.getElementById("receiveNotes").value.trim(),items:[{item_id:itemId,quantity}]})
+    });
+    await loadInventory();await loadPurchasing();await loadPurchaseOrderItems(orderId);
+    document.getElementById("purchaseReceiveMessage").textContent="رسید ثبت شد و موجودی انبار به‌روزرسانی شد.";
+    document.getElementById("purchaseReceiveMessage").className="form-message success";
+  }catch(error){
+    document.getElementById("purchaseReceiveMessage").textContent=error.message;
+    document.getElementById("purchaseReceiveMessage").className="form-message error";
+  }
+});
+
 let staffData = {roles:[],staff:[],permissions:[]};
 async function loadStaff() {
   try {

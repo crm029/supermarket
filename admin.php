@@ -25,6 +25,7 @@ declare(strict_types=1);
     <button class="admin-nav" data-panel="categories">دسته‌بندی‌ها</button>
     <button class="admin-nav" data-panel="orders">مدیریت سفارش‌ها</button>
     <button class="admin-nav" data-panel="inventory">انبار و موجودی</button>
+    <button class="admin-nav" data-panel="purchasing">تأمین‌کنندگان و خرید</button>
     <button class="admin-nav" data-panel="settings">تنظیمات و ظاهر فروشگاه</button>
     <button class="admin-nav" data-panel="delivery-zones">محدوده‌های ارسال</button>
     <button class="admin-nav" data-panel="pickup-slots">زمان‌بندی تحویل حضوری</button>
@@ -111,6 +112,52 @@ declare(strict_types=1);
         <h3>انتقال بین انبارها</h3><div class="admin-form-grid"><label>از انبار<select id="transferFrom" required></select></label><label>به انبار<select id="transferTo" required></select></label><label>محصول<select id="transferProduct" required></select></label><label>تعداد انتقال<input id="transferQuantity" type="number" min="1" max="1000000" required></label></div><button class="primary-button" type="submit">ثبت انتقال</button>
       </form>
       <h3>موجودی فعلی</h3><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>محصول</th><th>انبار</th><th>موجودی</th><th>رزروشده</th><th>قابل فروش</th><th>حد هشدار</th></tr></thead><tbody id="stockRows"><tr><td colspan="6">در حال بارگذاری...</td></tr></tbody></table></div>
+    </section>
+
+    <section class="admin-panel" id="panel-purchasing">
+      <div class="admin-heading"><div><p class="eyebrow">تدارکات و تأمین کالا</p><h2>تأمین‌کنندگان و سفارش خرید</h2></div><button class="text-button" id="reloadPurchasing" type="button">به‌روزرسانی</button></div>
+      <p class="admin-hint">ثبت تأمین‌کننده، صدور سفارش خرید و دریافت مرحله‌ای کالا در انبار. موجودی فقط پس از ثبت رسید واقعی افزایش پیدا می‌کند.</p>
+      <form id="supplierForm" class="admin-form">
+        <h3>ثبت تأمین‌کننده</h3>
+        <div class="admin-form-grid">
+          <label>نام تأمین‌کننده<input id="supplierName" maxlength="180" required></label>
+          <label>نام رابط<input id="supplierContact" maxlength="160"></label>
+          <label>تلفن<input id="supplierPhone" maxlength="30" inputmode="tel"></label>
+          <label>ایمیل<input id="supplierEmail" maxlength="190" type="email" dir="ltr"></label>
+          <label>نشانی<input id="supplierAddress" maxlength="2000"></label>
+          <label>یادداشت<input id="supplierNotes" maxlength="2000"></label>
+        </div>
+        <button class="primary-button" type="submit">ثبت تأمین‌کننده</button>
+        <p id="supplierMessage" class="form-message" role="status"></p>
+      </form>
+      <div id="supplierRows" class="admin-row-list"><p>در حال بارگذاری...</p></div>
+      <form id="purchaseOrderForm" class="admin-form">
+        <h3>صدور سفارش خرید</h3>
+        <div class="admin-form-grid">
+          <label>تأمین‌کننده<select id="purchaseSupplier" required></select></label>
+          <label>کالا<select id="purchaseProduct" required></select></label>
+          <label>تعداد سفارش<input id="purchaseQuantity" type="number" min="1" max="1000000" value="1" required></label>
+          <label>قیمت خرید هر واحد (تومان)<input id="purchaseUnitCost" type="number" min="0" step="1" value="0" required></label>
+          <label>تاریخ مورد انتظار<input id="purchaseExpected" type="date"></label>
+          <label>توضیحات<input id="purchaseNotes" maxlength="4000"></label>
+        </div>
+        <button class="primary-button" type="submit">ثبت سفارش خرید</button>
+        <p id="purchaseOrderMessage" class="form-message" role="status"></p>
+      </form>
+      <div class="admin-heading"><div><h3>سفارش‌های خرید</h3></div></div>
+      <div id="purchaseOrderRows" class="admin-row-list"><p>در حال بارگذاری...</p></div>
+      <form id="purchaseReceiveForm" class="admin-form">
+        <h3>ثبت دریافت کالا</h3>
+        <div class="admin-form-grid">
+          <label>سفارش خرید<select id="receivePurchaseOrder" required></select></label>
+          <label>انبار مقصد<select id="receiveWarehouse" required></select></label>
+          <label>قلم سفارش<select id="receivePurchaseItem" required></select></label>
+          <label>تعداد دریافتی<input id="receiveQuantity" type="number" min="1" max="1000000" required></label>
+          <label>شرح رسید<input id="receiveNotes" maxlength="500"></label>
+        </div>
+        <button class="primary-button" type="submit">ثبت رسید و افزایش موجودی</button>
+        <p id="purchaseReceiveMessage" class="form-message" role="status"></p>
+      </form>
     </section>
     <section class="admin-panel" id="panel-staff">
       <div class="admin-heading"><div><p class="eyebrow">مدیریت تیم فروشگاه</p><h2>کارکنان و سطح دسترسی</h2></div><button class="text-button" id="reloadStaff" type="button">به‌روزرسانی</button></div>
