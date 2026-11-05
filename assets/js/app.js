@@ -18,7 +18,7 @@ let freeWorld=null;
 let freeAnimationFrame=0;
 const freeMovementKeys=new Set();
 let freePointerLook=null;
-const freeCategoryPositions={
+let freeCategoryPositions={
   dairy:{laneX:-3.5,shelfX:-2.4,side:1,z:-1},
   grocery:{laneX:-3.5,shelfX:-2.4,side:1,z:-6.2},
   snacks:{laneX:0,shelfX:-1.2,side:-1,z:-1},
@@ -30,7 +30,7 @@ const freeCategoryPositions={
 
 const grid=document.getElementById("productGrid");
 function renderProducts(list=products){grid.innerHTML=list.map(p=>{const image=safeImageURL(p.image);const unavailable=p.inStock===false;const action=p.hasVariants?"انتخاب":"+";const priceLabel=p.hasVariants?"از "+money(Number(p.price)||0):money(Number(p.price)||0);return `<article class="product-card" data-id="${Number(p.id)}" tabindex="0"><div class="product-image">${image?`<img src="${escapeHTML(image)}" alt="${escapeHTML(p.name)}" loading="lazy" decoding="async" referrerpolicy="no-referrer">`:""}</div><h4>${escapeHTML(p.name)}</h4><p>${escapeHTML(p.unit)}</p>${unavailable?'<small class="product-stock-badge">فعلاً ناموجود</small>':""}<div class="product-bottom"><span class="price">${priceLabel}</span><button class="add-button" data-add="${Number(p.id)}" aria-label="${p.hasVariants?"انتخاب تنوع ":"افزودن "}${escapeHTML(p.name)}" ${unavailable?"disabled":""}>${action}</button></div></article>`;}).join("");document.getElementById("productCount").textContent=new Intl.NumberFormat("fa-IR").format(list.length)+" محصول";}
-function selectCategory(category){activeCategory=category;document.querySelectorAll(".category").forEach(b=>b.classList.toggle("active",b.dataset.category===category));document.getElementById("aisleTitle").textContent=categoryNames[category];const list=category==="all"?products:products.filter(p=>p.category===category);renderProducts(list);aisleIndex=Object.keys(categoryNames).indexOf(category);document.getElementById("aisleScene").style.backgroundPosition=(50+(aisleIndex%3-1)*8)+"% center";if(movementMode==="free"&&freeWorld)focusFreeCategory(category);}
+function selectCategory(category){activeCategory=category;document.querySelectorAll(".category").forEach(b=>b.classList.toggle("active",b.dataset.category===category));document.getElementById("aisleTitle").textContent=categoryNames[category];const list=category==="all"?products:products.filter(p=>p.category===category);renderProducts(list);aisleIndex=Object.keys(categoryNames).indexOf(category);document.getElementById("aisleScene").style.backgroundPosition=(50+(aisleIndex%3-1)*8)+"% center";if(movementMode==="free"&&freeWorld)focusFreeCategory(category==="all"?(Object.keys(freeCategoryPositions)[0]||"dairy"):category);}
 function clampNumber(value,min,max){return Math.max(min,Math.min(max,value));}
 function makeFreeLabel(THREE,text){
   const canvas=document.createElement("canvas");canvas.width=512;canvas.height=128;
@@ -73,14 +73,27 @@ function buildFreeMovementWorld(){
     for(const y of [.28,.88,1.48,2.08]){const board=new THREE.Mesh(new THREE.BoxGeometry(1.02,.09,3.85),wood);board.position.set(-side*.42,y,0);rack.add(board);}
     for(const zSide of [-1.78,1.78]){const panel=new THREE.Mesh(new THREE.BoxGeometry(1.02,2.2,.09),wood);panel.position.set(-side*.42,1.12,zSide);rack.add(panel);}
     const palette=colors[category]||[0x8cae8a,0xd6ad6b,0xc98264];
+    const categoryProducts=products.filter(product=>product.category===category).slice(0,18);
+    const hitMaterial=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide});
     for(let level=0;level<3;level++)for(let item=0;item<6;item++){
       const material=new THREE.MeshStandardMaterial({color:palette[(item+level)%palette.length],roughness:.72});
       const heightBox=.28+(item%3)*.045;
       const product=new THREE.Mesh(new THREE.BoxGeometry(.22,heightBox,.25),material);
-      product.position.set(-side*(.12+level*.02),.47+level*.6+heightBox/2,-1.45+item*.57);rack.add(product);
+      const shelfY=.47+level*.6+heightBox/2;
+      const shelfZ=-1.45+item*.57;
+      product.position.set(-side*(.12+level*.02),shelfY,shelfZ);rack.add(product);
+      const productData=categoryProducts[level*6+item];
+      if(productData){
+        const productHit=new THREE.Mesh(new THREE.BoxGeometry(.24,.5,.48),hitMaterial);
+        productHit.position.set(-side*.9,shelfY,shelfZ);
+        productHit.userData.productId=Number(productData.id);
+        rack.add(productHit);clickables.push(productHit);
+        const productLabel=makeFreeLabel(THREE,String(productData.name||"کالا").slice(0,24));
+        productLabel.position.set(-side*.98,shelfY+heightBox/2+.16,shelfZ);
+        productLabel.scale.set(.9,.22,1);rack.add(productLabel);
+      }
     }
     const label=makeFreeLabel(THREE,categoryNames[category]||category);label.position.set(-side*.72,2.62,0);rack.add(label);
-    const hitMaterial=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide});
     const hit=new THREE.Mesh(new THREE.BoxGeometry(.16,2.4,3.9),hitMaterial);
     hit.position.set(-side*.66,1.2,0);hit.userData.category=category;rack.add(hit);clickables.push(hit);
   });
@@ -115,7 +128,7 @@ function startFreeMovement(){
     });
     canvas.addEventListener("pointerup",event=>{
       if(!freePointerLook||freePointerLook.id!==event.pointerId)return;
-      if(!pointerMoved){const rect=canvas.getBoundingClientRect();pointer.x=((event.clientX-rect.left)/rect.width)*2-1;pointer.y=-((event.clientY-rect.top)/rect.height)*2+1;raycaster.setFromCamera(pointer,freeWorld.camera);const hit=raycaster.intersectObjects(freeWorld.clickables,false)[0];if(hit&&hit.object.userData.category)selectCategory(hit.object.userData.category);}
+      if(!pointerMoved){const rect=canvas.getBoundingClientRect();pointer.x=((event.clientX-rect.left)/rect.width)*2-1;pointer.y=-((event.clientY-rect.top)/rect.height)*2+1;raycaster.setFromCamera(pointer,freeWorld.camera);const hit=raycaster.intersectObjects(freeWorld.clickables,false)[0];if(hit?.object?.userData?.productId)openProduct(hit.object.userData.productId);else if(hit?.object?.userData?.category)selectCategory(hit.object.userData.category);}
       freePointerLook=null;
     });
     canvas.addEventListener("pointercancel",()=>{freePointerLook=null;});
@@ -127,7 +140,7 @@ function startFreeMovement(){
       button.addEventListener("pointerdown",event=>{event.preventDefault();freeMovementKeys.add(key);});
       ["pointerup","pointercancel","pointerleave"].forEach(type=>button.addEventListener(type,()=>freeMovementKeys.delete(key)));
     });
-    focusFreeCategory(activeCategory==="all"?"dairy":activeCategory);
+    focusFreeCategory(activeCategory==="all"?(Object.keys(freeCategoryPositions)[0]||"dairy"):activeCategory);
     const animate=()=>{
       if(!freeWorld||movementMode!=="free")return;freeAnimationFrame=requestAnimationFrame(animate);
       const speed=.075,yaw=freeWorld.yaw;let dx=0,dz=0;
@@ -502,6 +515,19 @@ function renderCategories(categories) {
       icon: ["🥛", "🍚", "🍪", "🧃", "🧴", "🧊", "🍎", "🛒"][i % 8]
     }))];
   categoryNames = Object.fromEntries(rows.map(row => [row.slug, row.title]));
+  const categorySlugs = rows.map(row => row.slug).filter(slug => slug !== "all");
+  if (categorySlugs.length) {
+    const lanes = [-3.5,0,3.5];
+    freeCategoryPositions = {};
+    categorySlugs.forEach((slug,index) => {
+      const laneIndex = index % lanes.length;
+      const depthIndex = Math.floor(index / lanes.length);
+      const laneX = lanes[laneIndex];
+      const side = laneIndex === 0 ? 1 : laneIndex === 2 ? -1 : (depthIndex % 2 === 0 ? -1 : 1);
+      freeCategoryPositions[slug] = {laneX,shelfX:laneX+side*1.1,side,z:-1-depthIndex*5.2};
+    });
+    if (movementMode === "free" && freeWorld) { stopFreeMovement(); startFreeMovement(); }
+  }
   list.innerHTML = rows.map((row, i) =>
     '<button class="category' + (i === 0 ? ' active' : '') +
     '" data-category="' + escapeHTML(row.slug) + '"><span>' + row.icon +
