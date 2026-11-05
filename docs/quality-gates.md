@@ -47,4 +47,4 @@ A feature is not considered complete until it passes its relevant gates.
 ## Authorization and catalog administration
 - Admin product reads and writes require an explicit tenant-scoped permission; missing grants deny access.
 - A role grant cannot cross its tenant/global role scope. Platform permissions are not accepted by tenant-scoped checks.
-- Product category references are validated against the active tenant, and product changes write an audit event in the same transaction.
+- Product category and category parent/media references are validated against the active tenant. Category parent changes cannot create cycles; deactivation is blocked while child categories or active products remain.\n- Product/category changes write audit events in the same transaction.
