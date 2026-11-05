@@ -6,6 +6,10 @@ require_once dirname(__DIR__, 2) . '/app/bootstrap.php';
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 header('X-Frame-Options: DENY');
+header('X-Permitted-Cross-Domain-Policies: none');
+header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
+header('Cross-Origin-Resource-Policy: same-origin');
+header("Content-Security-Policy: default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
 
 try {
     $tenant = app_tenant();
