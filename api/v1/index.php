@@ -12,6 +12,7 @@ require_once dirname(__DIR__, 2) . '/app/admin_orders.php';
 require_once dirname(__DIR__, 2) . '/app/inventory.php';
 require_once dirname(__DIR__, 2) . '/app/admin_scenes.php';
 require_once dirname(__DIR__, 2) . '/app/reports.php';
+require_once dirname(__DIR__, 2) . '/app/notifications.php';
 require_once dirname(__DIR__, 2) . '/app/wallet.php';
 require_once dirname(__DIR__, 2) . '/app/customer_cart.php';
 require_once dirname(__DIR__, 2) . '/app/store_settings.php';
@@ -276,6 +277,23 @@ try {
         $session = app_auth_require($db, $tenant);
         app_auth_require_permission($db, $tenant, $session, 'inventory.read');
         app_admin_report_stock_movements_csv($db, $tenant);
+    }
+
+    if ($path === '/admin/notifications' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_admin_notification_list($db, $tenant, $session);
+    }
+
+    if ($path === '/admin/notifications/read-all' && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_admin_notification_mark_all_read($db, $tenant, $session);
+    }
+
+    if (preg_match('#^/admin/notifications/([1-9][0-9]*)/read$#', $path, $notificationMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_admin_notification_mark_read($db, $tenant, $session, (int)$notificationMatch[1]);
     }
 
     if ($path === '/admin/reports/overview' && $method === 'GET') {
