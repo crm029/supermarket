@@ -56,6 +56,20 @@ BEGIN
   JOIN permissions p ON p.id = rp.permission_id
   WHERE ur.tenant_id = 1
     AND ur.user_id = @tenant_one_user
+    AND p.permission_key = 'catalog.categories.manage'
+    AND p.scope = 'tenant';
+
+  IF granted_count <> 1 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Tenant category permission was not granted to assigned user';
+  END IF;
+
+  SELECT COUNT(*) INTO granted_count
+  FROM user_roles ur
+  JOIN role_permissions rp
+    ON rp.role_scope_id = ur.role_scope_id AND rp.role_id = ur.role_id
+  JOIN permissions p ON p.id = rp.permission_id
+  WHERE ur.tenant_id = 1
+    AND ur.user_id = @tenant_one_user
     AND p.permission_key = 'platform.tenants.manage'
     AND p.scope = 'tenant';
 
