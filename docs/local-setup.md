@@ -7,11 +7,11 @@ The root `index.php` is the visual demo and can be opened without a database. Th
 1. Create a database named `supermarket360` with utf8mb4.
 2. Import `database/schema.sql` using phpMyAdmin.
 3. For a disposable local demo only, import `database/demo-seed.sql`.
-4. Back up the database, then apply `database/migrations/2026_11_05_tenant_isolation.sql` using phpMyAdmin or the MySQL client. This migration adds tenant-aware composite foreign keys and scope triggers; it intentionally fails if legacy records contain cross-tenant references.
+4. Back up the database, then apply `database/migrations/2026_11_05_tenant_isolation.sql` using phpMyAdmin or the MySQL client. This migration adds tenant-aware composite foreign keys and scope triggers; it intentionally fails if legacy records contain cross-tenant references.\n5. Apply `database/migrations/2026_11_05_auth_sessions_otp.sql` to create OTP challenges, rate-limit buckets and database-backed sessions.
 5. For an existing database, review and repair inconsistent tenant references before applying the migration. Never run schema or demo seed imports over a live production database.
 6. Create one tenant and one verified domain matching the Host header, then set the tenant status to `active`. If you imported the demo seed, this is already configured for `localhost`.
-7. Configure `DB_HOST`, `DB_DATABASE`, `DB_USERNAME` and `DB_PASSWORD` in the PHP server environment. Do not put production secrets in Git.
-8. Route `/api/v1/*` to `api/v1/index.php` using the web server rewrite configuration, or call the PHP entry point directly while developing.
+8. Configure `DB_HOST`, `DB_DATABASE`, `DB_USERNAME` and `DB_PASSWORD` in the PHP server environment. Do not put production secrets in Git. Set a unique `APP_KEY` of at least 32 characters. For local OTP testing, use `SMS_PROVIDER=log`; the code appears only in the PHP error log. This driver is forbidden in production.
+9. Route `/api/v1/*` to `api/v1/index.php` using the web server rewrite configuration, or call the PHP entry point directly while developing.
 
 ## Example requests
 - `GET /api/v1/store`
