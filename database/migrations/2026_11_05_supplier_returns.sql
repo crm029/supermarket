@@ -1,4 +1,7 @@
 -- Auditable supplier returns tied to actual received purchase-order receipt lines.
+ALTER TABLE purchase_order_receipt_items
+  ADD UNIQUE KEY uq_purchase_receipt_item_tenant_id (tenant_id,id);
+
 ALTER TABLE stock_movements
   MODIFY movement_type ENUM('receipt','transfer_in','transfer_out','adjustment','reservation','release','sale','return','supplier_return') NOT NULL;
 
