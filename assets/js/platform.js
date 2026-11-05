@@ -16,6 +16,21 @@
   function showDashboard(){ $("platformLogin").hidden=true;$("platformDashboard").hidden=false;$("platformIdentity").textContent=currentUser?currentUser.full_name+" · "+currentUser.mobile:""; }
   function showLogin(){ $("platformDashboard").hidden=true;$("platformLogin").hidden=false; }
   function statusLabel(status){return {pending:"در انتظار تأیید دامنه",active:"فعال",suspended:"تعلیق‌شده"}[status]||status;}
+  async function loadAudit(){
+    const box=$("platformAuditList");
+    if(!box)return;
+    try{
+      const result=await api("platform/audit");
+      const rows=result.data||[];
+      if(!rows.length){box.innerHTML='<div class="platform-empty">هنوز رویدادی ثبت نشده است.</div>';return;}
+      const labels={"platform.tenant.created":"ایجاد فروشگاه","platform.tenant.domain_verified":"تأیید دامنه","platform.tenant.suspended":"تعلیق فروشگاه"};
+      box.innerHTML=rows.map(row=>{
+        const details=row.details?JSON.stringify(row.details):"";
+        return '<article class="platform-audit-row"><div><strong>'+escapeText(labels[row.action]||row.action)+'</strong><small>'+escapeText(row.actor_name||"مدیر پلتفرم")+' · '+escapeText(row.created_at||"")+'</small></div><p>'+escapeText(row.entity_type||"")+" #"+Number(row.entity_id||0)+'</p><small>'+escapeText(details)+'</small></article>';
+      }).join("");
+      await loadAudit();
+    }catch(error){box.innerHTML='<div class="platform-empty">'+escapeText(error.message)+'</div>';}
+  }
   async function loadTenants(){
     const box=$("platformTenantList");box.innerHTML="<p>در حال دریافت فهرست...</p>";
     try{
