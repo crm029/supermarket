@@ -19,7 +19,7 @@ Implemented in this milestone:
 - MySQL schema foundation for tenants/domains, users/roles, media, categories/products, virtual-store scenes/hotspots, multi-warehouse stock, stock movements/reservations, orders, payments, wallet ledger, referrals and audit logs.
 - Verified-host tenant resolver and read-only API routes for store profile, categories and product search.
 - Local sample tenant seed and API/setup documentation.
-- GitHub Actions PHP syntax-check workflow.
+- GitHub Actions PHP/JavaScript checks plus a MySQL 8 schema-migration and tenant-isolation integration job.\n- Additive tenant-isolation migration with composite foreign keys for tenant-owned relations and scope guards for role assignments and audit actors.
 
 Not implemented yet:
 - Real customer registration/OTP, persistent cart and checkout.
@@ -28,7 +28,7 @@ Not implemented yet:
 - Wallet transactions and referral reward processing.
 - Super-admin/store/cashier/warehouse/courier panels.
 - Scene editor, linked photo-tour hotspots and the actual WebGL free-movement engine.
-- Production-grade composite tenant foreign keys, authorization policies, CSRF, automated security/integration tests and deployment operations.
+- Runtime authentication/authorization policies, CSRF, commerce transaction services, broader security tests and deployment operations. The tenant-isolation migration is included but must pass CI and be applied to a backed-up database before use.
 
 ## Architecture principles
 
