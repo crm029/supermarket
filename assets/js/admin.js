@@ -669,8 +669,9 @@ document.getElementById("orderRows").addEventListener("click",async e=>{
       const pickupTime=order.pickup_slot_starts_at_label?(order.pickup_slot_title+" · "+order.pickup_slot_starts_at_label+" تا "+order.pickup_slot_ends_at_label):"";
       const address=order.fulfillment==="delivery"?[order.delivery_recipient,order.delivery_mobile,order.province,order.city,order.delivery_address,order.postal_code].filter(Boolean).join(" · "):("تحویل حضوری"+(pickupTime?" · "+pickupTime:""));
       const box=document.getElementById("adminOrderDetail");
+      const couponInfo=Number(order.discount_rial)>0?'<p>کد تخفیف: '+escapeText(order.coupon_code||"—")+' · مبلغ تخفیف: '+money(Number(order.discount_rial)/10)+'</p>':"";
       box.hidden=false;
-      box.innerHTML='<h3>سفارش '+escapeText(order.order_number)+'</h3><p>مشتری: '+escapeText(order.customer_name)+' · '+escapeText(order.customer_mobile)+'</p><p>نشانی / روش دریافت: '+escapeText(address)+'</p><p>توضیحات: '+escapeText(order.customer_note||"—")+'</p>';
+      box.innerHTML='<h3>سفارش '+escapeText(order.order_number)+'</h3><p>مشتری: '+escapeText(order.customer_name)+' · '+escapeText(order.customer_mobile)+'</p><p>نشانی / روش دریافت: '+escapeText(address)+'</p>'+couponInfo+'<p>توضیحات: '+escapeText(order.customer_note||"—")+'</p>';
     }
     return;
   }
