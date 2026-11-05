@@ -63,6 +63,15 @@ assert_json() {
           ($rows[0]["in_stock"] ?? null) !== true) exit(1);
       exit(0);
     }
+    if ($check === "variant-parent") {
+      foreach (($data["data"] ?? []) as $row) {
+        if (($row["sku"] ?? "") === "API-VARIANT-GROUP") {
+          if (($row["has_variants"] ?? null) !== true || (int)($row["price_rial"] ?? 0) !== 65000) exit(1);
+          exit(0);
+        }
+      }
+      exit(1);
+    }
     if ($check === "product-detail") {
       if (($data["data"]["in_stock"] ?? null) !== true ||
           ($data["data"]["image"]["url"] ?? null) !== "https://cdn.example.test/assets/products/ci%20milk%20bottle.jpg") exit(1);
