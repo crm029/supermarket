@@ -1,40 +1,52 @@
 # Delivery roadmap
 
-## Phase 0 — foundations (current)
-- [x] Initialize repository.
-- [x] Record product vision and architecture decisions.
-- [x] Create first visual storefront prototype.
-- [ ] Confirm local prototype on supported PHP/XAMPP setup.
-- [ ] Convert the architecture into Laravel application modules and migrations.
+Status is intentionally conservative: a checklist item is complete only when implemented and verified.
 
-## Phase 1 — production foundation
-- Tenant/domain resolution and isolation tests.
-- Authentication, phone OTP, sessions, password reset and rate limits.
-- Permission matrix and audit log.
-- Store configuration and media library.
+## Phase 0 — product and architecture
+- [x] Initialize repository and record product vision.
+- [x] Document tenant model, data model, API outline, security principles and quality gates.
+- [x] Create visual storefront prototype.
+- [x] Add initial MySQL schema for commerce, multi-warehouse inventory, media scenes, orders, wallet/referral and audit records.
+- [x] Add verified-host tenant resolver and read-only store/category/product API.
+- [x] Add local sample tenant seed and PHP syntax-check workflow.
+- [ ] Run PHP syntax checks in GitHub Actions and resolve any failures.
+- [ ] Validate schema against the selected MySQL/MariaDB versions.
+- [ ] Verify XAMPP installation on a real local machine.
 
-## Phase 2 — commerce
-- Product catalog, categories, variants, pricing, discounts and search.
-- Cart validation, delivery/pickup options, order lifecycle.
-- Customer profile, address book and order tracking.
+## Phase 1 — secure production foundation
+- [ ] Finish tenant-aware composite foreign keys and cross-tenant negative tests.
+- [ ] Authentication, mobile OTP, sessions, password reset and rate limits.
+- [ ] Permission matrix, policies, CSRF protection and audit service.
+- [ ] Platform super-admin tenant provisioning and domain verification.
+- [ ] Store settings, branding and secure media library.
 
-## Phase 3 — virtual store
-- Scene editor for aisle/photo nodes and hotspots.
-- Guided navigation and photo-tour mode.
-- Optional WebGL free-movement mode with mobile fallback.
-- Product-to-shelf mapping and accessibility alternatives.
+## Phase 2 — catalog and commerce
+- [ ] Complete product/category CRUD, variants, barcode, pricing, promotions and search.
+- [ ] Persistent cart and server-side quote validation.
+- [ ] Address book, delivery zones, pickup scheduling and fees.
+- [ ] Transactional checkout, order state machine and customer order tracking.
 
-## Phase 4 — operations
-- Multi-warehouse stock ledger and transfers.
-- Picking/packing, cashier review, courier dispatch and pickup.
-- Returns, refunds, cancellations and operational reports.
+## Phase 3 — immersive storefront
+- [ ] Merchant scene/media editor.
+- [ ] Photo-tour nodes, hotspots and product-to-shelf links.
+- [ ] Guided category-to-aisle navigation.
+- [ ] Optional WebGL free-movement mode with keyboard/touch and low-end fallback.
+- [ ] Real-store media onboarding and responsive image delivery.
 
-## Phase 5 — growth and payments
-- Zarinpal adapter, verified callbacks and reconciliation.
-- 0098.ir SMS adapter, OTP templates and delivery reports.
-- Wallet ledger, referral codes, reward rules and anti-abuse controls.
+## Phase 4 — store operations
+- [ ] Multi-warehouse stock receipt, transfer, adjustment and return services.
+- [ ] Transactional reservations, expiry/release and paid-order stock commit.
+- [ ] Cashier review, picking, packing, pickup and courier dispatch.
+- [ ] Operational dashboards, stock alerts and sales reports.
 
-## Phase 6 — SaaS operations
-- Super-admin tenant provisioning, plans, billing and support tools.
-- Custom domains, TLS, backups, monitoring, alerting and disaster recovery.
-- Security review, load testing, accessibility and release checklist.
+## Phase 5 — customer growth and integrations
+- [ ] Zarinpal adapter, verified callbacks, idempotency and reconciliation.
+- [ ] 0098.ir SMS adapter, OTP templates and delivery reports.
+- [ ] Append-only wallet posting and customer transaction history.
+- [ ] Referral attribution, qualifying-order rules and anti-abuse controls.
+
+## Phase 6 — SaaS launch
+- [ ] Plans, subscription billing, platform support and finance audit.
+- [ ] Custom domains, HTTPS, backups, monitoring and disaster recovery.
+- [ ] Security review, load testing, accessibility and device testing.
+- [ ] Merchant acceptance, operational runbooks and production release.
