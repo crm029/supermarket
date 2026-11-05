@@ -138,6 +138,7 @@ declare(strict_types=1);
       </div>
     </div>
     <label>توضیحات سفارش (اختیاری) <textarea id="orderNote" rows="2" maxlength="1000"></textarea></label>
+    <p id="checkoutPolicyNote" class="admin-hint"></p>
     <button class="primary-button full" id="placeOrderButton" type="button">ثبت سفارش</button>
     <p id="checkoutMessage" class="form-message" role="status"></p>
   </div>
