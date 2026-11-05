@@ -112,6 +112,7 @@ async function apiPut(path, body, withCsrf = false) {
   return payload;
 }
 async function syncCustomerCart() {
+  let synchronized = false;
   try {
     const owner = localStorage.getItem("sm360_cart_owner");
     const remote = await apiGet("me/cart");
@@ -125,10 +126,11 @@ async function syncCustomerCart() {
     updateCart();
     localStorage.setItem("sm360_cart_owner", String(currentUser.id));
     await apiPut("me/cart", {items:[...cart].map(([product_id,quantity])=>({product_id,quantity}))}, true);
+    synchronized = true;
   } catch (_) {
     // Keep the local cart usable if the server cart is temporarily unavailable.
   } finally {
-    cartSyncReady = true;
+    cartSyncReady = synchronized;
   }
 }
 function persistCustomerCart() {
