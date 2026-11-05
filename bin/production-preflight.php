@@ -45,6 +45,8 @@ $check($debugDisabled, 'Application debug mode is disabled', 'Set APP_DEBUG=fals
 
 $key = (string)$env('APP_KEY', '');
 $check(strlen($key) >= 32, 'Application key is configured', 'APP_KEY must be a unique secret with at least 32 characters.');
+$dbUser = strtolower(trim((string)$env('DB_USERNAME', '')));
+$check($dbUser !== '' && $dbUser !== 'root', 'Dedicated database account is configured', 'Use a dedicated least-privilege DB_USERNAME; production must not use root.');
 
 $baseUrl = trim((string)$env('APP_BASE_URL', ''));
 $parts = $baseUrl !== '' ? parse_url($baseUrl) : false;
@@ -70,13 +72,13 @@ $check($merchant !== '', 'ZarinPal merchant ID is configured', 'Set ZARINPAL_MER
 $check(!$sandbox, 'ZarinPal live mode is selected', 'Set ZARINPAL_SANDBOX=false after sandbox acceptance tests.');
 
 $mediaRoot = trim((string)$env('MEDIA_STORAGE_PATH', ''));
-$isWindowsDrive = strlen($mediaRoot) >= 3 && ctype_alpha($mediaRoot[0]) && $mediaRoot[1] === ':' && ($mediaRoot[2] === '/' || $mediaRoot[2] === '\\\\');
-$isAbsolute = $mediaRoot !== '' && (str_starts_with($mediaRoot, DIRECTORY_SEPARATOR) || $isWindowsDrive);
+$isAbsolute = $mediaRoot !== '' && str_starts_with($mediaRoot, DIRECTORY_SEPARATOR);
 $mediaReal = $isAbsolute ? realpath($mediaRoot) : false;
-$docRoot = isset($_SERVER['DOCUMENT_ROOT']) ? realpath((string)$_SERVER['DOCUMENT_ROOT']) : false;
-$outsideDocRoot = $mediaReal !== false && is_dir($mediaReal)
-    && ($docRoot === false || !str_starts_with($mediaReal . DIRECTORY_SEPARATOR, rtrim($docRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR));
-$check($outsideDocRoot, 'Media storage exists outside the public document root', 'Set MEDIA_STORAGE_PATH to an existing writable directory outside DOCUMENT_ROOT.');
+$docRootRaw = $env('PUBLIC_DOCUMENT_ROOT', $_SERVER['DOCUMENT_ROOT'] ?? null);
+$docRoot = is_string($docRootRaw) && $docRootRaw !== '' ? realpath($docRootRaw) : false;
+$outsideDocRoot = $mediaReal !== false && is_dir($mediaReal) && $docRoot !== false
+    && !str_starts_with($mediaReal . DIRECTORY_SEPARATOR, rtrim($docRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR);
+$check($outsideDocRoot, 'Media storage exists outside the public document root', 'Set PUBLIC_DOCUMENT_ROOT to the real public document root and MEDIA_STORAGE_PATH to an existing directory outside it.');
 $check($mediaReal !== false && is_writable($mediaReal), 'Media storage is writable', 'The PHP process must be able to write to MEDIA_STORAGE_PATH.');
 
 $mediaUrl = trim((string)$env('MEDIA_BASE_URL', ''));
