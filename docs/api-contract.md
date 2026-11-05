@@ -150,3 +150,8 @@ Checkout intentionally does not mark an order paid. Reservations expire after 20
 - `POST /admin/roles` creates a tenant role and grants selected tenant-scoped permissions; requires `staff.manage` and CSRF. `store_owner` and `staff.manage` cannot be delegated.
 - `POST /admin/staff/assign` assigns a tenant role to an already active, OTP-verified user by mobile number; requires `staff.manage` and CSRF.
 - `DELETE /admin/staff/{user_id}/roles/{role_id}` removes a tenant role assignment; requires `staff.manage` and CSRF. A user cannot remove their own role through this route, and the store-owner role is protected.
+
+
+## Media library
+- `GET /admin/media` lists up to 200 newest media assets in the verified tenant, including safe public URL, dimensions, media type, and usage count across product/category/scene references. Requires `media.manage`.
+- `POST /admin/media` remains the CSRF-protected upload endpoint. Unused-file deletion and orphan reconciliation are not implemented yet.
