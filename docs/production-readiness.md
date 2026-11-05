@@ -6,7 +6,7 @@ The application code includes customer registration, catalogue management, inven
 
 - [ ] Apply all migrations, then grant platform access only to a dedicated active OTP-verified account using database/bootstrap-platform-admin.sql.
 - [ ] Use platform.php to provision tenants; each new store starts pending with an unverified primary domain and a pending owner account.
-- [ ] Verify domain ownership out of band before recording the platform operator's attestation. The current application records the method and note but does not itself perform a DNS TXT or HTTP-file challenge.
+- [ ] Publish the generated TXT record at _supermarket360-verification.<domain> and confirm the backend verifies the exact one-time token before activating the tenant. Tokens expire after 24 hours and can be reissued.
 - [ ] Keep the platform administrator's home tenant active and protected from suspension; the API blocks self-suspension.
 
 ## Server
