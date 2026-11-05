@@ -65,6 +65,14 @@ declare(strict_types=1);
         <button class="scene-arrow prev" id="prevAisle" aria-label="راهروی قبلی">‹</button>
         <button class="scene-arrow next" id="nextAisle" aria-label="راهروی بعدی">›</button>
         <div class="scene-floor"></div>
+        <div id="freeMovementControls" class="free-movement-controls" hidden>
+          <div class="free-movement-hud"><strong id="freeMovementStatus">به راهروی فروشگاه خوش آمدی</strong><small>حرکت: W A S D یا کلیدهای جهت‌دار · لمس: دکمه‌های پایین</small></div>
+          <div class="free-movement-pad" aria-label="کنترل حرکت فروشگاه">
+            <button type="button" data-move="forward" aria-label="حرکت به جلو">↑</button>
+            <div><button type="button" data-move="left" aria-label="حرکت به چپ">←</button><button type="button" data-move="back" aria-label="حرکت به عقب">↓</button><button type="button" data-move="right" aria-label="حرکت به راست">→</button></div>
+          </div>
+          <button type="button" id="exitFreeMovement" class="free-movement-exit">بازگشت به فروشگاه</button>
+        </div>
       </div>
       <div class="scene-controls"><span>● فروشگاه نمونه</span><span>برای حرکت بین راهروها از فلش‌ها استفاده کن</span><div><button id="zoomOut" aria-label="کوچک‌نمایی">−</button><button id="zoomIn" aria-label="بزرگ‌نمایی">+</button></div></div>
       <div class="shelf-heading"><div><small>منتخب این قفسه</small><h3>محصولات این راهرو</h3></div><span id="productCount">۰ محصول</span></div>
@@ -156,6 +164,7 @@ declare(strict_types=1);
     <p id="checkoutMessage" class="form-message" role="status"></p>
   </div>
 </dialog>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" defer crossorigin="anonymous"></script>
 <script src="assets/js/app.js" defer></script>
 </body>
 </html>
