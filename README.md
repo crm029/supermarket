@@ -62,6 +62,7 @@ Still in progress:
 - `docs/tenant-onboarding.md` — merchant onboarding.
 - `docs/quality-gates.md` — release acceptance gates.
 - `docs/security.md` — security principles.
+- `docs/security-audit-2026-11-06.md` — current source-level security review and remaining production blockers.
 - `docs/roadmap.md` — delivery status.
 - `docs/seo.md` — tenant-aware SEO implementation and merchant launch checklist.
 
