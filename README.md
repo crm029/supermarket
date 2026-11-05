@@ -24,13 +24,14 @@ Implemented in this milestone:
 - Additive tenant-isolation migration with composite foreign keys for tenant-owned relations and scope guards for role assignments and audit actors.
 
 Not implemented yet:
-- New customer registration, production SMS delivery, password reset, persistent cart and checkout.
-- Live stock reservation services and order workflow.
-- Zarinpal and 0098.ir integrations.
+- Customer registration, account recovery and production SMS delivery (OTP login currently supports existing active accounts only).
+- Persistent cart, server-side quote validation, transactional checkout and order tracking.
+- Zarinpal integration, payment verification, refunds and reconciliation.
+- Live stock reservation services, multi-warehouse workflows and courier operations.
 - Wallet transactions and referral reward processing.
-- Super-admin/store/cashier/warehouse/courier panels.
+- Super-admin, store, cashier, warehouse and courier panels with permission-based authorization.
 - Scene editor, linked photo-tour hotspots and the actual WebGL free-movement engine.
-- Production SMS gateway integration, customer registration/password reset, role-based authorization policies, CSRF enforcement for all future write routes, commerce transaction services and deployment operations. Existing databases require a backup and legacy-data review before applying migrations.
+- Production deployment operations, backups, monitoring, load testing and security review.
 
 ## Architecture principles
 
