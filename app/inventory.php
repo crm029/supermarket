@@ -65,7 +65,11 @@ function app_inventory_stock_list(PDO $db, array $tenant): never {
 function app_inventory_validate_refs(PDO $db, int $tenantId, int $warehouseId, int $productId): void {
     $stmt=$db->prepare(
         'SELECT 1 FROM warehouses w JOIN products p ON p.tenant_id=w.tenant_id
-         WHERE w.tenant_id=? AND w.id=? AND w.is_active=1 AND p.id=? AND p.is_active=1 LIMIT 1'
+         WHERE w.tenant_id=? AND w.id=? AND w.is_active=1 AND p.id=? AND p.is_active=1
+           AND p.product_kind <> 'variant_parent'
+           AND (p.product_kind <> 'variant' OR EXISTS (
+             SELECT 1 FROM products parent WHERE parent.tenant_id=p.tenant_id AND parent.id=p.parent_product_id AND parent.is_active=1
+           )) LIMIT 1'
     );
     $stmt->execute([$tenantId,$warehouseId,$productId]);
     if (!$stmt->fetchColumn()) app_json(['error'=>'انبار یا کالای انتخاب‌شده در این فروشگاه فعال نیست.'],422);
