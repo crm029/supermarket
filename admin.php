@@ -61,7 +61,7 @@ declare(strict_types=1);
     <p id="adminMessage" class="form-message" role="status"></p>
   </section>
 </main>
-<dialog id="adminLoginDialog" class="product-dialog" open>
+<dialog id="adminLoginDialog" class="product-dialog">
   <p class="eyebrow">احراز هویت مدیر</p><h2>ورود به پنل مدیریت</h2>
   <div class="account-form"><label>شماره موبایل<input id="adminMobile" inputmode="tel" autocomplete="tel" placeholder="09xxxxxxxxx"></label><button class="primary-button" id="adminOtpRequest" type="button">دریافت کد ورود</button><label>کد تأیید<input id="adminOtpCode" inputmode="numeric" maxlength="6"></label><button class="primary-button full" id="adminOtpVerify" type="button">تأیید و ورود</button><p id="adminLoginMessage" class="form-message" role="status"></p></div>
 </dialog>
