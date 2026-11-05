@@ -33,3 +33,31 @@ SELECT tenant_id,warehouse_id,product_id,
        on_hand,on_hand,reserved,0
 FROM stock_levels
 WHERE on_hand > 0;
+
+-- Link each order reservation to the exact lots reserved, including pre-migration
+-- active reservations which are represented by the single LEGACY lot per SKU/location.
+ALTER TABLE stock_reservations ADD UNIQUE KEY uq_stock_reservation_tenant_id (tenant_id,id);
+
+CREATE TABLE stock_reservation_batches (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tenant_id BIGINT UNSIGNED NOT NULL,
+  reservation_id BIGINT UNSIGNED NOT NULL,
+  batch_id BIGINT UNSIGNED NOT NULL,
+  quantity BIGINT UNSIGNED NOT NULL,
+  status ENUM('active','committed','released','expired') NOT NULL DEFAULT 'active',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_reservation_batch (tenant_id,reservation_id,batch_id),
+  KEY ix_reservation_batch_status (tenant_id,reservation_id,status),
+  FOREIGN KEY (tenant_id,reservation_id) REFERENCES stock_reservations (tenant_id,id),
+  FOREIGN KEY (tenant_id,batch_id) REFERENCES stock_batches (tenant_id,id),
+  CHECK (quantity > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO stock_reservation_batches (tenant_id,reservation_id,batch_id,quantity,status)
+SELECT sr.tenant_id,sr.id,sb.id,sr.quantity,'active'
+FROM stock_reservations sr
+JOIN stock_batches sb
+  ON sb.tenant_id=sr.tenant_id AND sb.warehouse_id=sr.warehouse_id
+ AND sb.product_id=sr.product_id
+ AND sb.batch_number=CONCAT('LEGACY-',sr.warehouse_id,'-',sr.product_id)
+WHERE sr.status='active';
