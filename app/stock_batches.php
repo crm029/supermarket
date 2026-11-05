@@ -9,6 +9,20 @@ require_once __DIR__ . '/bootstrap.php';
  */
 
 /** Create an additional lot for stock entering a warehouse. */
+
+/** Validate optional operator-entered lot metadata shared by manual stock forms. */
+function app_stock_batch_metadata_input(array $body): array {
+    $batchNumber=trim((string)($body['batch_number']??''));
+    $expiryDate=trim((string)($body['expiry_date']??''));
+    if($batchNumber!==''&&mb_strlen($batchNumber)>80)app_json(['error'=>'شماره بچ حداکثر ۸۰ نویسه است.'],422);
+    if($expiryDate!==''){
+        $date=DateTimeImmutable::createFromFormat('!Y-m-d',$expiryDate,new DateTimeZone('UTC'));
+        $errors=DateTimeImmutable::getLastErrors();
+        if(!$date||($errors!==false&&($errors['warning_count']>0||$errors['error_count']>0))||$date->format('Y-m-d')!==$expiryDate)app_json(['error'=>'تاریخ انقضا معتبر نیست.'],422);
+    }else{$expiryDate=null;}
+    return ['batch_number'=>$batchNumber,'expiry_date'=>$expiryDate];
+}
+
 function app_stock_batch_add(PDO $db, int $tenantId, int $warehouseId, int $productId, int $quantity, string $batchNumber, ?string $expiryDate, int $unitCostRial = 0, ?int $receiptItemId = null): void {
     if ($quantity < 1) throw new InvalidArgumentException('Batch quantity must be positive.');
     $stmt = $db->prepare(
