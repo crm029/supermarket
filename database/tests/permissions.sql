@@ -1,6 +1,9 @@
 -- Permission model integration checks.
 -- Run after tenant-isolation, auth and permissions migrations plus their seed tests.
 
+SELECT id INTO @tenant_one_user FROM users WHERE tenant_id = 1 AND mobile = '09120000001' LIMIT 1;
+SELECT id INTO @tenant_two_user FROM users WHERE tenant_id = 2 AND mobile = '09120000002' LIMIT 1;
+
 INSERT INTO roles (tenant_id, role_key, title)
 VALUES (1, 'store_manager_test', 'مدیر فروشگاه آزمایشی');
 SET @manager_role = LAST_INSERT_ID();
@@ -8,8 +11,8 @@ SET @manager_role = LAST_INSERT_ID();
 INSERT INTO user_roles (tenant_id, user_id, role_id)
 VALUES (1, @tenant_one_user, @manager_role);
 
-INSERT INTO role_permissions (role_id, permission_id)
-SELECT @manager_role, id
+INSERT INTO role_permissions (role_scope_id, role_id, permission_id)
+SELECT 1, @manager_role, id
 FROM permissions
 WHERE permission_key = 'catalog.products.manage' AND scope = 'tenant';
 
