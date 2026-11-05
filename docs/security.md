@@ -9,10 +9,10 @@
 - Secrets only in environment/secret manager; never in Git or frontend JavaScript.
 - Payment callback verification server-to-server; idempotency and reconciliation.
 - Append-only wallet and stock ledgers with actor, timestamp and source references.
-- Audit sensitive changes; avoid logging OTPs, tokens, full payment secrets or unnecessary personal data.
+- Audit sensitive changes; production logs must not contain OTPs, tokens, full payment secrets or unnecessary personal data. The development-only OTP log driver is forbidden in production.
 - Upload validation: MIME/content inspection, size limits, randomized names, image re-encoding and non-executable storage.
 - Backups encrypted, access-controlled and restore-tested.
 - Dependency scanning, PHP static analysis, automated tests and security headers in CI.
 - Production launch requires a security review and tests on the actual hosting environment.
 
-The current static prototype has no real authentication, database, SMS, payment, inventory or tenant isolation. It must not be used to accept real customer data or payments.
+The API now has a first OTP login/session slice: OTP hashes, five-minute expiry, five-attempt lockout, phone/IP rate limits, opaque server-side sessions, HttpOnly/SameSite cookies and CSRF-protected logout. The development SMS driver writes codes only to the local PHP error log. Production SMS delivery is deliberately disabled until a provider adapter and credentials are configured. Authorization policies, customer registration, password reset, checkout, payment and inventory workflows are still incomplete; the project must not be used to accept real customer data or payments.

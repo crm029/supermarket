@@ -12,24 +12,26 @@ A multi-tenant, white-label supermarket commerce platform with an immersive virt
 
 ## Current repository status
 
-This repository contains a visual PHP storefront prototype plus the first database and tenant-aware read API foundation. It is an active development build, **not yet a production-ready commerce service**.
+This repository contains a visual PHP storefront prototype plus a tenant-aware catalog API and an initial customer OTP login/session API. It is an active development build, **not yet a production-ready commerce service**.
 
 Implemented in this milestone:
 - Persian RTL responsive storefront demo with category navigation, product cards, search and local demo cart.
 - MySQL schema foundation for tenants/domains, users/roles, media, categories/products, virtual-store scenes/hotspots, multi-warehouse stock, stock movements/reservations, orders, payments, wallet ledger, referrals and audit logs.
-- Verified-host tenant resolver and read-only API routes for store profile, categories and product search.
+- Verified-host tenant resolver and tenant-scoped catalog API routes for store profile, categories and product search.
+- Rate-limited OTP login endpoints, hashed one-time challenges, opaque database-backed sessions, HttpOnly cookies and CSRF-protected logout. The development SMS driver logs codes only to the local PHP error log; no production SMS provider is enabled.
 - Local sample tenant seed and API/setup documentation.
-- GitHub Actions PHP/JavaScript checks plus a MySQL 8 schema-migration and tenant-isolation integration job.
+- GitHub Actions PHP/JavaScript checks plus MySQL 8 migration, tenant-isolation and authentication-schema integration tests.
 - Additive tenant-isolation migration with composite foreign keys for tenant-owned relations and scope guards for role assignments and audit actors.
 
 Not implemented yet:
-- Real customer registration/OTP, persistent cart and checkout.
-- Live stock reservation services and order workflow.
-- Zarinpal and 0098.ir integrations.
+- Customer registration, account recovery and production SMS delivery (OTP login currently supports existing active accounts only).
+- Persistent cart, server-side quote validation, transactional checkout and order tracking.
+- Zarinpal integration, payment verification, refunds and reconciliation.
+- Live stock reservation services, multi-warehouse workflows and courier operations.
 - Wallet transactions and referral reward processing.
-- Super-admin/store/cashier/warehouse/courier panels.
+- Super-admin, store, cashier, warehouse and courier panels with permission-based authorization.
 - Scene editor, linked photo-tour hotspots and the actual WebGL free-movement engine.
-- Runtime authentication/authorization policies, CSRF, commerce transaction services, broader security tests and deployment operations. The tenant-isolation migration and cross-tenant negative tests pass in MySQL 8 CI. Existing databases still require a backup and legacy-data review before applying it.
+- Production deployment operations, backups, monitoring, load testing and security review.
 
 ## Architecture principles
 

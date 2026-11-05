@@ -24,7 +24,7 @@ A feature is not considered complete until it passes its relevant gates.
 - OTP and login endpoints are rate-limited.
 - Passwords use PHP password_hash/password_verify.
 - Sessions use secure, HTTP-only, SameSite cookies over HTTPS.
-- Logs do not contain passwords, OTPs, tokens or payment secrets.
+- Production logs do not contain passwords, OTPs, tokens or payment secrets. The local-only development SMS driver is the sole exception and must never be enabled in production.
 - Uploads validate MIME, dimensions and size; filenames are generated server-side.
 
 ## Experience
@@ -34,4 +34,12 @@ A feature is not considered complete until it passes its relevant gates.
 - Store scenes have a clear fallback when an image or 3D asset fails.
 - Mobile performance and accessibility are tested on real devices.
 
-## Database integrity\n- CI creates a disposable MySQL 8 database, imports the base schema and sample seed, applies the tenant-isolation migration, and runs negative tests proving cross-tenant category, role and audit-actor references are rejected.\n- The migration must be applied only after a backup; legacy cross-tenant references must be corrected, not silently reassigned.\n
+## Database integrity
+- CI creates a disposable MySQL 8 database, imports the base schema and sample seed, applies the tenant-isolation migration, and runs negative tests proving cross-tenant category, role and audit-actor references are rejected.
+- The migration must be applied only after a backup; legacy cross-tenant references must be corrected, not silently reassigned.
+
+## Authentication
+- OTP values are never stored or returned in plaintext; challenges expire and lock after bounded attempts.
+- Request/verification limits are applied per tenant, phone and IP.
+- Session cookies are HttpOnly, SameSite=Lax and Secure in production; only token hashes are stored.
+- Session rows enforce tenant/user composite ownership, and logout revokes the server-side session.
