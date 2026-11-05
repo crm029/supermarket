@@ -52,6 +52,7 @@ async function loadAll() {
     await loadOrders();
     await loadInventory();
     await loadScenes();
+    await loadMediaLibrary();
     await loadReport();
     await loadSettings();
     await loadStaff();
@@ -204,6 +205,33 @@ async function loadReport() {
     document.getElementById("salesChart").textContent=error.message;
   }
 }
+async function loadMediaLibrary() {
+  try {
+    const result=await request("admin/media");
+    const items=result.data||[];
+    const labels={logo:"لوگو",hero:"بنر",aisle:"راهرو",panorama:"پانوراما",category:"دسته‌بندی",product:"محصول",other:"سایر"};
+    document.getElementById("mediaLibraryRows").innerHTML=items.map(item=>
+      '<article class="media-library-card">'+
+        (item.url?'<img src="'+escapeText(item.url)+'" alt="'+escapeText(item.alt_text||"تصویر فروشگاه")+'" loading="lazy">':'<div class="media-library-placeholder">بدون نشانی عمومی</div>')+
+        '<div class="media-library-meta"><strong>'+escapeText(item.alt_text||"تصویر بدون عنوان")+'</strong>'+
+        '<small>شناسه: '+Number(item.id)+' · '+escapeText(labels[item.media_type]||item.media_type)+'</small>'+
+        '<small>'+Number(item.width||0)+' × '+Number(item.height||0)+' پیکسل · '+Number(item.usage_count)+' محل استفاده</small></div>'+
+        '<button type="button" class="admin-row-action" data-copy-media-id="'+Number(item.id)+'">کپی شناسه</button>'+
+      '</article>'
+    ).join("")||'<p>هنوز تصویری بارگذاری نشده است.</p>';
+  } catch(error) {
+    document.getElementById("mediaLibraryRows").textContent=error.message;
+  }
+}
+document.getElementById("reloadMediaLibrary").addEventListener("click",loadMediaLibrary);
+document.getElementById("mediaLibraryRows").addEventListener("click",async event=>{
+  const button=event.target.closest("[data-copy-media-id]");
+  if(!button)return;
+  try{
+    await navigator.clipboard.writeText(String(Number(button.dataset.copyMediaId)));
+    message("شناسه رسانه کپی شد.","success");
+  }catch(_){message("کپی خودکار در این مرورگر در دسترس نیست؛ شناسه را از کارت بخوانید.","error");}
+});
 async function loadScenes() {
   try {
     const result=await request("admin/scenes");
@@ -464,6 +492,7 @@ document.getElementById("mediaUploadForm").addEventListener("submit",async e=>{
     if(document.getElementById("mediaType").value==="product")document.getElementById("productMediaId").value=payload.data.id;
     if(document.getElementById("mediaType").value==="category")document.getElementById("categoryMediaId").value=payload.data.id;
     document.getElementById("mediaUploadMessage").textContent="تصویر ذخیره شد؛ شناسه رسانه "+payload.data.id+" در فرم صحنه قرار گرفت.";
+    await loadMediaLibrary();
     document.getElementById("mediaUploadMessage").className="form-message success";
   }catch(error){document.getElementById("mediaUploadMessage").textContent=error.message;document.getElementById("mediaUploadMessage").className="form-message error";}
 });
