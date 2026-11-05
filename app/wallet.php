@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/stock_batches.php';
+require_once __DIR__ . '/notifications.php';
 
 function app_wallet_reward_basis_points(): int {
     $raw = app_env('REFERRAL_REWARD_BASIS_POINTS', '0') ?? '0';
@@ -118,6 +120,107 @@ function app_wallet_process_referral_reward(PDO $db, int $tenantId, int $orderId
          VALUES (?,?,'wallet.referral_rewarded','wallet',?,JSON_OBJECT('order_id',?,'amount_rial',?))"
     );
     $audit->execute([$tenantId, $customerId, $walletId, $orderId, $reward]);
+}
+
+
+function app_wallet_pay_order(PDO $db, array $tenant, array $session, int $orderId): never {
+    $db->beginTransaction();
+    try{
+        $orderQuery=$db->prepare(
+            'SELECT id,user_id,order_number,status,total_rial
+             FROM orders WHERE tenant_id=? AND user_id=? AND id=? FOR UPDATE'
+        );
+        $orderQuery->execute([$tenant['id'],$session['id'],$orderId]);
+        $order=$orderQuery->fetch(PDO::FETCH_ASSOC);
+        if(!$order){
+            $db->rollBack();
+            app_json(['error'=>'سفارش پیدا نشد.'],404);
+        }
+        if($order['status']==='paid'){
+            $existing=$db->prepare(
+                "SELECT id FROM payment_attempts
+                 WHERE tenant_id=? AND order_id=? AND provider='wallet' AND status='verified' LIMIT 1"
+            );
+            $existing->execute([$tenant['id'],$orderId]);
+            if($existing->fetchColumn()){
+                $walletId=app_wallet_ensure_account($db,(int)$tenant['id'],(int)$session['id']);
+                $balance=app_wallet_balance($db,(int)$tenant['id'],$walletId);
+                $db->commit();
+                app_json(['data'=>[
+                    'order_id'=>$orderId,'status'=>'paid','amount_rial'=>(int)$order['total_rial'],
+                    'wallet_balance_rial'=>$balance,'payment_method'=>'wallet','already_paid'=>true
+                ],'message'=>'این سفارش قبلاً با کیف پول پرداخت شده است.']);
+            }
+            $db->rollBack();
+            app_json(['error'=>'این سفارش قبلاً با روش پرداخت دیگری تسویه شده است.'],409);
+        }
+        if($order['status']!=='pending_payment'){
+            $db->rollBack();
+            app_json(['error'=>'وضعیت سفارش برای پرداخت با کیف پول معتبر نیست.'],409);
+        }
+        $amount=(int)$order['total_rial'];
+        if($amount<1){
+            $db->rollBack();
+            app_json(['error'=>'مبلغ سفارش برای پرداخت معتبر نیست.'],422);
+        }
+
+        $walletId=app_wallet_ensure_account($db,(int)$tenant['id'],(int)$session['id']);
+        $walletLock=$db->prepare('SELECT id FROM wallet_accounts WHERE tenant_id=? AND id=? FOR UPDATE');
+        $walletLock->execute([$tenant['id'],$walletId]);
+        if(!$walletLock->fetchColumn())throw new RuntimeException('Customer wallet could not be locked.');
+        $balance=app_wallet_balance($db,(int)$tenant['id'],$walletId);
+        if($balance<$amount){
+            $db->rollBack();
+            app_json(['error'=>'موجودی کیف پول برای پرداخت کامل این سفارش کافی نیست.'],409);
+        }
+
+        $reservationResult=app_stock_commit_order_reservations(
+            $db,(int)$tenant['id'],$orderId,(int)$session['id'],
+            'پرداخت سفارش از کیف پول','آزادسازی رزرو ناقص پرداخت کیف پول'
+        );
+        if(!$reservationResult['committed']){
+            $db->rollBack();
+            app_json(['error'=>'مهلت رزرو موجودی پایان یافته است؛ سفارش را دوباره ثبت کنید.'],409);
+        }
+
+        $debit=$db->prepare(
+            "INSERT INTO wallet_entries
+             (tenant_id,wallet_id,entry_type,amount_rial,source_type,source_id,idempotency_key,note)
+             VALUES (?,?,'debit',?,'order_wallet_payment',?,?,'پرداخت کامل سفارش از کیف پول')"
+        );
+        $debit->execute([$tenant['id'],$walletId,$amount,$orderId,'wallet-order-'.$orderId]);
+        if($debit->rowCount()!==1)throw new RuntimeException('Wallet payment ledger entry could not be recorded.');
+
+        $attempt=$db->prepare(
+            "INSERT INTO payment_attempts
+             (tenant_id,order_id,provider,authority,idempotency_key,amount_rial,status,verified_at)
+             VALUES (?,?, 'wallet', ?, ?, ?, 'verified', UTC_TIMESTAMP())"
+        );
+        $attempt->execute([$tenant['id'],$orderId,'WALLET-'.$orderId,'wallet-payment-order-'.$orderId,$amount]);
+
+        $update=$db->prepare("UPDATE orders SET status='paid' WHERE tenant_id=? AND id=? AND status='pending_payment'");
+        $update->execute([$tenant['id'],$orderId]);
+        if($update->rowCount()!==1)throw new RuntimeException('Order status could not be updated after wallet payment.');
+
+        app_wallet_process_referral_reward($db,(int)$tenant['id'],$orderId,(int)$session['id'],$amount);
+        app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'order.paid.wallet','order',$orderId,[
+            'amount_rial'=>$amount,'wallet_id'=>$walletId
+        ]);
+        app_notification_create($db,(int)$tenant['id'],(int)$session['id'],'payment-confirmed-'.$orderId,'order',
+            'پرداخت سفارش تأیید شد','سفارش '.$order['order_number'].' با اعتبار کیف پول پرداخت شد.','order',$orderId);
+        app_notification_notify_permission($db,(int)$tenant['id'],'orders.manage','payment-confirmed-'.$orderId,'order',
+            'پرداخت سفارش دریافت شد','سفارش '.$order['order_number'].' به‌طور کامل از کیف پول پرداخت شد.','order',$orderId);
+
+        $newBalance=app_wallet_balance($db,(int)$tenant['id'],$walletId);
+        $db->commit();
+        app_json(['data'=>[
+            'order_id'=>$orderId,'status'=>'paid','amount_rial'=>$amount,
+            'wallet_balance_rial'=>$newBalance,'payment_method'=>'wallet','already_paid'=>false
+        ],'message'=>'پرداخت کامل سفارش از کیف پول با موفقیت انجام شد.']);
+    }catch(Throwable $e){
+        if($db->inTransaction())$db->rollBack();
+        throw $e;
+    }
 }
 
 function app_wallet_customer_summary(PDO $db, array $tenant, array $session): never {
