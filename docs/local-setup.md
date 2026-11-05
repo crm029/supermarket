@@ -81,7 +81,7 @@ Unpaid checkout reservations expire after 20 minutes. Configure the host's cron 
 php /path/to/supermarket/bin/expire-reservations.php
 ```
 
-The worker releases reserved quantities and cancels pending-payment orders once all their active reservations have expired. It is safe to run repeatedly; it processes at most 100 expired reservation rows per invocation. Configure the same database environment variables used by the API. Monitor its stderr/exit code; do not expose this script through the web server.
+The worker releases reserved quantities and cancels pending-payment orders once all their active reservations have expired. It is safe to run repeatedly; it processes at most 100 orders with expired reservations per invocation. Configure the same database environment variables used by the API. Monitor its stderr/exit code; do not expose this script through the web server.
 
 
 ## ZarinPal setup
