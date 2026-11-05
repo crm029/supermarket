@@ -1072,7 +1072,7 @@ document.getElementById("categoryForm").addEventListener("submit",async e=>{
     seo_title:document.getElementById("categorySeoTitle").value.trim(),
     seo_description:document.getElementById("categorySeoDescription").value.trim(),
     sort_order:categories.find(c=>Number(c.id)===Number(id))?.sort_order??(categories.length+1),
-    is_active:true,
+    is_active:id?Boolean(categories.find(c=>Number(c.id)===Number(id))?.is_active):true,
     media_id:document.getElementById("categoryMediaId").value?Number(document.getElementById("categoryMediaId").value):null
   };
   try{
