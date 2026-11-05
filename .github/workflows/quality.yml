@@ -130,6 +130,9 @@ jobs:
       - name: Apply supplier purchase orders migration
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_05_supplier_purchase_orders.sql
 
+      - name: Apply supplier returns migration
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_05_supplier_returns.sql
+
 
 
       - name: Test initial store owner bootstrap
