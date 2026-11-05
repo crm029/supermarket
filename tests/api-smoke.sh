@@ -172,6 +172,11 @@ request PUT /me/cart 200 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}]}'
 assert_json cart-saved
 request GET /me/cart 200 "" "$CUSTOMER_TOKEN"
 assert_json cart-item
+request PUT /me/cart 419 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}]}' "$CUSTOMER_TOKEN"
+request GET /me/cart 401 "" "$CUSTOMER_TOKEN" "" tenant-two.localhost
+request PUT /me/cart 200 '{"items":[]}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+request GET /me/cart 200 "" "$CUSTOMER_TOKEN"
+assert_json cart-empty
 request POST /me/addresses 201 '{"title":"خانه تست","recipient":"مشتری تست","mobile":"09120000003","province":"تهران","city":"تهران","address":"خیابان نمونه، پلاک ۱","postal_code":"1234567890"}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 ADDRESS_ID="$(assert_json created-id)"
 request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}],"fulfillment":"delivery","address_id":'$ADDRESS_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
