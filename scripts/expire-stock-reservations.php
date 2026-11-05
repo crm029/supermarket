@@ -57,8 +57,7 @@ try {
 } catch (Throwable $e) {
     if ($db->inTransaction()) $db->rollBack();
     fwrite(STDERR, $e->getMessage()."\n");
-    exitCode:
-    exit(1);
+    $exitCode = 1;
 } finally {
     $db->query("SELECT RELEASE_LOCK('supermarket360:expire-stock-reservations')");
 }
