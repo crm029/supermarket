@@ -36,7 +36,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Basic tenant-scoped category list/create/update/deactivate API with parent-cycle and media ownership checks.
 - [x] Tenant-local unique product barcodes and product-level low-stock thresholds.
 - [x] Advanced tenant-scoped product search with brand, category, price range, availability, sorting and pagination.
-- [ ] Product variants and variant-level stock/pricing.
+- [x] Product variant groups with per-option SKU, barcode, price, stock, availability selector and order snapshots (MySQL-backed API tests).
 - [x] Tenant-scoped percentage/fixed coupons with limits, date windows, order snapshots and cancellation/expiry release (MySQL-backed checkout tests).
 - [x] Server-side cart quote validation against live prices and available stock.
 - [x] Tenant-scoped persistent customer cart across devices, with guest-cart merge and server-side replacement.
