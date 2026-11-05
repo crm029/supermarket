@@ -12,14 +12,14 @@ This platform is multi-tenant. SEO output must be generated for the verified hos
 - /category/{slug} serves crawlable category pages with product links and CollectionPage / ItemList structured data.
 - /product/{id}/{seo-slug} serves crawlable product detail pages; the slug is optional until the merchant assigns one.
 - The homepage includes a tenant-specific title, meta description, canonical, social metadata, GroceryStore structured data and server-rendered category links.
+- Optional merchant-verified street address, postal address, geo coordinates and opening hours are emitted as local-business structured data.
 - SEO landing pages link back into the interactive storefront; product and category deep links are opened by the storefront after the live catalogue loads.
 - Query-string catalogue/filter URLs are excluded from crawling to reduce duplicate URL variants.
 
 ## Current limitations — do not treat these as complete
 
-- Product URLs use a stable merchant-editable slug alongside the immutable numeric product ID. Legacy ID-only URLs and outdated slug variants permanently redirect to the current canonical URL.
 - Product SEO titles/descriptions and category descriptions/SEO titles/descriptions are merchant-editable in the seller dashboard. Their search quality still depends on accurate, unique merchant-written content.
-- LocalBusiness address, geographic coordinates and opening hours are not published because the store profile does not yet collect and verify those fields.
+- Optional store address, city/region, country code, postal code, geographic coordinates and opening hours are editable in store settings and included in GroceryStore structured data. Merchants must enter accurate, verified public details.
 - Product image quality and descriptive alt text depend on each merchant's real catalogue/media uploads.
 - The sitemap and metadata are code-ready, but a store is not discoverable until its domain is verified, deployed over HTTPS and crawled.
 - Google Search Console verification, sitemap submission, GA4 configuration and conversion tracking require the merchant's actual domain and analytics properties.
