@@ -67,7 +67,7 @@ function app_seo_category_list(array $context): array {
 function app_seo_product_list(array $context, int $limit = 50000): array {
     $limit = max(1,min(50000,$limit));
     $stmt = $context['db']->prepare(
-        "SELECT p.id,p.title,p.sku,p.updated_at,p.created_at
+        "SELECT p.id,p.title,p.sku,p.seo_slug,p.updated_at,p.created_at
          FROM products p
          WHERE p.tenant_id=? AND p.is_active=1 AND p.product_kind<>'variant'
          ORDER BY COALESCE(p.updated_at,p.created_at) DESC,p.id DESC
@@ -75,6 +75,13 @@ function app_seo_product_list(array $context, int $limit = 50000): array {
     );
     $stmt->execute([(int)$context['tenant']['id']]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
+function app_seo_product_path(array $product): string {
+    $id = (int)($product['id'] ?? 0);
+    $slug = trim((string)($product['seo_slug'] ?? ''));
+    return 'product/'.$id.($slug !== '' ? '/'.rawurlencode($slug) : '');
 }
 
 function app_seo_lastmod(?string $value): string {
