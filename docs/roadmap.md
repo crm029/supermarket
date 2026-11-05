@@ -41,7 +41,9 @@ Status is intentionally conservative: a checklist item is complete only when imp
 ## Phase 4 — store operations
 - [ ] Multi-warehouse stock receipt, transfer, adjustment and return services.
 - [ ] Transactional reservations, expiry/release and paid-order stock commit.
-- [ ] Cashier review, picking, packing, pickup and courier dispatch.
+- [x] Customer cancellation for pending-payment orders with transactional stock release.
+- [x] Tenant-scoped order queue and guarded fulfilment transitions (accept, picking, packing, pickup/dispatch, delivery).
+- [ ] Cashier assignment, picker workflow, courier tracking and operational dashboards.
 - [ ] Operational dashboards, stock alerts and sales reports.
 
 ## Phase 5 — customer growth and integrations
