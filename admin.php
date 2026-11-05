@@ -309,6 +309,8 @@ declare(strict_types=1);
           <label>عرض جغرافیایی<input id="settingLatitude" type="number" min="-90" max="90" step="0.000001" placeholder="مثلاً 35.6892"></label>
           <label>طول جغرافیایی<input id="settingLongitude" type="number" min="-180" max="180" step="0.000001" placeholder="مثلاً 51.3890"></label>
           <label>ساعات کاری (مثال: Mo-Su 08:00-22:00)<input id="settingOpeningHours" maxlength="180" placeholder="Mo-Su 08:00-22:00"></label>
+          <label>کد تأیید Google Search Console<input id="settingGoogleVerification" maxlength="200" autocomplete="off" placeholder="کد تأیید HTML tag"></label>
+          <label>شناسه اندازه‌گیری Google Analytics 4<input id="settingGa4MeasurementId" maxlength="22" pattern="G-[A-Z0-9]{6,20}" placeholder="G-XXXXXXXXXX" autocapitalize="characters"></label>
         </div>
         <p class="admin-hint">این اطلاعات در داده‌های ساختاریافته فروشگاه برای جست‌وجوی محلی استفاده می‌شوند. فقط نشانی و موقعیت واقعی و قابل‌تأیید را ثبت کنید.</p>
         <h3>روش‌های دریافت سفارش</h3>

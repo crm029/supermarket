@@ -614,6 +614,8 @@ async function loadSettings() {
     document.getElementById("settingLatitude").value=profile.latitude??"";
     document.getElementById("settingLongitude").value=profile.longitude??"";
     document.getElementById("settingOpeningHours").value=profile.opening_hours||"";
+    document.getElementById("settingGoogleVerification").value=profile.google_site_verification||"";
+    document.getElementById("settingGa4MeasurementId").value=profile.ga4_measurement_id||"";
     document.getElementById("settingPrimaryColor").value=profile.primary_color||"#173D2D";
     document.getElementById("settingAccentColor").value=profile.accent_color||"#E6A23C";
     document.getElementById("settingDeliveryEnabled").checked=checkout.delivery_enabled!==false;
@@ -649,6 +651,8 @@ document.getElementById("storeSettingsForm").addEventListener("submit",async eve
         latitude:document.getElementById("settingLatitude").value.trim()===""?null:Number(document.getElementById("settingLatitude").value),
         longitude:document.getElementById("settingLongitude").value.trim()===""?null:Number(document.getElementById("settingLongitude").value),
         opening_hours:document.getElementById("settingOpeningHours").value.trim(),
+        google_site_verification:document.getElementById("settingGoogleVerification").value.trim(),
+        ga4_measurement_id:document.getElementById("settingGa4MeasurementId").value.trim().toUpperCase(),
         primary_color:document.getElementById("settingPrimaryColor").value,
         accent_color:document.getElementById("settingAccentColor").value
       },

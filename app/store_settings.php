@@ -27,6 +27,8 @@ function app_store_settings_read(PDO $db, array $tenant): array {
             'latitude' => isset($profile['latitude']) && is_numeric($profile['latitude']) ? (float)$profile['latitude'] : null,
             'longitude' => isset($profile['longitude']) && is_numeric($profile['longitude']) ? (float)$profile['longitude'] : null,
             'opening_hours' => (string)($profile['opening_hours'] ?? ''),
+            'google_site_verification' => (string)($profile['google_site_verification'] ?? ''),
+            'ga4_measurement_id' => strtoupper((string)($profile['ga4_measurement_id'] ?? '')),
             'primary_color' => (string)($profile['primary_color'] ?? '#173D2D'),
             'accent_color' => (string)($profile['accent_color'] ?? '#E6A23C'),
         ],
@@ -59,6 +61,8 @@ function app_admin_store_settings_update(PDO $db, array $tenant, array $session)
     $latitudeRaw = trim((string)($profile['latitude'] ?? ''));
     $longitudeRaw = trim((string)($profile['longitude'] ?? ''));
     $openingHours = trim((string)($profile['opening_hours'] ?? ''));
+    $googleVerification = trim((string)($profile['google_site_verification'] ?? ''));
+    $ga4MeasurementId = strtoupper(trim((string)($profile['ga4_measurement_id'] ?? '')));
     $primary = strtoupper(trim((string)($profile['primary_color'] ?? '')));
     $accent = strtoupper(trim((string)($profile['accent_color'] ?? '')));
     $deliveryEnabled = filter_var($checkout['delivery_enabled'] ?? null, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
@@ -76,6 +80,8 @@ function app_admin_store_settings_update(PDO $db, array $tenant, array $session)
         ($latitudeRaw!=='' && (!is_numeric($latitudeRaw) || (float)$latitudeRaw < -90 || (float)$latitudeRaw > 90)) ||
         ($longitudeRaw!=='' && (!is_numeric($longitudeRaw) || (float)$longitudeRaw < -180 || (float)$longitudeRaw > 180)) ||
         mb_strlen($openingHours)>180 ||
+        ($googleVerification!=='' && !preg_match('/^[A-Za-z0-9_=-]{10,200}$/',$googleVerification)) ||
+        ($ga4MeasurementId!=='' && !preg_match('/^G-[A-Z0-9]{6,20}$/',$ga4MeasurementId)) ||
         ($openingHours!=='' && !preg_match('/^(?:(?:Mo|Tu|We|Th|Fr|Sa|Su)(?:-(?:Mo|Tu|We|Th|Fr|Sa|Su))? (?:[01][0-9]|2[0-3]):[0-5][0-9]-(?:[01][0-9]|2[0-3]):[0-5][0-9])(?:,\\s*(?:Mo|Tu|We|Th|Fr|Sa|Su)(?:-(?:Mo|Tu|We|Th|Fr|Sa|Su))? (?:[01][0-9]|2[0-3]):[0-5][0-9]-(?:[01][0-9]|2[0-3]):[0-5][0-9])*$/',$openingHours)) ||
         !preg_match('/^#[0-9A-F]{6}$/', $primary) || !preg_match('/^#[0-9A-F]{6}$/', $accent) ||
         $deliveryEnabled === null || $pickupEnabled === null ||
@@ -98,6 +104,8 @@ function app_admin_store_settings_update(PDO $db, array $tenant, array $session)
         'latitude' => $latitudeRaw==='' ? null : (float)$latitudeRaw,
         'longitude' => $longitudeRaw==='' ? null : (float)$longitudeRaw,
         'opening_hours' => $openingHours,
+        'google_site_verification' => $googleVerification,
+        'ga4_measurement_id' => $ga4MeasurementId,
         'primary_color' => $primary,
         'accent_color' => $accent,
     ];
@@ -117,7 +125,7 @@ function app_admin_store_settings_update(PDO $db, array $tenant, array $session)
         $save->execute([$tenant['id'], 'store.profile', json_encode($profileData, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)]);
         $save->execute([$tenant['id'], 'store.checkout', json_encode($checkoutData, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)]);
         app_audit_log($db, (int)$tenant['id'], (int)$session['id'], 'store.settings.updated', 'store_settings', null, [
-            'profile_fields' => ['name','tagline','support_phone','street_address','city','region','postal_code','country_code','latitude','longitude','opening_hours','primary_color','accent_color'],
+            'profile_fields' => ['name','tagline','support_phone','street_address','city','region','postal_code','country_code','latitude','longitude','opening_hours','google_site_verification','ga4_measurement_id','primary_color','accent_color'],
             'checkout_fields' => ['delivery_enabled','pickup_enabled','delivery_fee_rial','minimum_order_rial','reservation_minutes'],
         ]);
         $db->commit();

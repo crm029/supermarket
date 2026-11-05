@@ -179,7 +179,22 @@ document.addEventListener("keydown",event=>{
 document.addEventListener("keyup",event=>freeMovementKeys.delete(event.key.toLowerCase()));
 window.addEventListener("blur",()=>freeMovementKeys.clear());
 const cartVariantCache=new Map();
-function addToCart(id,productOverride=null){const p=products.find(x=>x.id===Number(id))||productOverride;if(!p||p.inStock===false)return;if(productOverride)cartVariantCache.set(Number(id),productOverride);cart.set(Number(id),Math.min(99,(cart.get(Number(id))||0)+1));updateCart();persistCustomerCart();}
+function addToCart(id,productOverride=null){
+  const p=products.find(x=>x.id===Number(id))||productOverride;
+  if(!p||p.inStock===false)return;
+  if(productOverride)cartVariantCache.set(Number(id),productOverride);
+  const priceRial=Math.round(Number(p.price||0)*10);
+  if(typeof window.sm360Track==="function"){
+    window.sm360Track("add_to_cart",{
+      currency:"IRR",
+      value:priceRial,
+      items:[{item_id:String(id),item_name:p.name||"محصول",price:priceRial,quantity:1}]
+    });
+  }
+  cart.set(Number(id),Math.min(99,(cart.get(Number(id))||0)+1));
+  updateCart();
+  persistCustomerCart();
+}
 function updateCart(){const count=[...cart.values()].reduce((a,b)=>a+b,0);document.getElementById("cartCount").textContent=new Intl.NumberFormat("fa-IR").format(count);try{localStorage.setItem("sm360_cart",JSON.stringify([...cart]));}catch(_){}}
 async function openProduct(id){
   let p=products.find(x=>x.id===Number(id));if(!p)return;
@@ -479,6 +494,15 @@ async function loadPickupSlots() {
 }
 async function startCheckout() {
   if (!cart.size) return;
+  if (typeof window.sm360Track==="function") {
+    const items=[...cart].map(([id,quantity])=>{
+      const item=cartVariantCache.get(id)||products.find(product=>product.id===Number(id));
+      const priceRial=Math.round(Number(item?.price||0)*10);
+      return {item_id:String(id),item_name:item?.name||"محصول",price:priceRial,quantity};
+    });
+    const value=items.reduce((total,item)=>total+item.price*item.quantity,0);
+    window.sm360Track("begin_checkout",{currency:"IRR",value,items});
+  }
   document.getElementById("cartDialog").close();
   if (!(await ensureAccount())) {
     pendingCheckout = true;

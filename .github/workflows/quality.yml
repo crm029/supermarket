@@ -48,6 +48,7 @@ jobs:
         run: |
           node --check assets/js/app.js
           node --check assets/js/admin.js
+          node --check assets/js/analytics-consent.js
 
       - name: Check patch whitespace
         run: git diff --check

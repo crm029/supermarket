@@ -68,6 +68,18 @@ $schema = [
     'mainEntity'=>['@type'=>'ItemList','itemListElement'=>$listItems],
 ];
 $jsonLd = json_encode($schema,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT);
+$analyticsViewList = [
+    'item_list_id'=>'category-'.(int)$category['id'],
+    'item_list_name'=>(string)$category['title'],
+    'items'=>array_map(static fn(array $item): array => [
+        'item_id'=>(string)$item['id'],
+        'item_name'=>(string)$item['title'],
+        'item_brand'=>(string)($item['brand'] ?? ''),
+        'price'=>(int)$item['price_rial'],
+        'quantity'=>1,
+    ],$products),
+];
+$analyticsViewListJson = json_encode($analyticsViewList,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT);
 ?>
 <!doctype html>
 <html lang="fa" dir="rtl">
@@ -75,6 +87,7 @@ $jsonLd = json_encode($schema,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="index,follow,max-image-preview:large">
+  <?= app_seo_tracking_markup($profile) ?>
   <title><?= $e($pageTitle) ?></title>
   <meta name="description" content="<?= $e($description) ?>">
   <link rel="canonical" href="<?= $e($canonical) ?>">
@@ -87,6 +100,11 @@ $jsonLd = json_encode($schema,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON
   <meta name="twitter:card" content="<?= $categoryImage?'summary_large_image':'summary' ?>">
   <link rel="stylesheet" href="/assets/css/app.css">
   <script type="application/ld+json"><?= $jsonLd ?: '{}' ?></script>
+  <script>
+    document.addEventListener('sm360:analytics-ready',function(){
+      window.sm360Track('view_item_list',<?= $analyticsViewListJson ?: '{}' ?>);
+    },{once:true});
+  </script>
   <style>
     .seo-category-head{max-width:1200px;margin:34px auto 18px;padding:0 4vw}
     .seo-category-grid{max-width:1200px;margin:0 auto 55px;padding:0 4vw;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:16px}

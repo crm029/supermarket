@@ -78,6 +78,20 @@ function app_seo_product_list(array $context, int $limit = 50000): array {
 }
 
 
+
+function app_seo_tracking_markup(array $profile): string {
+    $markup = '';
+    $verification = trim((string)($profile['google_site_verification'] ?? ''));
+    if ($verification !== '' && preg_match('/^[A-Za-z0-9_=-]{10,200}$/',$verification)) {
+        $markup .= '<meta name="google-site-verification" content="' . htmlspecialchars($verification,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') . '">' . "\n";
+    }
+    $measurementId = strtoupper(trim((string)($profile['ga4_measurement_id'] ?? '')));
+    if ($measurementId !== '' && preg_match('/^G-[A-Z0-9]{6,20}$/',$measurementId)) {
+        $markup .= '<script defer src="/assets/js/analytics-consent.js" data-ga4-measurement="' . htmlspecialchars($measurementId,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') . '"></script>' . "\n";
+    }
+    return $markup;
+}
+
 function app_seo_product_path(array $product): string {
     $id = (int)($product['id'] ?? 0);
     $slug = trim((string)($product['seo_slug'] ?? ''));
