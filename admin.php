@@ -112,6 +112,13 @@ declare(strict_types=1);
         <h3>انتقال بین انبارها</h3><div class="admin-form-grid"><label>از انبار<select id="transferFrom" required></select></label><label>به انبار<select id="transferTo" required></select></label><label>محصول<select id="transferProduct" required></select></label><label>تعداد انتقال<input id="transferQuantity" type="number" min="1" max="1000000" required></label></div><button class="primary-button" type="submit">ثبت انتقال</button>
       </form>
       <h3>موجودی فعلی</h3><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>محصول</th><th>انبار</th><th>موجودی</th><th>رزروشده</th><th>قابل فروش</th><th>حد هشدار</th></tr></thead><tbody id="stockRows"><tr><td colspan="6">در حال بارگذاری...</td></tr></tbody></table></div>
+      <div class="admin-heading"><div><h3>ردیابی بچ و تاریخ انقضا</h3><p class="admin-hint">بچ‌های نزدیک انقضا و موجودی‌های بدون تاریخ انقضا را از این بخش کنترل کنید.</p></div><button class="text-button" id="reloadStockBatches" type="button">به‌روزرسانی بچ‌ها</button></div>
+      <div class="admin-toolbar">
+        <select id="stockBatchState" aria-label="وضعیت تاریخ انقضا"><option value="all">همه بچ‌ها</option><option value="expired">منقضی‌شده</option><option value="expiring">در آستانه انقضا</option><option value="valid">دارای مهلت بیشتر</option><option value="unknown">بدون تاریخ انقضا</option></select>
+        <select id="stockBatchDays" aria-label="بازه هشدار"><option value="7">۷ روز آینده</option><option value="15">۱۵ روز آینده</option><option value="30" selected>۳۰ روز آینده</option><option value="60">۶۰ روز آینده</option><option value="90">۹۰ روز آینده</option></select>
+      </div>
+      <div id="stockExpirySummary" class="admin-welcome" aria-live="polite">در حال دریافت گزارش انقضا...</div>
+      <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>کالا</th><th>انبار</th><th>شماره بچ</th><th>تاریخ انقضا</th><th>موجودی</th><th>رزروشده</th><th>قابل استفاده</th><th>وضعیت</th></tr></thead><tbody id="stockBatchRows"><tr><td colspan="8">در حال بارگذاری...</td></tr></tbody></table></div>
     </section>
 
     <section class="admin-panel" id="panel-purchasing">
@@ -153,6 +160,8 @@ declare(strict_types=1);
           <label>انبار مقصد<select id="receiveWarehouse" required></select></label>
           <label>قلم سفارش<select id="receivePurchaseItem" required></select></label>
           <label>تعداد دریافتی<input id="receiveQuantity" type="number" min="1" max="1000000" required></label>
+          <label>شماره بچ تأمین‌کننده<input id="receiveBatchNumber" maxlength="80" placeholder="در صورت درج روی بسته‌بندی"></label>
+          <label>تاریخ انقضا<input id="receiveExpiryDate" type="date"></label>
           <label>شرح رسید<input id="receiveNotes" maxlength="500"></label>
         </div>
         <button class="primary-button" type="submit">ثبت رسید و افزایش موجودی</button>
