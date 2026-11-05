@@ -6,6 +6,7 @@ $seoProfile = $seoContext ? app_seo_store_profile($seoContext) : [];
 $seoStoreName = (string)($seoProfile['name'] ?? ($seoContext['tenant']['name'] ?? 'سوپرمارکت ۳۶۰'));
 $seoDescription = trim((string)($seoProfile['tagline'] ?? ''));
 if ($seoDescription === '') $seoDescription = 'خرید آنلاین از '.$seoStoreName.'؛ مشاهده محصولات، قیمت‌ها و ثبت سفارش در فروشگاه.';
+$seoDescription = mb_substr($seoDescription,0,160);
 $seoTitle = $seoStoreName.' | خرید آنلاین سوپرمارکت';
 $seoCanonical = $seoContext ? app_seo_url($seoContext) : null;
 $seoCategories = $seoContext ? app_seo_category_list($seoContext) : [];
@@ -17,7 +18,7 @@ $seoStructuredData = [
     'description'=>$seoDescription,
 ];
 if (!empty($seoProfile['support_phone'])) $seoStructuredData['telephone'] = $seoProfile['support_phone'];
-$seoJsonLd = json_encode($seoStructuredData,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT);
+$seoJsonLd = $seoCanonical ? json_encode($seoStructuredData,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT) : null;
 ?><!doctype html>
 <html lang="fa" dir="rtl">
 <head>
@@ -34,7 +35,7 @@ $seoJsonLd = json_encode($seoStructuredData,JSON_UNESCAPED_UNICODE|JSON_UNESCAPE
   <meta property="og:description" content="<?= htmlspecialchars($seoDescription,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?>">
   <?php if ($seoCanonical): ?><meta property="og:url" content="<?= htmlspecialchars($seoCanonical,ENT_QUOTES,'UTF-8') ?>"><?php endif; ?>
   <meta name="twitter:card" content="summary">
-  <script type="application/ld+json"><?= $seoJsonLd ?: '{}' ?></script>
+  <?php if ($seoJsonLd): ?><script type="application/ld+json"><?= $seoJsonLd ?></script><?php endif; ?>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -42,7 +43,7 @@ $seoJsonLd = json_encode($seoStructuredData,JSON_UNESCAPED_UNICODE|JSON_UNESCAPE
 </head>
 <body>
 <header class="topbar">
-  <a class="brand" href="#" aria-label="سوپرمارکت ۳۶۰"><span class="brand-mark">۳۶۰</span><span>مارکت<span class="brand-light">‌پلاس</span></span></a>
+  <a class="brand" href="/" aria-label="<?= htmlspecialchars($seoStoreName,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?>"><span class="brand-mark">۳۶۰</span><span><?= htmlspecialchars($seoStoreName,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?></span></a>
   <label class="search"><span>⌕</span><input id="searchInput" type="search" placeholder="دنبال چی می‌گردی؟ مثلاً شیر، برنج، چیپس..." aria-label="جست‌وجوی محصولات"></label>
   <nav class="top-actions" aria-label="دسترسی سریع">
     <button class="icon-button" id="accountButton" type="button">ورود / عضویت</button>
