@@ -45,7 +45,8 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [ ] Operational dashboards, stock alerts and sales reports.
 
 ## Phase 5 — customer growth and integrations
-- [ ] Zarinpal adapter, verified callbacks, idempotency and reconciliation.
+- [x] ZarinPal v4 request/verify adapter, payment-attempt persistence, callback verification, stock commit and duplicate-callback protection.
+- [ ] Live merchant credentials, sandbox acceptance, settlement reconciliation and refund handling.
 - [ ] 0098.ir SMS adapter, OTP templates and delivery reports.
 - [ ] Append-only wallet posting and customer transaction history.
 - [ ] Referral attribution, qualifying-order rules and anti-abuse controls.
