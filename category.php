@@ -106,12 +106,16 @@ $analyticsViewListJson = json_encode($analyticsViewList,JSON_UNESCAPED_UNICODE|J
   <meta name="description" content="<?= $e($description) ?>">
   <link rel="canonical" href="<?= $e($canonical) ?>">
   <meta property="og:type" content="website">
+  <meta property="og:locale" content="fa_IR">
   <meta property="og:site_name" content="<?= $e($storeName) ?>">
   <meta property="og:title" content="<?= $e($pageTitle) ?>">
   <meta property="og:description" content="<?= $e($description) ?>">
   <meta property="og:url" content="<?= $e($canonical) ?>">
   <?php if ($categoryImage): ?><meta property="og:image" content="<?= $e($categoryImage) ?>"><?php endif; ?>
   <meta name="twitter:card" content="<?= $categoryImage?'summary_large_image':'summary' ?>">
+  <meta name="twitter:title" content="<?= $e($pageTitle) ?>">
+  <meta name="twitter:description" content="<?= $e($description) ?>">
+  <?php if ($categoryImage): ?><meta name="twitter:image" content="<?= $e($categoryImage) ?>"><?php endif; ?>
   <link rel="stylesheet" href="/assets/css/app.css">
   <script type="application/ld+json"><?= $jsonLd ?: '{}' ?></script>
   <script>
