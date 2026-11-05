@@ -32,6 +32,7 @@ jobs:
           for file in "${files[@]}"; do
             php -l "$file"
           done
+          php tests/auth-input.php
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
