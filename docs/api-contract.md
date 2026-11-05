@@ -218,7 +218,7 @@ Checkout intentionally does not mark an order paid. Reservations expire after 20
 - `GET /api/v1/admin/stock-expiry?days=30` — inventory.read; summarizes expired and soon-to-expire lot quantities and counts, plus lots with unknown expiry dates.
 - Purchase-order receiving accepts optional `batch_number` and `expiry_date` (`YYYY-MM-DD`) on each item. If omitted, the system assigns a receipt-derived batch number and leaves expiry unknown. Every newly received purchase-order line is recorded as a stock batch linked to its receipt item.
 
-**Operational boundary:** This release records purchase-order receipt batches and provides expiry visibility. It does not yet allocate checkout reservations by FEFO or block sales of expired lots. Manual receipts, adjustments, transfers, and supplier returns still need batch-ledger synchronization before batch quantities can be treated as the authoritative stock ledger. Existing stock is backfilled as `LEGACY-*` lots with unknown expiry; staff should not infer an expiry date for those lots.
+**Operational boundary:** Checkout now allocates eligible lots in FEFO order and excludes expired lots; payment, cancellation, and the expiry worker reconcile the exact lot allocations. Manual stock operations are synchronized with the lot ledger. Existing stock is backfilled as `LEGACY-*` lots with unknown expiry; staff should not infer an expiry date for those lots. The reservation expiry worker must be scheduled in production.
 
 
 ### Batch ledger behavior and reservation expiry
