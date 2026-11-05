@@ -6,7 +6,7 @@ Run this read-only check on the production server after setting the environment 
 php bin/production-preflight.php
 ```
 
-The command is CLI-only. It does not write to the database, change store settings, call payment/SMS providers, or print secret values. It exits with code 1 when a required configuration or database check fails and code 0 only when its configuration checks pass.
+The command is CLI-only. It does not write to the database, change store settings, call payment/SMS providers, or print secret values. It exits with code 1 when a required configuration or database check fails and code 0 only when its configuration checks pass. Set PUBLIC_DOCUMENT_ROOT to the absolute public web root when running it from CLI; MEDIA_STORAGE_PATH must be an absolute Linux path outside that directory. Use a dedicated non-root DB_USERNAME.
 
 It verifies:
 - Explicit production mode, disabled debug output, a sufficiently long application secret and an HTTPS public origin.
