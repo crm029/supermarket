@@ -111,6 +111,9 @@ jobs:
       - name: Apply order wallet refund migration
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_06_order_wallet_refunds.sql
 
+      - name: Apply DNS TXT domain verification migration
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_06_domain_verification_challenge.sql
+
       - name: Run permission scope tests
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/permissions.sql
 
@@ -193,6 +196,8 @@ jobs:
           DB_PASSWORD: root
           MEDIA_BASE_URL: https://cdn.example.test/assets
           MEDIA_STORAGE_PATH: /tmp/supermarket-media
+          TEST_DOMAIN_VERIFICATION_HOST: ci-platform-store.example.test
+          TEST_DOMAIN_VERIFICATION_TOKEN: ci-only-domain-proof-2026
         run: |
           set -euo pipefail
           mkdir -p /tmp/supermarket-media

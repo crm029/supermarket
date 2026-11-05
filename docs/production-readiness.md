@@ -6,12 +6,12 @@ The application code includes customer registration, catalogue management, inven
 
 - [ ] Apply all migrations, then grant platform access only to a dedicated active OTP-verified account using database/bootstrap-platform-admin.sql.
 - [ ] Use platform.php to provision tenants; each new store starts pending with an unverified primary domain and a pending owner account.
-- [ ] Verify domain ownership out of band before recording the platform operator's attestation. The current application records the method and note but does not itself perform a DNS TXT or HTTP-file challenge.
+- [ ] Publish the generated TXT record at _supermarket360-verification.<domain> and confirm the backend verifies the exact one-time token before activating the tenant. Tokens expire after 24 hours and can be reissued.
 - [ ] Keep the platform administrator's home tenant active and protected from suspension; the API blocks self-suspension.
 
 ## Server
 
-- [ ] PHP 8.2 or newer with pdo_mysql, mbstring, cURL and fileinfo.
+- [ ] PHP 8.2 or newer with pdo_mysql, mbstring, cURL, fileinfo and DNS TXT lookup support.
 - [ ] MySQL 8.0.16 or newer; run schema.sql and every migration in documented order.
 - [ ] Configure Apache mod_rewrite and permit the supplied API .htaccess rules.
 - [ ] Set APP_ENV=production, APP_DEBUG=false, APP_KEY to a unique random secret of at least 32 characters, and APP_BASE_URL to the exact HTTPS public origin.
@@ -25,7 +25,7 @@ The application code includes customer registration, catalogue management, inven
 - [ ] Configure ZARINPAL_MERCHANT_ID and ZARINPAL_SANDBOX=false.
 - [ ] Register the exact HTTPS callback domain with the payment provider.
 - [ ] Complete sandbox and low-value live tests for success, cancellation, duplicate callbacks, delayed callbacks and provider outages.
-- [ ] Configure settlement reconciliation and a manual refund procedure. Refund API integration is not included.
+- [ ] Configure settlement reconciliation and a separate external gateway refund procedure; the internal wallet-credit refund flow does not reverse bank or ZarinPal payments.
 
 ## Refunds and wallet ledger
 

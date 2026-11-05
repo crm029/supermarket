@@ -16,6 +16,37 @@ function app_platform_normalize_host(mixed $value): ?string {
     return $host;
 }
 
+function app_platform_domain_txt_name(string $host): string {
+    return '_supermarket360-verification.'.$host;
+}
+
+function app_platform_new_domain_token(): string {
+    if(strtolower((string)app_env('APP_ENV',''))==='testing'){
+        $fixture=trim((string)app_env('TEST_DOMAIN_VERIFICATION_TOKEN',''));
+        if($fixture!=='')return $fixture;
+    }
+    return bin2hex(random_bytes(24));
+}
+
+/** Returns TXT values, or null when DNS lookup is unavailable. */
+function app_platform_dns_txt_values(string $host): ?array {
+    $name=app_platform_domain_txt_name($host);
+    if(strtolower((string)app_env('APP_ENV',''))==='testing'){
+        $fixtureHost=strtolower(trim((string)app_env('TEST_DOMAIN_VERIFICATION_HOST','')));
+        $fixtureToken=trim((string)app_env('TEST_DOMAIN_VERIFICATION_TOKEN',''));
+        if($fixtureHost===$host&&$fixtureToken!=='')return [$fixtureToken];
+    }
+    if(!function_exists('dns_get_record'))return null;
+    $records=@dns_get_record($name,DNS_TXT);
+    if(!is_array($records))return [];
+    $values=[];
+    foreach($records as $record){
+        if(isset($record['txt'])&&is_string($record['txt']))$values[]=trim($record['txt']);
+        elseif(isset($record['entries'])&&is_array($record['entries']))$values[]=trim(implode('',$record['entries']));
+    }
+    return $values;
+}
+
 function app_platform_audit_list(PDO $db): never {
     $stmt=$db->query(
         "SELECT a.id,a.action,a.entity_type,a.entity_id,a.details,a.created_at,u.full_name AS actor_name
@@ -41,7 +72,9 @@ function app_platform_tenant_list(PDO $db): never {
              FROM tenant_domains d WHERE d.tenant_id=t.id) AS domains,
           (SELECT COUNT(*) FROM users u WHERE u.tenant_id=t.id) AS user_count,
           (SELECT COUNT(*) FROM orders o WHERE o.tenant_id=t.id) AS order_count,
-          (SELECT COUNT(*) FROM tenant_domains d WHERE d.tenant_id=t.id AND d.verified_at IS NOT NULL) AS verified_domain_count
+          (SELECT COUNT(*) FROM tenant_domains d WHERE d.tenant_id=t.id AND d.verified_at IS NOT NULL) AS verified_domain_count,
+          (SELECT d.verification_expires_at FROM tenant_domains d WHERE d.tenant_id=t.id AND d.is_primary=1 LIMIT 1) AS verification_expires_at,
+          (SELECT d.verification_attempts FROM tenant_domains d WHERE d.tenant_id=t.id AND d.is_primary=1 LIMIT 1) AS verification_attempts
          FROM tenants t ORDER BY t.id DESC LIMIT 500"
     );
     $rows=$stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -72,14 +105,20 @@ function app_platform_tenant_create(PDO $db, array $actorTenant, array $session)
         app_json(['error'=>'نام فروشگاه، شناسه، دامنه، مالک یا منطقه زمانی معتبر نیست.'],422);
     }
 
+    $verificationToken=app_platform_new_domain_token();
+    $verificationExpiresAt=gmdate('c',time()+86400);
     $db->beginTransaction();
     try{
         $tenantInsert=$db->prepare("INSERT INTO tenants (name,slug,status,timezone,currency) VALUES (?,?,'pending',?,'IRR')");
         $tenantInsert->execute([$name,$slug,$timezone]);
         $tenantId=(int)$db->lastInsertId();
 
-        $domain=$db->prepare('INSERT INTO tenant_domains (tenant_id,host,is_primary,verified_at) VALUES (?,?,1,NULL)');
-        $domain->execute([$tenantId,$host]);
+        $domain=$db->prepare(
+            'INSERT INTO tenant_domains
+             (tenant_id,host,is_primary,verified_at,verification_token_hash,verification_expires_at,verification_attempts)
+             VALUES (?,?,1,NULL,?,DATE_ADD(UTC_TIMESTAMP(),INTERVAL 24 HOUR),0)'
+        );
+        $domain->execute([$tenantId,$host,hash('sha256',$verificationToken)]);
 
         $referral=strtoupper(substr(bin2hex(random_bytes(8)),0,10));
         $owner=$db->prepare(
@@ -117,8 +156,9 @@ function app_platform_tenant_create(PDO $db, array $actorTenant, array $session)
         ]);
         $db->commit();
         app_json(['data'=>[
-            'tenant_id'=>$tenantId,'owner_user_id'=>$ownerId,'domain'=>$host,'status'=>'pending'
-        ],'message'=>'فروشگاه ساخته شد؛ تا تأیید مالکیت دامنه فعال نخواهد شد.'],201);
+            'tenant_id'=>$tenantId,'owner_user_id'=>$ownerId,'domain'=>$host,'status'=>'pending',
+            'verification'=>['record_type'=>'TXT','record_name'=>app_platform_domain_txt_name($host),'record_value'=>$verificationToken,'expires_at'=>$verificationExpiresAt]
+        ],'message'=>'فروشگاه ساخته شد؛ پس از ثبت رکورد DNS TXT و تأیید خودکار دامنه فعال می‌شود.'],201);
     }catch(PDOException $e){
         if($db->inTransaction())$db->rollBack();
         if((string)$e->getCode()==='23000')app_json(['error'=>'شناسه فروشگاه یا دامنه قبلاً ثبت شده است.'],409);
@@ -129,18 +169,53 @@ function app_platform_tenant_create(PDO $db, array $actorTenant, array $session)
     }
 }
 
-function app_platform_tenant_verify_domain(PDO $db, array $actorTenant, array $session, int $tenantId): never {
-    $body=app_auth_request_body();
-    $confirmed=$body['ownership_confirmed']??false;
-    $method=trim((string)($body['verification_method']??''));
-    $note=trim((string)($body['verification_note']??''));
-    if($confirmed!==true||!in_array($method,['dns_txt','http_file','manual'],true)||mb_strlen($note)<12||mb_strlen($note)>500){
-        app_json(['error'=>'تأیید صریح مالکیت دامنه، روش بررسی و یادداشت حداقل ۱۲ حرفی الزامی است.'],422);
-    }
+function app_platform_issue_domain_challenge(PDO $db, array $actorTenant, array $session, int $tenantId): never {
+    $token=app_platform_new_domain_token();
+    $expiresAt=gmdate('c',time()+86400);
     $db->beginTransaction();
     try{
         $stmt=$db->prepare(
             "SELECT d.id,d.host,d.verified_at,t.status
+             FROM tenant_domains d JOIN tenants t ON t.id=d.tenant_id
+             WHERE d.tenant_id=? AND d.is_primary=1 FOR UPDATE"
+        );
+        $stmt->execute([$tenantId]);
+        $domain=$stmt->fetch(PDO::FETCH_ASSOC);
+        if(!$domain){
+            $db->rollBack();
+            app_json(['error'=>'دامنه اصلی فروشگاه پیدا نشد.'],404);
+        }
+        if($domain['status']!=='pending'||$domain['verified_at']!==null){
+            $db->rollBack();
+            app_json(['error'=>'فقط فروشگاه در انتظار با دامنه تأییدنشده می‌تواند چالش جدید دریافت کند.'],409);
+        }
+        $update=$db->prepare(
+            'UPDATE tenant_domains
+             SET verification_token_hash=?,verification_expires_at=DATE_ADD(UTC_TIMESTAMP(),INTERVAL 24 HOUR),verification_attempts=0
+             WHERE id=? AND tenant_id=?'
+        );
+        $update->execute([hash('sha256',$token),$domain['id'],$tenantId]);
+        app_audit_log($db,(int)$actorTenant['id'],(int)$session['id'],'platform.tenant.domain_challenge_issued','tenant_domain',(int)$domain['id'],[
+            'target_tenant_id'=>$tenantId,'host'=>$domain['host']
+        ]);
+        $db->commit();
+        app_json(['data'=>[
+            'tenant_id'=>$tenantId,'record_type'=>'TXT',
+            'record_name'=>app_platform_domain_txt_name($domain['host']),
+            'record_value'=>$token,'expires_at'=>$expiresAt
+        ],'message'=>'رکورد TXT جدید صادر شد؛ پس از انتشار DNS آن را بررسی کنید.']);
+    }catch(Throwable $e){
+        if($db->inTransaction())$db->rollBack();
+        throw $e;
+    }
+}
+
+function app_platform_tenant_verify_domain(PDO $db, array $actorTenant, array $session, int $tenantId): never {
+    $db->beginTransaction();
+    try{
+        $stmt=$db->prepare(
+            "SELECT d.id,d.host,d.verified_at,d.verification_token_hash,d.verification_expires_at,
+                    d.verification_attempts,t.status
              FROM tenant_domains d JOIN tenants t ON t.id=d.tenant_id
              WHERE d.tenant_id=? AND d.is_primary=1 FOR UPDATE"
         );
@@ -158,17 +233,50 @@ function app_platform_tenant_verify_domain(PDO $db, array $actorTenant, array $s
             $db->rollBack();
             app_json(['error'=>'دامنه قبلاً تأیید شده است.'],409);
         }
-        $verify=$db->prepare('UPDATE tenant_domains SET verified_at=UTC_TIMESTAMP() WHERE id=? AND tenant_id=? AND verified_at IS NULL');
+        if(empty($domain['verification_token_hash'])||empty($domain['verification_expires_at'])){
+            $db->rollBack();
+            app_json(['error'=>'چالش تأیید دامنه صادر نشده است؛ ابتدا رکورد TXT را ایجاد کنید.'],409);
+        }
+        if(strtotime((string)$domain['verification_expires_at'].' UTC')<time()){
+            $db->rollBack();
+            app_json(['error'=>'مهلت رکورد تأیید تمام شده است؛ یک رکورد جدید صادر کنید.'],410);
+        }
+        if((int)$domain['verification_attempts']>=10){
+            $db->rollBack();
+            app_json(['error'=>'حداکثر تلاش برای بررسی DNS انجام شده است؛ رکورد جدید صادر کنید.'],429);
+        }
+        $values=app_platform_dns_txt_values((string)$domain['host']);
+        if($values===null){
+            $db->rollBack();
+            app_json(['error'=>'بررسی DNS TXT روی این سرور در دسترس نیست.'],503);
+        }
+        $matched=false;
+        foreach($values as $value){
+            if(hash_equals((string)$domain['verification_token_hash'],hash('sha256',(string)$value))){
+                $matched=true;break;
+            }
+        }
+        if(!$matched){
+            $attempt=$db->prepare('UPDATE tenant_domains SET verification_attempts=verification_attempts+1 WHERE id=? AND tenant_id=?');
+            $attempt->execute([$domain['id'],$tenantId]);
+            $db->commit();
+            app_json(['error'=>'رکورد DNS TXT هنوز با مقدار مورد انتظار مطابقت ندارد. پس از انتشار DNS دوباره تلاش کنید.'],422);
+        }
+        $verify=$db->prepare(
+            'UPDATE tenant_domains
+             SET verified_at=UTC_TIMESTAMP(),verification_token_hash=NULL,verification_expires_at=NULL
+             WHERE id=? AND tenant_id=? AND verified_at IS NULL'
+        );
         $verify->execute([$domain['id'],$tenantId]);
         $activate=$db->prepare("UPDATE tenants SET status='active' WHERE id=? AND status='pending'");
         $activate->execute([$tenantId]);
         app_audit_log($db,(int)$actorTenant['id'],(int)$session['id'],'platform.tenant.domain_verified','tenant_domain',(int)$domain['id'],[
             'target_tenant_id'=>$tenantId,'host'=>$domain['host'],
-            'verification_method'=>$method,'verification_note'=>$note
+            'verification_method'=>'dns_txt','record_name'=>app_platform_domain_txt_name((string)$domain['host'])
         ]);
         $db->commit();
         app_json(['data'=>['tenant_id'=>$tenantId,'domain'=>$domain['host'],'status'=>'active'],
-            'message'=>'تأیید دستی دامنه ثبت شد و فروشگاه فعال شد.']);
+            'message'=>'رکورد DNS TXT تأیید شد و فروشگاه فعال شد.']);
     }catch(Throwable $e){
         if($db->inTransaction())$db->rollBack();
         throw $e;

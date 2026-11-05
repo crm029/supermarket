@@ -39,7 +39,7 @@ declare(strict_types=1);
 
     <section class="platform-create">
       <h2>ساخت فروشگاه جدید</h2>
-      <p>فروشگاه ابتدا در حالت انتظار ساخته می‌شود. دامنه باید خارج از سامانه بررسی شود؛ تأیید این صفحه یک ثبت دستی توسط مدیر پلتفرم است و سامانه فعلاً DNS یا فایل HTTP را خودکار آزمایش نمی‌کند. در یادداشت، رمز یا توکن محرمانه وارد نکنید.</p>
+      <p>فروشگاه ابتدا در حالت انتظار ساخته می‌شود. برای فعال‌سازی، یک رکورد DNS از نوع TXT با مقدار یک‌بارمصرف باید روی دامنه ثبت شود؛ سامانه رکورد را بررسی می‌کند و پس از تطبیق، فروشگاه را فعال می‌کند.</p>
       <form id="platformCreateForm">
         <div class="platform-form-grid">
           <label>نام فروشگاه<input id="newTenantName" maxlength="160" required placeholder="مثلاً سوپرمارکت بهار"></label>
@@ -51,6 +51,17 @@ declare(strict_types=1);
         </div>
         <button class="primary-button" type="submit">ساخت فروشگاه در حالت انتظار</button>
       </form>
+      <section id="platformDnsInstructions" class="platform-dns-instructions" hidden>
+        <h3>رکورد DNS برای تأیید دامنه</h3>
+        <p>این رکورد را در پنل DNS دامنه بسازید. مقدار توکن محرمانه است؛ فقط در TXT ثبتش کنید و در گزارش‌ها یا پیام‌های عمومی منتشر نکنید.</p>
+        <dl>
+          <dt>نوع رکورد</dt><dd>TXT</dd>
+          <dt>نام / Host</dt><dd id="platformDnsRecordName" dir="ltr"></dd>
+          <dt>مقدار / Value</dt><dd id="platformDnsRecordValue" dir="ltr"></dd>
+          <dt>انقضا</dt><dd id="platformDnsExpires"></dd>
+        </dl>
+        <button id="platformCopyDnsValue" class="secondary-button" type="button">کپی مقدار TXT</button>
+      </section>
     </section>
 
     <section class="platform-list-section">

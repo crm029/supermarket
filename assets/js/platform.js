@@ -16,6 +16,13 @@
   function showDashboard(){ $("platformLogin").hidden=true;$("platformDashboard").hidden=false;$("platformIdentity").textContent=currentUser?currentUser.full_name+" · "+currentUser.mobile:""; }
   function showLogin(){ $("platformDashboard").hidden=true;$("platformLogin").hidden=false; }
   function statusLabel(status){return {pending:"در انتظار تأیید دامنه",active:"فعال",suspended:"تعلیق‌شده"}[status]||status;}
+  function showChallenge(challenge){
+    $("platformDnsRecordName").textContent=challenge.record_name||"";
+    $("platformDnsRecordValue").textContent=challenge.record_value||"";
+    $("platformDnsExpires").textContent=challenge.expires_at||"";
+    $("platformDnsInstructions").hidden=false;
+    $("platformDnsInstructions").scrollIntoView({behavior:"smooth",block:"center"});
+  }
   async function loadAudit(){
     const box=$("platformAuditList");
     if(!box)return;
@@ -23,12 +30,11 @@
       const result=await api("platform/audit");
       const rows=result.data||[];
       if(!rows.length){box.innerHTML='<div class="platform-empty">هنوز رویدادی ثبت نشده است.</div>';return;}
-      const labels={"platform.tenant.created":"ایجاد فروشگاه","platform.tenant.domain_verified":"تأیید دامنه","platform.tenant.suspended":"تعلیق فروشگاه"};
+      const labels={"platform.tenant.created":"ایجاد فروشگاه","platform.tenant.domain_challenge_issued":"صدور کد DNS","platform.tenant.domain_verified":"تأیید خودکار دامنه","platform.tenant.suspended":"تعلیق فروشگاه"};
       box.innerHTML=rows.map(row=>{
         const details=row.details?JSON.stringify(row.details):"";
         return '<article class="platform-audit-row"><div><strong>'+escapeText(labels[row.action]||row.action)+'</strong><small>'+escapeText(row.actor_name||"مدیر پلتفرم")+' · '+escapeText(row.created_at||"")+'</small></div><p>'+escapeText(row.entity_type||"")+" #"+Number(row.entity_id||0)+'</p><small>'+escapeText(details)+'</small></article>';
       }).join("");
-      await loadAudit();
     }catch(error){box.innerHTML='<div class="platform-empty">'+escapeText(error.message)+'</div>';}
   }
   async function loadTenants(){
@@ -37,15 +43,18 @@
       const result=await api("platform/tenants");
       const tenants=result.data||[];
       $("platformTenantCount").textContent=new Intl.NumberFormat("fa-IR").format(tenants.length)+" فروشگاه";
-      if(!tenants.length){box.innerHTML='<div class="platform-empty">هنوز فروشگاهی ثبت نشده است.</div>';return;}
+      if(!tenants.length){box.innerHTML='<div class="platform-empty">هنوز فروشگاهی ثبت نشده است.</div>';await loadAudit();return;}
       box.innerHTML=tenants.map(t=>{
         const domain=(t.domains||[]).map(escapeText).join("، ")||"دامنه ثبت نشده";
         const stateClass=t.status==="pending"?"pending":(t.status==="suspended"?"suspended":"");
+        const txtName="_supermarket360-verification."+(t.domains&&t.domains[0]?t.domains[0]:"");
+        const expiry=t.verification_expires_at?" · انقضا: "+escapeText(t.verification_expires_at):"";
         const verify= t.status==="pending"&&Number(t.verified_domain_count)===0
-          ?'<div class="platform-verify"><label>یادداشت بررسی مالکیت<input data-verification-note="'+Number(t.id)+'" placeholder="شرح بررسی DNS یا فایل تأیید، حداقل ۱۲ حرف"></label><label>روش بررسی<select data-verification-method="'+Number(t.id)+'"><option value="dns_txt">رکورد DNS TXT بررسی شد</option><option value="http_file">فایل تأیید بررسی شد</option><option value="manual">بررسی دستی</option></select></label><button class="primary-button" data-verify-tenant="'+Number(t.id)+'">تأیید دامنه و فعال‌سازی</button></div>':"";
+          ?'<div class="platform-verify"><p>رکورد TXT: <code dir="ltr">'+escapeText(txtName)+'</code>'+expiry+'</p><button class="secondary-button" data-issue-challenge="'+Number(t.id)+'">صدور / تمدید توکن DNS</button><button class="primary-button" data-verify-tenant="'+Number(t.id)+'">بررسی DNS و فعال‌سازی</button><small>تلاش‌های بررسی: '+Number(t.verification_attempts||0)+' از ۱۰</small></div>':"";
         const suspend=t.status==="active"?'<button class="danger" data-suspend-tenant="'+Number(t.id)+'">تعلیق فروشگاه</button>':"";
         return '<article class="platform-tenant"><div class="platform-tenant-head"><div><h3>'+escapeText(t.name)+' · '+escapeText(t.slug)+'</h3><p dir="ltr">'+domain+'</p><p>کاربران: '+new Intl.NumberFormat("fa-IR").format(Number(t.user_count)||0)+' · سفارش‌ها: '+new Intl.NumberFormat("fa-IR").format(Number(t.order_count)||0)+' · منطقه زمانی: '+escapeText(t.timezone)+'</p></div><span class="platform-status '+stateClass+'">'+statusLabel(t.status)+'</span></div>'+verify+suspend+'</article>';
       }).join("");
+      await loadAudit();
     }catch(error){box.innerHTML='<div class="platform-empty">'+escapeText(error.message)+'</div>';}
   }
   async function init(){
@@ -81,20 +90,23 @@
     try{
       const result=await api("platform/tenants",{method:"POST",body:JSON.stringify(body),csrf:true});
       message("platformMessage",result.message+" شناسه فروشگاه: "+result.data.tenant_id);
-      $("platformCreateForm").reset();await loadTenants();
+      showChallenge(result.data.verification);$("platformCreateForm").reset();await loadTenants();
     }catch(error){message("platformMessage",error.message,true);}
   });
   $("platformTenantList").addEventListener("click",async event=>{
     const verify=event.target.closest("[data-verify-tenant]");
+    const issue=event.target.closest("[data-issue-challenge]");
     const suspend=event.target.closest("[data-suspend-tenant]");
     try{
-      if(verify){
+      if(issue){
+        const id=Number(issue.dataset.issueChallenge);
+        const result=await api("platform/tenants/"+id+"/verification-challenge",{method:"POST",body:"{}",csrf:true});
+        showChallenge(result.data);message("platformMessage",result.message);
+      }else if(verify){
         const id=Number(verify.dataset.verifyTenant);
-        const note=document.querySelector('[data-verification-note="'+id+'"]').value.trim();
-        const method=document.querySelector('[data-verification-method="'+id+'"]').value;
-        if(!window.confirm("تأیید می‌کنید که مالکیت این دامنه را خارج از سامانه بررسی کرده‌اید؟ این عملیات فروشگاه را فعال می‌کند."))return;
-        const result=await api("platform/tenants/"+id+"/verify-domain",{method:"POST",body:JSON.stringify({ownership_confirmed:true,verification_method:method,verification_note:note}),csrf:true});
-        message("platformMessage",result.message);await loadTenants();
+        if(!window.confirm("سامانه رکورد DNS TXT را بررسی می‌کند و فقط در صورت تطبیق، فروشگاه فعال می‌شود."))return;
+        const result=await api("platform/tenants/"+id+"/verify-domain",{method:"POST",body:"{}",csrf:true});
+        message("platformMessage",result.message);$("platformDnsInstructions").hidden=true;await loadTenants();
       }else if(suspend){
         const id=Number(suspend.dataset.suspendTenant);
         const reason=window.prompt("دلیل تعلیق فروشگاه را وارد کنید:");
@@ -103,6 +115,10 @@
         message("platformMessage",result.message);await loadTenants();
       }
     }catch(error){message("platformMessage",error.message,true);}
+  });
+  $("platformCopyDnsValue").addEventListener("click",async()=>{
+    try{await navigator.clipboard.writeText($("platformDnsRecordValue").textContent);message("platformMessage","مقدار TXT کپی شد.");}
+    catch(_){message("platformMessage","کپی خودکار در دسترس نیست؛ مقدار TXT را دستی انتخاب و کپی کنید.",true);}
   });
   $("platformReload").addEventListener("click",loadTenants);
   $("platformLogout").addEventListener("click",async()=>{
