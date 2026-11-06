@@ -86,6 +86,17 @@ function app_admin_order_transition(PDO $db, array $tenant, array $session, int 
                 app_json(['error'=>'ابتدا نیروی جمع‌آوری باید پایان کار خود را ثبت کند.'],409);
             }
         }
+        if ($order['fulfillment'] === 'delivery' && $next === 'out_for_delivery') {
+            $activeCourier=$db->prepare(
+                "SELECT COUNT(*) FROM order_assignments
+                 WHERE tenant_id=? AND order_id=? AND assignment_type='courier' AND status='active'"
+            );
+            $activeCourier->execute([$tenant['id'],$orderId]);
+            if ((int)$activeCourier->fetchColumn() !== 1) {
+                $db->rollBack();
+                app_json(['error'=>'پیش از شروع ارسال، باید دقیقاً یک پیک فعال به سفارش تخصیص داده شود.'],409);
+            }
+        }
         $update = $db->prepare('UPDATE orders SET status = ? WHERE tenant_id = ? AND id = ?');
         $update->execute([$next, $tenant['id'], $orderId]);
         if ($order['fulfillment'] === 'delivery' && in_array($next,['out_for_delivery','delivered'],true)) {
