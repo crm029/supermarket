@@ -23,7 +23,7 @@ BEGIN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Order delivery event table is missing';
   END IF;
 
-  SELECT COUNT(*) INTO foreign_key_count
+  SELECT COUNT(DISTINCT constraint_name) INTO foreign_key_count
   FROM information_schema.key_column_usage
   WHERE table_schema=DATABASE() AND table_name='order_delivery_events'
     AND constraint_name IN (
