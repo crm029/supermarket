@@ -48,7 +48,8 @@ function app_pos_shift_open(PDO $db,array $tenant,array $session): never {
         $insert->execute([$tenant['id'],$session['id'],$warehouseId,$opening,$note===''?null:$note]);$id=(int)$db->lastInsertId();
         app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'pos.shift.opened','pos_shift',$id,['warehouse_id'=>$warehouseId,'opening_float_rial'=>$opening]);
         $db->commit();app_json(['data'=>['id'=>$id,'status'=>'open','opening_float_rial'=>$opening],'message'=>'شیفت صندوق باز شد.'],201);
-    }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
+    }catch(PDOException $e){if($db->inTransaction())$db->rollBack();if($e->getCode()==='23000')app_json(['error'=>'برای این صندوق‌دار هم‌اکنون شیفت بازی وجود دارد.'],409);throw $e;}
+    catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
 }
 
 function app_pos_shift_close(PDO $db,array $tenant,array $session,int $shiftId): never {
@@ -84,13 +85,13 @@ function app_pos_create_sale(PDO $db,array $tenant,array $session): never {
     if(!preg_match('/^[A-Za-z0-9._:-]{12,100}$/',$key))app_json(['error'=>'کلید یکتای فروش معتبر نیست.'],422);
     $received=app_pos_amount($body['cash_received_rial']??null,'وجه دریافتی');$note=trim((string)($body['note']??''));
     if(mb_strlen($note)>255)app_json(['error'=>'شرح فروش بیش از حد طولانی است.'],422);
-    $lines=app_commerce_lines($body);$db->beginTransaction();
+    $lines=app_commerce_lines($body);ksort($lines,SORT_NUMERIC);$requestHash=hash('sha256',(string)json_encode(['items'=>$lines,'cash_received_rial'=>$received,'note'=>$note],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));$db->beginTransaction();
     try{
         $shift=app_pos_active_shift($db,(int)$tenant['id'],(int)$session['id'],true);
         if(!$shift){$db->rollBack();app_json(['error'=>'ابتدا شیفت صندوق را باز کنید.'],409);}
-        $existing=$db->prepare('SELECT id,sale_number,total_rial,cash_received_rial,change_rial FROM pos_sales WHERE tenant_id=? AND cashier_user_id=? AND idempotency_key=? LIMIT 1');
+        $existing=$db->prepare('SELECT id,sale_number,total_rial,cash_received_rial,change_rial,request_hash FROM pos_sales WHERE tenant_id=? AND cashier_user_id=? AND idempotency_key=? LIMIT 1');
         $existing->execute([$tenant['id'],$session['id'],$key]);$prior=$existing->fetch(PDO::FETCH_ASSOC);
-        if($prior){$db->commit();app_json(['data'=>$prior,'message'=>'این فروش قبلاً ثبت شده است.']);}
+        if($prior){if(!hash_equals((string)$prior['request_hash'],$requestHash)){$db->rollBack();app_json(['error'=>'کلید تکراری فروش با اطلاعات متفاوت استفاده شده است.'],409);}$db->commit();unset($prior['request_hash']);app_json(['data'=>$prior,'message'=>'این فروش قبلاً ثبت شده است.']);}
         $ids=array_keys($lines);sort($ids,SORT_NUMERIC);$marks=implode(',',array_fill(0,count($ids),'?'));
         $lock=$db->prepare("SELECT id FROM products WHERE tenant_id=? AND is_active=1 AND id IN ({$marks}) ORDER BY id FOR UPDATE");
         $lock->execute(array_merge([$tenant['id']],$ids));
@@ -98,8 +99,8 @@ function app_pos_create_sale(PDO $db,array $tenant,array $session): never {
         $quote=app_commerce_quote($db,(int)$tenant['id'],$lines,false);$total=(int)$quote['subtotal_rial'];
         if($total<1||$received<$total){$db->rollBack();app_json(['error'=>'وجه دریافتی باید حداقل برابر مبلغ فروش باشد.'],422);}
         $change=$received-$total;$saleNumber='POS'.gmdate('ymdHis').strtoupper(bin2hex(random_bytes(3)));
-        $sale=$db->prepare('INSERT INTO pos_sales (tenant_id,shift_id,cashier_user_id,sale_number,idempotency_key,subtotal_rial,discount_rial,total_rial,cash_received_rial,change_rial,note) VALUES (?,?,?,?,?,?,0,?,?,?,?)');
-        $sale->execute([$tenant['id'],$shift['id'],$session['id'],$saleNumber,$key,$total,$total,$received,$change,$note===''?null:$note]);$saleId=(int)$db->lastInsertId();
+        $sale=$db->prepare('INSERT INTO pos_sales (tenant_id,shift_id,cashier_user_id,sale_number,idempotency_key,request_hash,subtotal_rial,discount_rial,total_rial,cash_received_rial,change_rial,note) VALUES (?,?,?,?,?,?,?,0,?,?,?,?)');
+        $sale->execute([$tenant['id'],$shift['id'],$session['id'],$saleNumber,$key,$requestHash,$total,$total,$received,$change,$note===''?null:$note]);$saleId=(int)$db->lastInsertId();
         $itemInsert=$db->prepare('INSERT INTO pos_sale_items (tenant_id,sale_id,product_id,product_title_snapshot,sku_snapshot,unit_price_rial,quantity,line_total_rial) VALUES (?,?,?,?,?,?,?,?)');
         $stockLock=$db->prepare('SELECT on_hand,reserved FROM stock_levels WHERE tenant_id=? AND warehouse_id=? AND product_id=? FOR UPDATE');
         $batchLock=$db->prepare('SELECT id,on_hand,reserved FROM stock_batches WHERE tenant_id=? AND warehouse_id=? AND product_id=? AND on_hand>reserved AND (expiry_date IS NULL OR expiry_date>=UTC_DATE()) ORDER BY (expiry_date IS NULL),expiry_date,received_at,id FOR UPDATE');
