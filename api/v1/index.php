@@ -361,6 +361,13 @@ try {
         app_pos_shift_open($db, $tenant, $session);
     }
 
+    if (preg_match('#^/admin/pos/sales/([1-9][0-9]*)/refunds$#', $path, $posRefundMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'pos.refund.create');
+        app_pos_create_refund($db, $tenant, $session, (int)$posRefundMatch[1]);
+    }
+
     if (preg_match('#^/admin/pos/shifts/([1-9][0-9]*)/close$#', $path, $posCloseMatch) && $method === 'POST') {
         $session = app_auth_require($db, $tenant);
         app_auth_require_csrf($session);
