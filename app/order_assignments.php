@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/policies.php';
 require_once __DIR__ . '/notifications.php';
+require_once __DIR__ . '/delivery_tracking.php';
 
 function app_admin_order_assignment_list(PDO $db, array $tenant, int $orderId): never {
     $order = $db->prepare('SELECT id,fulfillment,status FROM orders WHERE tenant_id=? AND id=? LIMIT 1');
