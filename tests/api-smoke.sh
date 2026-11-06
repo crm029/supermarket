@@ -658,7 +658,15 @@ request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}]
 PICKUP_ORDER_ID="$(assert_json order-created)"
 request POST /checkout 409 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}],"fulfillment":"pickup","pickup_slot_id":'$PICKUP_SLOT_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 # Pickup orders require a named staff handoff; admins cannot silently mark them delivered.
-mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "UPDATE orders SET status='paid' WHERE tenant_id=1 AND id=$PICKUP_ORDER_ID"
+mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "
+  SET @pickup_customer=(SELECT user_id FROM orders WHERE tenant_id=1 AND id=$PICKUP_ORDER_ID);
+  SET @pickup_wallet=(SELECT id FROM wallet_accounts WHERE tenant_id=1 AND user_id=@pickup_customer);
+  SET @pickup_amount=(SELECT total_rial FROM orders WHERE tenant_id=1 AND id=$PICKUP_ORDER_ID);
+  INSERT INTO wallet_entries (tenant_id,wallet_id,entry_type,amount_rial,source_type,source_id,idempotency_key,note)
+    VALUES (1,@pickup_wallet,'credit',@pickup_amount,'ci_funding',$PICKUP_ORDER_ID,CONCAT('ci-pickup-funding-',$PICKUP_ORDER_ID),'CI pickup handoff funding');
+"
+request POST "/me/orders/$PICKUP_ORDER_ID/pay-wallet" 200 '{}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+assert_json wallet-payment
 request POST "/admin/orders/$PICKUP_ORDER_ID/transition" 200 '{"status":"accepted"}' "$TOKEN" "$CSRF"
 request POST "/admin/orders/$PICKUP_ORDER_ID/transition" 200 '{"status":"picking"}' "$TOKEN" "$CSRF"
 request POST "/admin/orders/$PICKUP_ORDER_ID/transition" 200 '{"status":"packed"}' "$TOKEN" "$CSRF"
