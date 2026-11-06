@@ -6,6 +6,8 @@ $seo = app_seo_context();
 if (!$seo) { http_response_code(404); exit('فروشگاه پیدا نشد.'); }
 $slug = $_GET['slug'] ?? '';
 if (!is_string($slug) || $slug === '' || mb_strlen($slug)>140) { http_response_code(404); exit('دسته‌بندی پیدا نشد.'); }
+$page = filter_var($_GET['page'] ?? 1,FILTER_VALIDATE_INT);
+if ($page === false || $page === null || $page < 1) { http_response_code(404); exit('صفحه معتبر نیست.'); }
 
 $stmt = $seo['db']->prepare(
     'SELECT c.id,c.title,c.slug,c.description,c.seo_title,c.seo_description,c.updated_at,c.image_media_id,m.storage_key,m.alt_text
@@ -25,6 +27,7 @@ if (!$category) {
     $targetPath = (string)($redirectQuery->fetchColumn() ?: '');
     if ($targetPath !== '' && $targetPath !== $sourcePath &&
         preg_match('#^/category/[a-z0-9][a-z0-9-]{0,139}$#',$targetPath)) {
+        if ($page > 1) $targetPath .= '/page/'.$page;
         header('Location: '.app_seo_url($seo,ltrim($targetPath,'/')),true,301);
         exit;
     }
@@ -32,9 +35,32 @@ if (!$category) {
     exit('دسته‌بندی پیدا نشد.');
 }
 
+$countQuery = $seo['db']->prepare(
+    "SELECT COUNT(*) FROM products
+     WHERE tenant_id=? AND category_id=? AND is_active=1 AND product_kind<>'variant'"
+);
+$countQuery->execute([(int)$seo['tenant']['id'],(int)$category['id']]);
+$totalProducts = (int)$countQuery->fetchColumn();
+$pageSize = 48;
+$pageCount = (int)ceil($totalProducts / $pageSize);
+if (($totalProducts === 0 && $page > 1) || ($pageCount > 0 && $page > $pageCount)) {
+    http_response_code(404);
+    exit('صفحه دسته‌بندی پیدا نشد.');
+}
+$offset = ($page - 1) * $pageSize;
+$canonicalPath = '/category/'.rawurlencode((string)$category['slug']).($page > 1 ? '/page/'.$page : '');
+$currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '',PHP_URL_PATH) ?: '';
+if ($currentPath !== $canonicalPath || (string)($_SERVER['HTTP_HOST'] ?? '') !== (string)$seo['host']) {
+    header('Location: '.app_seo_url($seo,ltrim($canonicalPath,'/')),true,301);
+    exit;
+}
+
 $productsQuery = $seo['db']->prepare(
     "SELECT p.id,p.title,p.sku,p.seo_slug,p.brand,p.description,p.unit_label,p.price_rial,p.image_media_id,
-            m.storage_key,m.alt_text AS image_alt_text,
+            CASE WHEN p.product_kind='variant_parent'
+                 THEN COALESCE((SELECT MIN(v.price_rial) FROM products v WHERE v.tenant_id=p.tenant_id AND v.parent_product_id=p.id AND v.product_kind='variant' AND v.is_active=1),p.price_rial)
+                 ELSE p.price_rial END AS display_price_rial,
+            m.storage_key,m.alt_text AS image_alt_text,m.width AS image_width,m.height AS image_height,
             COALESCE((SELECT SUM(sl.on_hand-sl.reserved)
                       FROM stock_levels sl
                       JOIN warehouses w ON w.tenant_id=sl.tenant_id AND w.id=sl.warehouse_id
@@ -49,26 +75,29 @@ $productsQuery = $seo['db']->prepare(
      LEFT JOIN media_assets m ON m.tenant_id=p.tenant_id AND m.id=p.image_media_id
      WHERE p.tenant_id=? AND p.category_id=? AND p.is_active=1 AND p.product_kind<>'variant'
      ORDER BY p.title,p.id
-     LIMIT 200"
+     LIMIT " . $pageSize . " OFFSET " . $offset
 );
 $productsQuery->execute([(int)$seo['tenant']['id'],(int)$category['id']]);
 $products = $productsQuery->fetchAll(PDO::FETCH_ASSOC);
+$robotsDirective = $totalProducts === 0 ? 'noindex,follow' : 'index,follow,max-image-preview:large';
 $profile = app_seo_store_profile($seo);
 $storeName = (string)($profile['name'] ?? $seo['tenant']['name']);
 $visibleDescription = trim(strip_tags((string)($category['description'] ?? '')));
 $defaultDescription = $visibleDescription !== '' ? $visibleDescription : ('مشاهده محصولات دسته '.$category['title'].' و بررسی قیمت و موجودی در '.$storeName.'.');
 $metaDescription = trim(strip_tags((string)($category['seo_description'] ?? '')));
 if ($metaDescription === '') $metaDescription = $defaultDescription;
+if ($page > 1) $metaDescription .= ' صفحه '.$page;
 $description = mb_substr(preg_replace('/\s+/u',' ',$metaDescription) ?? $metaDescription,0,160);
 $pageTitle = trim((string)($category['seo_title'] ?? '')) ?: ((string)$category['title'].' | '.$storeName);
-$canonical = app_seo_url($seo,'category/'.rawurlencode((string)$category['slug']));
+if ($page > 1) $pageTitle .= ' | صفحه '.$page;
+$canonical = app_seo_url($seo,ltrim($canonicalPath,'/'));
 $categoryImage = $category['storage_key'] ? app_media_public_url((string)$category['storage_key']) : null;
 $e = static fn(mixed $value): string => htmlspecialchars((string)$value,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');
 $listItems = [];
 foreach ($products as $index=>$item) {
     $listItems[] = [
         '@type'=>'ListItem',
-        'position'=>$index+1,
+        'position'=>$offset+$index+1,
         'url'=>app_seo_url($seo,app_seo_product_path($item)),
         'name'=>(string)$item['title'],
     ];
@@ -82,6 +111,14 @@ $schema = [
     'mainEntity'=>['@type'=>'ItemList','itemListElement'=>$listItems],
 ];
 $jsonLd = json_encode($schema,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT);
+$breadcrumbSchema = json_encode([
+    '@context'=>'https://schema.org',
+    '@type'=>'BreadcrumbList',
+    'itemListElement'=>[
+        ['@type'=>'ListItem','position'=>1,'name'=>$storeName,'item'=>app_seo_url($seo)],
+        ['@type'=>'ListItem','position'=>2,'name'=>(string)$category['title'],'item'=>app_seo_url($seo,'category/'.rawurlencode((string)$category['slug']))],
+    ],
+],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT);
 $analyticsViewList = [
     'item_list_id'=>'category-'.(int)$category['id'],
     'item_list_name'=>(string)$category['title'],
@@ -89,7 +126,7 @@ $analyticsViewList = [
         'item_id'=>(string)$item['id'],
         'item_name'=>(string)$item['title'],
         'item_brand'=>(string)($item['brand'] ?? ''),
-        'price'=>(int)$item['price_rial'],
+        'price'=>(int)$item['display_price_rial'],
         'quantity'=>1,
     ],$products),
 ];
@@ -100,7 +137,7 @@ $analyticsViewListJson = json_encode($analyticsViewList,JSON_UNESCAPED_UNICODE|J
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="robots" content="index,follow,max-image-preview:large">
+  <meta name="robots" content="<?= $e($robotsDirective) ?>">
   <?= app_seo_tracking_markup($profile) ?>
   <title><?= $e($pageTitle) ?></title>
   <meta name="description" content="<?= $e($description) ?>">
@@ -110,10 +147,14 @@ $analyticsViewListJson = json_encode($analyticsViewList,JSON_UNESCAPED_UNICODE|J
   <meta property="og:title" content="<?= $e($pageTitle) ?>">
   <meta property="og:description" content="<?= $e($description) ?>">
   <meta property="og:url" content="<?= $e($canonical) ?>">
-  <?php if ($categoryImage): ?><meta property="og:image" content="<?= $e($categoryImage) ?>"><?php endif; ?>
+  <?php if ($categoryImage): ?><meta property="og:image" content="<?= $e($categoryImage) ?>"><meta property="og:image:alt" content="<?= $e($category['alt_text'] ?: $category['title']) ?>"><?php endif; ?>
   <meta name="twitter:card" content="<?= $categoryImage?'summary_large_image':'summary' ?>">
+  <meta name="twitter:title" content="<?= $e($pageTitle) ?>">
+  <meta name="twitter:description" content="<?= $e($description) ?>">
+  <?php if ($categoryImage): ?><meta name="twitter:image" content="<?= $e($categoryImage) ?>"><?php endif; ?>
   <link rel="stylesheet" href="/assets/css/app.css">
   <script type="application/ld+json"><?= $jsonLd ?: '{}' ?></script>
+  <script type="application/ld+json"><?= $breadcrumbSchema ?: '{}' ?></script>
   <script>
     document.addEventListener('sm360:analytics-ready',function(){
       window.sm360Track('view_item_list',<?= $analyticsViewListJson ?: '{}' ?>);
@@ -127,6 +168,8 @@ $analyticsViewListJson = json_encode($analyticsViewList,JSON_UNESCAPED_UNICODE|J
     .seo-product-card h2{font-size:14px;line-height:1.8}
     .seo-product-card p{font-size:12px;color:var(--muted)}
     .seo-product-card strong{color:var(--forest)}
+    .seo-pagination{max-width:1200px;margin:0 auto 48px;padding:0 4vw;display:flex;align-items:center;justify-content:center;gap:18px}
+    .seo-pagination a{padding:9px 16px;border:1px solid var(--line);border-radius:10px;color:var(--forest);text-decoration:none}
   </style>
 </head>
 <body>
@@ -139,7 +182,7 @@ $analyticsViewListJson = json_encode($analyticsViewList,JSON_UNESCAPED_UNICODE|J
     <p class="eyebrow"><?= $e($storeName) ?></p>
     <h1><?= $e($category['title']) ?></h1>
     <p><?= $e($defaultDescription) ?></p>
-    <p><?= number_format(count($products)) ?> محصول در این دسته‌بندی</p>
+    <p><?= number_format($totalProducts) ?> محصول در این دسته‌بندی</p>
   </header>
   <section class="seo-category-grid" aria-label="محصولات دسته‌بندی">
     <?php foreach ($products as $item):
@@ -147,15 +190,22 @@ $analyticsViewListJson = json_encode($analyticsViewList,JSON_UNESCAPED_UNICODE|J
       $inStock = (int)$item['available_quantity'] > 0;
     ?>
       <a class="seo-product-card" href="/<?= $e(app_seo_product_path($item)) ?>">
-        <?php if ($imageUrl): ?><img src="<?= $e($imageUrl) ?>" alt="<?= $e($item['image_alt_text'] ?: $item['title']) ?>" loading="lazy"><?php else: ?><div class="product-image"></div><?php endif; ?>
+        <?php if ($imageUrl): ?><img src="<?= $e($imageUrl) ?>" alt="<?= $e($item['image_alt_text'] ?: $item['title']) ?>" width="<?= (int)($item['image_width'] ?? 600) ?>" height="<?= (int)($item['image_height'] ?? 600) ?>" loading="lazy"><?php else: ?><div class="product-image"></div><?php endif; ?>
         <h2><?= $e($item['title']) ?></h2>
         <p><?= $e($item['brand'] ?? '') ?> · <?= $e($item['unit_label']) ?></p>
-        <strong><?= number_format((int)round((int)$item['price_rial']/10)) ?> تومان</strong>
+        <strong><?= number_format((int)round((int)$item['display_price_rial']/10)) ?> تومان</strong>
         <p><?= $inStock?'موجود در فروشگاه':'فعلاً ناموجود' ?></p>
       </a>
     <?php endforeach; ?>
     <?php if (!$products): ?><p>هنوز محصولی در این دسته‌بندی ثبت نشده است.</p><?php endif; ?>
   </section>
+  <?php if ($pageCount > 1): ?>
+    <nav class="seo-pagination" aria-label="صفحه‌های دسته‌بندی">
+      <?php if ($page > 1): ?><a href="/category/<?= $e(rawurlencode((string)$category['slug'])) ?><?= $page > 2 ? '/page/'.($page-1) : '' ?>">صفحه قبلی</a><?php endif; ?>
+      <span>صفحه <?= number_format($page) ?> از <?= number_format($pageCount) ?></span>
+      <?php if ($page < $pageCount): ?><a href="/category/<?= $e(rawurlencode((string)$category['slug'])) ?>/page/<?= $page+1 ?>">صفحه بعدی</a><?php endif; ?>
+    </nav>
+  <?php endif; ?>
 </main>
 <footer><div class="brand"><span class="brand-mark">۳۶۰</span><span><?= $e($storeName) ?></span></div><a href="/index.php#store">بازگشت به فروشگاه</a></footer>
 </body>

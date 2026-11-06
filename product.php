@@ -10,6 +10,9 @@ if ($productId === false || $productId === null || $productId < 1) { http_respon
 $stmt = $seo['db']->prepare(
     "SELECT p.id,p.title,p.sku,p.brand,p.description,p.unit_label,p.price_rial,p.compare_at_rial,
             p.image_media_id,p.product_kind,p.seo_title,p.seo_slug,p.seo_description,c.title AS category_title,c.slug AS category_slug,
+            CASE WHEN p.product_kind='variant_parent'
+                 THEN COALESCE((SELECT MIN(v.price_rial) FROM products v WHERE v.tenant_id=p.tenant_id AND v.parent_product_id=p.id AND v.product_kind='variant' AND v.is_active=1),p.price_rial)
+                 ELSE p.price_rial END AS seo_price_rial,
             COALESCE((SELECT SUM(sl.on_hand-sl.reserved)
                       FROM stock_levels sl
                       JOIN warehouses w ON w.tenant_id=sl.tenant_id AND w.id=sl.warehouse_id
@@ -46,13 +49,12 @@ if ($currentPath !== $expectedPath || (string)($_SERVER['HTTP_HOST'] ?? '') !== 
     exit;
 }
 $inStock = (int)$product['available_quantity'] > 0;
-$priceRial = (int)$product['price_rial'];
+$priceRial = (int)($product['seo_price_rial'] ?? $product['price_rial']);
 $title = trim((string)($product['seo_title'] ?? '')) ?: ((string)$product['title'].' | '.$storeName);
 $schema = [
     '@context'=>'https://schema.org',
     '@type'=>'Product',
     'name'=>(string)$product['title'],
-    'sku'=>(string)$product['sku'],
     'description'=>$visibleDescription,
     'offers'=>[
         '@type'=>'Offer',
@@ -63,9 +65,26 @@ $schema = [
         'itemCondition'=>'https://schema.org/NewCondition',
     ],
 ];
+if (trim((string)$product['sku']) !== '') $schema['sku']=(string)$product['sku'];
+if (!empty($product['category_title'])) $schema['category']=(string)$product['category_title'];
 if (!empty($product['brand'])) $schema['brand']=['@type'=>'Brand','name'=>(string)$product['brand']];
 if (!empty($image['url'])) $schema['image']=[$image['url']];
 $jsonLd = json_encode($schema,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT);
+$breadcrumbItems = [[
+    '@type'=>'ListItem','position'=>1,'name'=>$storeName,'item'=>app_seo_url($seo),
+]];
+if (!empty($product['category_slug'])) {
+    $breadcrumbItems[] = [
+        '@type'=>'ListItem','position'=>2,'name'=>(string)$product['category_title'],
+        'item'=>app_seo_url($seo,'category/'.rawurlencode((string)$product['category_slug'])),
+    ];
+}
+$breadcrumbItems[] = [
+    '@type'=>'ListItem','position'=>count($breadcrumbItems)+1,'name'=>(string)$product['title'],'item'=>$canonical,
+];
+$breadcrumbSchema = json_encode([
+    '@context'=>'https://schema.org','@type'=>'BreadcrumbList','itemListElement'=>$breadcrumbItems,
+],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT);
 $analyticsViewItem = [
     'currency'=>'IRR',
     'value'=>$priceRial,
@@ -98,10 +117,14 @@ $compareToman = $product['compare_at_rial'] === null ? null : number_format((int
   <meta property="og:title" content="<?= $e($title) ?>">
   <meta property="og:description" content="<?= $e($description) ?>">
   <meta property="og:url" content="<?= $e($canonical) ?>">
-  <?php if (!empty($image['url'])): ?><meta property="og:image" content="<?= $e($image['url']) ?>"><?php endif; ?>
+  <?php if (!empty($image['url'])): ?><meta property="og:image" content="<?= $e($image['url']) ?>"><meta property="og:image:alt" content="<?= $e($image['alt_text'] ?: $product['title']) ?>"><?php endif; ?>
   <meta name="twitter:card" content="<?= !empty($image['url'])?'summary_large_image':'summary' ?>">
+  <meta name="twitter:title" content="<?= $e($title) ?>">
+  <meta name="twitter:description" content="<?= $e($description) ?>">
+  <?php if (!empty($image['url'])): ?><meta name="twitter:image" content="<?= $e($image['url']) ?>"><?php endif; ?>
   <link rel="stylesheet" href="/assets/css/app.css">
   <script type="application/ld+json"><?= $jsonLd ?: '{}' ?></script>
+  <script type="application/ld+json"><?= $breadcrumbSchema ?: '{}' ?></script>
   <script>
     document.addEventListener('sm360:analytics-ready',function(){
       window.sm360Track('view_item',<?= $analyticsViewItemJson ?: '{}' ?>);
@@ -137,7 +160,7 @@ $compareToman = $product['compare_at_rial'] === null ? null : number_format((int
     <p><?= nl2br($e($visibleDescription)) ?></p>
     <p>واحد فروش: <?= $e($product['unit_label']) ?></p>
     <p><span class="seo-product-availability"><?= $inStock?'موجود در فروشگاه':'فعلاً ناموجود' ?></span></p>
-    <p class="seo-product-price"><?= $priceToman ?> تومان<?php if ($product['product_kind']==='variant_parent'): ?> <small>به‌عنوان قیمت پایه</small><?php endif; ?></p>
+    <p class="seo-product-price"><?= $priceToman ?> تومان<?php if ($product['product_kind']==='variant_parent'): ?> <small>شروع از</small><?php endif; ?></p>
     <?php if ($compareToman && (int)$product['compare_at_rial'] > $priceRial): ?><p><del><?= $compareToman ?> تومان</del></p><?php endif; ?>
     <p>کد کالا: <?= $e($product['sku']) ?></p>
     <div class="seo-product-actions">

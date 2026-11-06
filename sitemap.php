@@ -7,32 +7,20 @@ header('Cache-Control: public, max-age=3600');
 $seo = app_seo_context();
 if (!$seo) {
     http_response_code(404);
-    echo '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>';
+    echo '<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></sitemapindex>';
     exit;
 }
-$urls = [[
-    'loc' => app_seo_url($seo),
-    'lastmod' => gmdate('Y-m-d'),
-]];
-foreach (app_seo_category_list($seo) as $category) {
-    $slug = rawurlencode((string)$category['slug']);
-    $urls[] = [
-        'loc' => app_seo_url($seo,'category/'.$slug),
-        'lastmod' => app_seo_lastmod($category['updated_at'] ?? null),
-    ];
-}
-foreach (app_seo_product_list($seo) as $product) {
-    $urls[] = [
-        'loc' => app_seo_url($seo,app_seo_product_path($product)),
-        'lastmod' => app_seo_lastmod($product['updated_at'] ?? $product['created_at'] ?? null),
-    ];
+$productCount = app_seo_product_count($seo);
+$productPageSize = 45000;
+$productPages = (int)ceil($productCount / $productPageSize);
+$maps = [app_seo_url($seo,'sitemap-core.xml')];
+for ($page = 1; $page <= $productPages; $page++) {
+    $maps[] = app_seo_url($seo,'sitemap-products-'.$page.'.xml');
 }
 $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
-$xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
-foreach ($urls as $url) {
-    $xml .= '<url><loc>' . htmlspecialchars($url['loc'],ENT_XML1|ENT_QUOTES,'UTF-8') . '</loc>';
-    if (!empty($url['lastmod'])) $xml .= '<lastmod>' . htmlspecialchars($url['lastmod'],ENT_XML1|ENT_QUOTES,'UTF-8') . '</lastmod>';
-    $xml .= '</url>' . "\n";
+$xml .= '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
+foreach ($maps as $location) {
+    $xml .= '<sitemap><loc>' . htmlspecialchars($location,ENT_XML1|ENT_QUOTES,'UTF-8') . '</loc></sitemap>' . "\n";
 }
-$xml .= '</urlset>';
+$xml .= '</sitemapindex>';
 echo $xml;

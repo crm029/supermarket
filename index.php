@@ -29,7 +29,7 @@ if (!empty($seoProfile['street_address'])) {
     if (!empty($seoProfile['postal_code'])) $postalAddress['postalCode']=(string)$seoProfile['postal_code'];
     $seoStructuredData['address']=$postalAddress;
 }
-if ($seoProfile['latitude'] !== null && $seoProfile['longitude'] !== null) {
+if (($seoProfile['latitude'] ?? null) !== null && ($seoProfile['longitude'] ?? null) !== null) {
     $seoStructuredData['geo']=[
         '@type'=>'GeoCoordinates',
         'latitude'=>(float)$seoProfile['latitude'],
@@ -47,7 +47,7 @@ $seoJsonLd = $seoCanonical ? json_encode($seoStructuredData,JSON_UNESCAPED_UNICO
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="<?= htmlspecialchars((string)($seoProfile['primary_color'] ?? '#10251d'),ENT_QUOTES,'UTF-8') ?>">
   <meta name="description" content="<?= htmlspecialchars($seoDescription,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?>">
-  <meta name="robots" content="index,follow,max-image-preview:large">
+  <meta name="robots" content="<?= $seoContext ? 'index,follow,max-image-preview:large' : 'noindex,nofollow' ?>">
   <?= app_seo_tracking_markup($seoProfile) ?>
   <title><?= htmlspecialchars($seoTitle,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?></title>
   <?php if ($seoCanonical): ?><link rel="canonical" href="<?= htmlspecialchars($seoCanonical,ENT_QUOTES,'UTF-8') ?>"><?php endif; ?>
@@ -57,6 +57,8 @@ $seoJsonLd = $seoCanonical ? json_encode($seoStructuredData,JSON_UNESCAPED_UNICO
   <meta property="og:description" content="<?= htmlspecialchars($seoDescription,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?>">
   <?php if ($seoCanonical): ?><meta property="og:url" content="<?= htmlspecialchars($seoCanonical,ENT_QUOTES,'UTF-8') ?>"><?php endif; ?>
   <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="<?= htmlspecialchars($seoTitle,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?>">
+  <meta name="twitter:description" content="<?= htmlspecialchars($seoDescription,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?>">
   <?php if ($seoJsonLd): ?><script type="application/ld+json"><?= $seoJsonLd ?></script><?php endif; ?>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

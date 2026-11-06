@@ -8,14 +8,15 @@ This platform is multi-tenant. SEO output must be generated for the verified hos
 - Canonical URLs use the tenant's verified primary domain when one is configured.
 - Production canonical URLs use HTTPS; local/testing environments retain HTTP when TLS is not enabled.
 - /robots.txt is served by robots.php and points to the tenant-aware /sitemap.xml.
-- /sitemap.xml is generated from the current tenant's active categories and active non-variant product pages.
-- /category/{slug} serves crawlable category pages with product links and CollectionPage / ItemList structured data; changing a category slug records a permanent redirect from its previous URL.
-- /product/{id}/{seo-slug} serves crawlable product detail pages; the slug is optional until the merchant assigns one.
+- /sitemap.xml is a tenant-aware sitemap index. It links to a small core sitemap and product sitemap shards of at most 45,000 URLs each, keeping every sitemap below the protocol's 50,000-URL limit.
+- /category/{slug} serves crawlable category pages with 48-product pages, clean page URLs, self-canonicals and CollectionPage / ItemList structured data; changing a category slug records a permanent redirect from its previous URL. Empty categories with no active products are marked noindex and omitted from the sitemap.
+- /product/{id}/{seo-slug} serves crawlable product detail pages; the slug is optional until the merchant assigns one. Product and category pages include BreadcrumbList structured data and explicit social-card titles/descriptions.
 - The homepage includes a tenant-specific title, meta description, canonical, social metadata, GroceryStore structured data and server-rendered category links.
 - Optional merchant-verified street address, postal address, geo coordinates and opening hours are emitted as local-business structured data.
 - Google Search Console HTML verification and GA4 measurement IDs are configurable per tenant; GA4 is loaded only after the visitor accepts analytics.
 - SEO landing pages link back into the interactive storefront; product and category deep links are opened by the storefront after the live catalogue loads.
 - Query-string catalogue/filter URLs are excluded from crawling to reduce duplicate URL variants.
+- Apache rewrite rules deny direct web access to application source, database dumps/migrations, deployment scripts, tests, docs and hidden files; robots rules also keep private panels and source paths out of crawler queues.
 
 ## Current limitations — do not treat these as complete
 
@@ -33,7 +34,7 @@ This platform is multi-tenant. SEO output must be generated for the verified hos
 3. Replace sample products with real titles, brands, prices, descriptions and images.
 4. Write unique descriptions for important categories and products; do not copy supplier boilerplate.
 5. Add meaningful alt text to every important product/category image.
-6. Confirm /robots.txt, /sitemap.xml, /category/{slug} and /product/{id} return successfully on the production host.
+6. Confirm /robots.txt, /sitemap.xml, /sitemap-core.xml, the first /sitemap-products-1.xml shard, /category/{slug}, any required /category/{slug}/page/{n} pages and /product/{id} return successfully on the production host.
 7. Verify the domain in Google Search Console, submit the sitemap and review indexing coverage.
 8. Configure GA4 and test product view, add-to-cart, checkout and purchase events.
 9. Run mobile/Core Web Vitals checks after real images and hosting are configured.
