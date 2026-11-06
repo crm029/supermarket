@@ -316,6 +316,15 @@ assert_json() {
           !($assigned < $started && $started < $delivered)) exit(1);
       exit(0);
     }
+    if ($check === "operations-overview") {
+      $operations = $data["data"]["operations"] ?? null;
+      $required = ["waiting_picker","waiting_pack","waiting_courier","in_transit","ready_pickup","delivered_today"];
+      if (!is_array($operations)) exit(1);
+      foreach ($required as $key) if (!isset($operations[$key]) || !is_numeric($operations[$key])) exit(1);
+      if (array_key_exists("average_delivery_minutes_30d",$operations) &&
+          $operations["average_delivery_minutes_30d"] !== null && !is_numeric($operations["average_delivery_minutes_30d"])) exit(1);
+      exit(0);
+    }
     exit(0);
   ' "$OUT" "$1"
 }
@@ -382,6 +391,7 @@ if [[ "$TENANT_STATUS" != "suspended" ]]; then echo "Platform tenant suspension 
 request GET /platform/audit 200 "" "$TOKEN"
 assert_json platform-audit-events
 request GET /admin/reports/overview 200 "" "$TOKEN"
+assert_json operations-overview
 request GET /admin/reports/orders.csv 200 "" "$TOKEN"
 grep -Fq "شماره سفارش" "$OUT"
 request GET "/admin/reports/orders.csv?from=invalid" 422 "" "$TOKEN"
