@@ -95,6 +95,12 @@ Checkout intentionally does not mark an order paid. Reservations expire after 20
 - POST /admin/orders/{id}/transition — permission-checked fulfilment workflow; requires orders.manage and CSRF.
 - GET /me/orders/{id} — full order detail for its owning customer only.
 - POST /me/orders/{id}/cancel — cancel a pending-payment order and release active stock reservations; requires CSRF.
+- GET /admin/orders/{id}/assignments — lists assignment history and eligible active staff; requires orders.assign.
+- POST /admin/orders/{id}/assignments — assigns `picker`, `courier` or `pickup` responsibility to an active same-tenant employee with the matching permission.
+- GET /me/tasks — lists the signed-in employee's active collection, courier and in-person pickup handoff tasks.
+- POST /me/tasks/{assignment_id}/start-delivery — courier-only transition from dispatched to out_for_delivery.
+- POST /me/tasks/{assignment_id}/complete — completes collection, courier delivery or pickup handoff. Courier and pickup handoff require a recipient name; pickup handoff is available only when a pickup order is ready_pickup.
+- Manager-side direct completion of pickup orders is blocked so the assigned pickup employee records the recipient confirmation.
 
 
 ## Inventory endpoints
