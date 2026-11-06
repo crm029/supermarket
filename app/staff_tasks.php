@@ -50,47 +50,158 @@ function app_staff_task_list(PDO $db, array $tenant, array $session): never {
     app_json(['data'=>$tasks]);
 }
 
-function app_staff_task_complete(PDO $db, array $tenant, array $session, int $assignmentId): never {
+function app_staff_task_start_delivery(PDO $db, array $tenant, array $session, int $assignmentId): never {
+    $lookup=$db->prepare(
+        "SELECT order_id FROM order_assignments
+         WHERE tenant_id=? AND assignee_user_id=? AND id=? AND assignment_type='courier' AND status='active'
+         LIMIT 1"
+    );
+    $lookup->execute([$tenant['id'],$session['id'],$assignmentId]);
+    $orderId=$lookup->fetchColumn();
+    if(!$orderId) app_json(['error'=>'وظیفه فعال ارسال متعلق به حساب شما پیدا نشد.'],404);
+    app_auth_require_permission($db,$tenant,$session,'orders.deliver');
+
+    $body=app_auth_request_body();
+    $note=trim((string)($body['note']??''));
+    $latRaw=$body['latitude']??null;
+    $lngRaw=$body['longitude']??null;
+    $latitude=($latRaw===null||$latRaw==='')?null:filter_var($latRaw,FILTER_VALIDATE_FLOAT);
+    $longitude=($lngRaw===null||$lngRaw==='')?null:filter_var($lngRaw,FILTER_VALIDATE_FLOAT);
+    if(mb_strlen($note)>500 || $latitude===false || $longitude===false ||
+        (($latitude===null)!==($longitude===null))) {
+        app_json(['error'=>'یادداشت یا موقعیت ارسال معتبر نیست.'],422);
+    }
+
     $db->beginTransaction();
     try{
-        $assignment=$db->prepare(
-            'SELECT order_id,assignment_type FROM order_assignments
-             WHERE tenant_id=? AND assignee_user_id=? AND id=? AND status=\'active\' FOR UPDATE'
-        );
-        $assignment->execute([$tenant['id'],$session['id'],$assignmentId]);
-        $assignmentRow=$assignment->fetch(PDO::FETCH_ASSOC);
-        $orderId=$assignmentRow['order_id']??null;
-        if(!$orderId){
-            $db->rollBack();
-            app_json(['error'=>'وظیفه فعال متعلق به حساب شما پیدا نشد.'],404);
-        }
-        $order=$db->prepare('SELECT status,order_number FROM orders WHERE tenant_id=? AND id=? FOR UPDATE');
+        $order=$db->prepare('SELECT id,user_id,order_number,status,fulfillment FROM orders WHERE tenant_id=? AND id=? FOR UPDATE');
         $order->execute([$tenant['id'],$orderId]);
         $orderRow=$order->fetch(PDO::FETCH_ASSOC);
-        $orderStatus=$orderRow['status']??false;
-        if($orderStatus===false||in_array($orderStatus,['cancelled','refunded','delivered'],true)){
+        if(!$orderRow){
             $db->rollBack();
-            app_json(['error'=>'این سفارش دیگر در وضعیت قابل انجام نیست.'],409);
+            app_json(['error'=>'سفارش پیدا نشد.'],404);
+        }
+        $assignment=$db->prepare(
+            "SELECT id FROM order_assignments
+             WHERE tenant_id=? AND order_id=? AND assignee_user_id=? AND id=?
+               AND assignment_type='courier' AND status='active' FOR UPDATE"
+        );
+        $assignment->execute([$tenant['id'],$orderId,$session['id'],$assignmentId]);
+        if(!$assignment->fetchColumn()){
+            $db->rollBack();
+            app_json(['error'=>'وظیفه ارسال دیگر فعال یا متعلق به شما نیست.'],409);
+        }
+        if($orderRow['fulfillment']!=='delivery' || $orderRow['status']!=='dispatched'){
+            $db->rollBack();
+            app_json(['error'=>'شروع مسیر فقط پس از آماده‌سازی و ثبت ارسال سفارش ممکن است.'],409);
+        }
+        $update=$db->prepare(
+            "UPDATE orders SET status='out_for_delivery'
+             WHERE tenant_id=? AND id=? AND status='dispatched'"
+        );
+        $update->execute([$tenant['id'],$orderId]);
+        if($update->rowCount()!==1) throw new RuntimeException('Unable to start delivery.');
+        app_delivery_event_create(
+            $db,(int)$tenant['id'],(int)$orderId,$assignmentId,(int)$session['id'],
+            'out_for_delivery',$note!==''?$note:null,$latitude===null?null:(float)$latitude,$longitude===null?null:(float)$longitude
+        );
+        app_notification_create($db,(int)$tenant['id'],(int)$orderRow['user_id'],
+            'order-status-'.$orderId.'-out_for_delivery','order','سفارش شما در مسیر ارسال است',
+            'پیک سفارش '.$orderRow['order_number'].' حرکت به سمت نشانی شما را آغاز کرد.','order',(int)$orderId);
+        app_notification_notify_permission($db,(int)$tenant['id'],'orders.assign',
+            'courier-started-'.$assignmentId,'assignment','ارسال سفارش آغاز شد',
+            'پیک سفارش '.$orderRow['order_number'].' شروع مسیر را ثبت کرد.','order',(int)$orderId,(int)$session['id']);
+        app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'staff.delivery.started','order',(int)$orderId,[
+            'assignment_id'=>$assignmentId
+        ]);
+        $db->commit();
+        app_json(['message'=>'شروع مسیر ارسال ثبت شد.','data'=>['order_id'=>(int)$orderId,'status'=>'out_for_delivery']]);
+    }catch(Throwable $e){
+        if($db->inTransaction())$db->rollBack();
+        throw $e;
+    }
+}
+
+function app_staff_task_complete(PDO $db, array $tenant, array $session, int $assignmentId): never {
+    $lookup=$db->prepare(
+        "SELECT order_id,assignment_type FROM order_assignments
+         WHERE tenant_id=? AND assignee_user_id=? AND id=? AND status='active' LIMIT 1"
+    );
+    $lookup->execute([$tenant['id'],$session['id'],$assignmentId]);
+    $lookupRow=$lookup->fetch(PDO::FETCH_ASSOC);
+    if(!$lookupRow) app_json(['error'=>'وظیفه فعال متعلق به حساب شما پیدا نشد.'],404);
+    $assignmentType=(string)$lookupRow['assignment_type'];
+    app_auth_require_permission($db,$tenant,$session,$assignmentType==='picker'?'orders.pick':'orders.deliver');
+
+    $body=app_auth_request_body();
+    $recipientName=trim((string)($body['recipient_name']??''));
+    $note=trim((string)($body['note']??''));
+    if(mb_strlen($note)>300) app_json(['error'=>'یادداشت تحویل بیش از حد مجاز است.'],422);
+
+    $db->beginTransaction();
+    try{
+        $order=$db->prepare('SELECT id,user_id,order_number,status,fulfillment FROM orders WHERE tenant_id=? AND id=? FOR UPDATE');
+        $order->execute([$tenant['id'],$lookupRow['order_id']]);
+        $orderRow=$order->fetch(PDO::FETCH_ASSOC);
+        if(!$orderRow){
+            $db->rollBack();
+            app_json(['error'=>'سفارش پیدا نشد.'],404);
+        }
+        $assignment=$db->prepare(
+            'SELECT id FROM order_assignments
+             WHERE tenant_id=? AND order_id=? AND assignee_user_id=? AND id=? AND status=\'active\' FOR UPDATE'
+        );
+        $assignment->execute([$tenant['id'],$lookupRow['order_id'],$session['id'],$assignmentId]);
+        if(!$assignment->fetchColumn()){
+            $db->rollBack();
+            app_json(['error'=>'وظیفه فعال دیگر متعلق به حساب شما نیست.'],409);
+        }
+        if($assignmentType==='picker' && $orderRow['status']!=='picking'){
+            $db->rollBack();
+            app_json(['error'=>'وظیفه جمع‌آوری فقط در مرحله آماده‌سازی قابل تکمیل است.'],409);
+        }
+        if($assignmentType==='courier' &&
+            ($orderRow['fulfillment']!=='delivery' || $orderRow['status']!=='out_for_delivery')){
+            $db->rollBack();
+            app_json(['error'=>'ثبت تحویل فقط پس از شروع مسیر ارسال ممکن است.'],409);
+        }
+        if($assignmentType==='courier' && (mb_strlen($recipientName)<2 || mb_strlen($recipientName)>160)){
+            $db->rollBack();
+            app_json(['error'=>'نام تحویل‌گیرنده را وارد کنید.'],422);
         }
         $update=$db->prepare(
             "UPDATE order_assignments SET status='completed',completed_at=UTC_TIMESTAMP()
-             WHERE tenant_id=? AND id=? AND assignee_user_id=? AND status='active'"
+             WHERE tenant_id=? AND order_id=? AND id=? AND status='active'"
         );
-        $update->execute([$tenant['id'],$assignmentId,$session['id']]);
+        $update->execute([$tenant['id'],$lookupRow['order_id'],$assignmentId]);
         if($update->rowCount()!==1){
             $db->rollBack();
             app_json(['error'=>'وظیفه قبلاً تکمیل یا لغو شده است.'],409);
         }
-        app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'staff.task.completed','order',(int)$orderId,[
-            'assignment_id'=>$assignmentId
+        if($assignmentType==='courier'){
+            $updateOrder=$db->prepare(
+                "UPDATE orders SET status='delivered'
+                 WHERE tenant_id=? AND id=? AND status='out_for_delivery'"
+            );
+            $updateOrder->execute([$tenant['id'],$lookupRow['order_id']]);
+            if($updateOrder->rowCount()!==1) throw new RuntimeException('Unable to finalize courier delivery.');
+            $deliveryNote='تحویل به: '.$recipientName.($note!==''?' — '.$note:'');
+            app_delivery_event_create($db,(int)$tenant['id'],(int)$lookupRow['order_id'],$assignmentId,
+                (int)$session['id'],'delivered',$deliveryNote);
+            app_notification_create($db,(int)$tenant['id'],(int)$orderRow['user_id'],
+                'order-status-'.$lookupRow['order_id'].'-delivered','order','سفارش شما تحویل شد',
+                'سفارش '.$orderRow['order_number'].' به تحویل‌گیرنده ثبت‌شده تحویل داده شد.','order',(int)$lookupRow['order_id']);
+        }
+        app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'staff.task.completed','order',(int)$lookupRow['order_id'],[
+            'assignment_id'=>$assignmentId,'assignment_type'=>$assignmentType
         ]);
-        $taskLabel=($assignmentRow['assignment_type']??'')==='picker'?'جمع‌آوری اقلام':'ارسال و تحویل';
+        $taskLabel=$assignmentType==='picker'?'جمع‌آوری اقلام':'ارسال و تحویل';
         app_notification_notify_permission($db,(int)$tenant['id'],'orders.assign',
             'staff-task-completed-'.$assignmentId,'assignment','وظیفه سفارش تکمیل شد',
             $taskLabel.' سفارش '.$orderRow['order_number'].' توسط نیروی مسئول تکمیل شد.',
-            'order',(int)$orderId,(int)$session['id']);
+            'order',(int)$lookupRow['order_id'],(int)$session['id']);
         $db->commit();
-        app_json(['message'=>'انجام وظیفه شما ثبت شد.']);
+        app_json(['message'=>$assignmentType==='courier'?'تحویل سفارش ثبت شد.':'وظیفه جمع‌آوری تکمیل شد.']);
     }catch(Throwable $e){
         if($db->inTransaction())$db->rollBack();
         throw $e;
