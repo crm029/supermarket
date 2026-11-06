@@ -662,8 +662,12 @@ mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "
   SET @pickup_customer=(SELECT user_id FROM orders WHERE tenant_id=1 AND id=$PICKUP_ORDER_ID);
   SET @pickup_wallet=(SELECT id FROM wallet_accounts WHERE tenant_id=1 AND user_id=@pickup_customer);
   SET @pickup_amount=(SELECT total_rial FROM orders WHERE tenant_id=1 AND id=$PICKUP_ORDER_ID);
+  SET @pickup_balance=(SELECT COALESCE(SUM(CASE WHEN entry_type='credit' THEN amount_rial ELSE -amount_rial END),0)
+    FROM wallet_entries WHERE tenant_id=1 AND wallet_id=@pickup_wallet);
+  SET @pickup_funding=GREATEST(0,@pickup_amount-@pickup_balance);
   INSERT INTO wallet_entries (tenant_id,wallet_id,entry_type,amount_rial,source_type,source_id,idempotency_key,note)
-    VALUES (1,@pickup_wallet,'credit',@pickup_amount,'ci_funding',$PICKUP_ORDER_ID,CONCAT('ci-pickup-funding-',$PICKUP_ORDER_ID),'CI pickup handoff funding');
+    SELECT 1,@pickup_wallet,'credit',@pickup_funding,'ci_funding',$PICKUP_ORDER_ID,CONCAT('ci-pickup-funding-',$PICKUP_ORDER_ID),'CI pickup handoff funding'
+    WHERE @pickup_funding>0;
 "
 request POST "/me/orders/$PICKUP_ORDER_ID/pay-wallet" 200 '{}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 assert_json wallet-payment
