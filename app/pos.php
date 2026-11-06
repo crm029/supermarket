@@ -136,7 +136,7 @@ function app_pos_sales_list(PDO $db,array $tenant,array $session): never {
 
 
 
-function app_pos_sale_detail(PDO $db,array $tenant,int $saleId): never {
+function app_pos_sale_detail(PDO $db,array $tenant,array $session,int $saleId): never {
     $saleQuery=$db->prepare(
         'SELECT id,sale_number,shift_id,cashier_user_id,subtotal_rial,discount_rial,total_rial,
                 cash_received_rial,change_rial,note,created_at
@@ -145,6 +145,7 @@ function app_pos_sale_detail(PDO $db,array $tenant,int $saleId): never {
     $saleQuery->execute([(int)$tenant['id'],$saleId]);
     $sale=$saleQuery->fetch(PDO::FETCH_ASSOC);
     if(!$sale)app_json(['error'=>'فروش حضوری پیدا نشد.'],404);
+    if((int)$sale['cashier_user_id']!==(int)$session['id']&&!app_auth_has_permission($db,$tenant,$session,'pos.refund.create'))app_json(['error'=>'فروش حضوری پیدا نشد.'],404);
     $itemsQuery=$db->prepare(
         "SELECT i.id sale_item_id,i.product_id,i.product_title_snapshot title,i.sku_snapshot sku,
                 i.unit_price_rial,i.quantity,i.line_total_rial,
