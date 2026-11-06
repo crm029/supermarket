@@ -374,6 +374,15 @@ assert_json() {
       if (count($rows)!==1 || (int)($rows[0]["total_rial"]??0)!==125000) exit(1);
       exit(0);
     }
+    if ($check === "pos-sale-detail" || $check === "pos-sale-detail-refunded") {
+      $items=$data["data"]["items"]??[];
+      if (count($items)!==1 || (int)($items[0]["sale_item_id"]??0)<1) exit(1);
+      $expectedRefunded=$check==="pos-sale-detail-refunded"?1:0;
+      $expectedRemaining=$check==="pos-sale-detail-refunded"?0:1;
+      if ((int)($items[0]["refunded_quantity"]??-1)!==$expectedRefunded ||
+          (int)($items[0]["refundable_quantity"]??-1)!==$expectedRemaining) exit(1);
+      exit(0);
+    }
     if ($check === "pos-shift-closed") {
       $shift=$data["data"]??[];
       if (($shift["status"]??"")!=="closed" || (int)($shift["expected_cash_rial"]??-1)!==625000 ||
@@ -802,6 +811,9 @@ request POST /admin/pos/sales 200 '{"items":[{"product_id":'$PRODUCT_ID',"quanti
 assert_json pos-sale-idempotent
 request GET /admin/pos/sales 200 "" "$POS_TOKEN"
 assert_json pos-sales-list
+request GET "/admin/pos/sales/$POS_SALE_ID" 200 "" "$POS_TOKEN"
+assert_json pos-sale-detail
+request GET "/admin/pos/sales/$POS_SALE_ID" 403 "" "$CUSTOMER_TOKEN"
 request POST /admin/pos/sales 409 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"cash_received_rial":160000,"idempotency_key":"'$POS_IDEMPOTENCY_KEY'"}' "$POS_TOKEN" "$POS_CSRF"
 request POST "/admin/pos/sales/$POS_SALE_ID/refunds" 403 '{"reason":"بازپرداخت آزمایشی معتبر","idempotency_key":"pos-refund-noauth-01","items":[]}' "$POS_TOKEN" "$POS_CSRF"
 request POST /admin/pos/shifts 201 '{"warehouse_id":1,"opening_float_rial":200000,"note":"صندوق مدیر برای تست بازپرداخت"}' "$POS_MANAGER_TOKEN" "$POS_MANAGER_CSRF"
@@ -814,6 +826,8 @@ request POST "/admin/pos/sales/$POS_SALE_ID/refunds" 409 '{"reason":"مرجوع�
 request POST "/admin/pos/shifts/$OWNER_REFUND_SHIFT_ID/close" 200 '{"counted_cash_rial":75000,"note":"تطبیق پس از بازپرداخت"}' "$POS_MANAGER_TOKEN" "$POS_MANAGER_CSRF"
 POS_REFUND_CHECK="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM pos_refunds r JOIN pos_refund_items i ON i.tenant_id=r.tenant_id AND i.refund_id=r.id WHERE r.tenant_id=1 AND r.id=$POS_REFUND_ID AND r.stock_status='pending_inspection' AND i.stock_status='pending_inspection' AND r.amount_rial=125000")"
 if [[ "$POS_REFUND_CHECK" != "1" ]]; then echo "POS refund ledger or inspection hold was not recorded."; exit 1; fi
+request GET "/admin/pos/sales/$POS_SALE_ID" 200 "" "$POS_MANAGER_TOKEN"
+assert_json pos-sale-detail-refunded
 
 request POST "/admin/pos/shifts/$POS_SHIFT_ID/close" 200 '{"counted_cash_rial":625000,"note":"تطبیق کامل صندوق"}' "$POS_TOKEN" "$POS_CSRF"
 assert_json pos-shift-closed
