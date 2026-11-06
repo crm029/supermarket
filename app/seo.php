@@ -64,14 +64,24 @@ function app_seo_category_list(array $context): array {
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-function app_seo_product_list(array $context, int $limit = 50000): array {
-    $limit = max(1,min(50000,$limit));
+function app_seo_product_count(array $context): int {
+    $stmt = $context['db']->prepare(
+        "SELECT COUNT(*) FROM products
+         WHERE tenant_id=? AND is_active=1 AND product_kind<>'variant'"
+    );
+    $stmt->execute([(int)$context['tenant']['id']]);
+    return (int)$stmt->fetchColumn();
+}
+
+function app_seo_product_list(array $context, int $limit = 45000, int $offset = 0): array {
+    $limit = max(1,min(45000,$limit));
+    $offset = max(0,$offset);
     $stmt = $context['db']->prepare(
         "SELECT p.id,p.title,p.sku,p.seo_slug,p.updated_at,p.created_at
          FROM products p
          WHERE p.tenant_id=? AND p.is_active=1 AND p.product_kind<>'variant'
          ORDER BY COALESCE(p.updated_at,p.created_at) DESC,p.id DESC
-         LIMIT " . $limit
+         LIMIT " . $limit . " OFFSET " . $offset
     );
     $stmt->execute([(int)$context['tenant']['id']]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
