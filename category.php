@@ -75,7 +75,7 @@ $productsQuery = $seo['db']->prepare(
      LEFT JOIN media_assets m ON m.tenant_id=p.tenant_id AND m.id=p.image_media_id
      WHERE p.tenant_id=? AND p.category_id=? AND p.is_active=1 AND p.product_kind<>'variant'
      ORDER BY p.title,p.id
-     LIMIT 200"
+     LIMIT " . $pageSize . " OFFSET " . $offset
 );
 $productsQuery->execute([(int)$seo['tenant']['id'],(int)$category['id']]);
 $products = $productsQuery->fetchAll(PDO::FETCH_ASSOC);
@@ -86,6 +86,7 @@ $visibleDescription = trim(strip_tags((string)($category['description'] ?? '')))
 $defaultDescription = $visibleDescription !== '' ? $visibleDescription : ('مشاهده محصولات دسته '.$category['title'].' و بررسی قیمت و موجودی در '.$storeName.'.');
 $metaDescription = trim(strip_tags((string)($category['seo_description'] ?? '')));
 if ($metaDescription === '') $metaDescription = $defaultDescription;
+if ($page > 1) $metaDescription .= ' صفحه '.$page;
 $description = mb_substr(preg_replace('/\s+/u',' ',$metaDescription) ?? $metaDescription,0,160);
 $pageTitle = trim((string)($category['seo_title'] ?? '')) ?: ((string)$category['title'].' | '.$storeName);
 if ($page > 1) $pageTitle .= ' | صفحه '.$page;
