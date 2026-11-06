@@ -92,10 +92,17 @@ function app_admin_order_transition(PDO $db, array $tenant, array $session, int 
             $assignmentQuery=$db->prepare(
                 "SELECT id FROM order_assignments
                  WHERE tenant_id=? AND order_id=? AND assignment_type='courier' AND status='active'
-                 ORDER BY id DESC LIMIT 1"
+                 ORDER BY id DESC LIMIT 1 FOR UPDATE"
             );
             $assignmentQuery->execute([$tenant['id'],$orderId]);
             $assignmentId=$assignmentQuery->fetchColumn();
+            if ($next === 'delivered' && $assignmentId) {
+                $completeAssignment=$db->prepare(
+                    "UPDATE order_assignments SET status='completed',completed_at=UTC_TIMESTAMP()
+                     WHERE tenant_id=? AND order_id=? AND id=? AND status='active'"
+                );
+                $completeAssignment->execute([$tenant['id'],$orderId,$assignmentId]);
+            }
             app_delivery_event_create(
                 $db,(int)$tenant['id'],$orderId,$assignmentId?(int)$assignmentId:null,(int)$session['id'],
                 $next,$next==='delivered'?'تحویل توسط مدیر فروشگاه ثبت شد.':'شروع ارسال توسط مدیر فروشگاه ثبت شد.'
