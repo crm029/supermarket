@@ -113,6 +113,7 @@ function app_payment_platform_settings_update(PDO $db, array $tenant, array $ses
         $currentMerchant = app_payment_merchant_decrypt(is_string($encrypted) ? $encrypted : null)
             ?? trim((string)(app_env('ZARINPAL_MERCHANT_ID') ?? ''));
         if ($currentMerchant === '') {
+            $db->rollBack();
             app_json(['error' => 'ابتدا شناسه مرچنت زرین‌پال را وارد کنید.'], 422);
         }
         $save = $db->prepare(
