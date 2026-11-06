@@ -42,6 +42,9 @@ if (!$category) {
 
 $productsQuery = $seo['db']->prepare(
     "SELECT p.id,p.title,p.sku,p.seo_slug,p.brand,p.description,p.unit_label,p.price_rial,p.image_media_id,
+            CASE WHEN p.product_kind='variant_parent'
+                 THEN COALESCE((SELECT MIN(v.price_rial) FROM products v WHERE v.tenant_id=p.tenant_id AND v.parent_product_id=p.id AND v.product_kind='variant' AND v.is_active=1),p.price_rial)
+                 ELSE p.price_rial END AS display_price_rial,
             m.storage_key,m.alt_text AS image_alt_text,m.width AS image_width,m.height AS image_height,
             COALESCE((SELECT SUM(sl.on_hand-sl.reserved)
                       FROM stock_levels sl
@@ -105,7 +108,7 @@ $analyticsViewList = [
         'item_id'=>(string)$item['id'],
         'item_name'=>(string)$item['title'],
         'item_brand'=>(string)($item['brand'] ?? ''),
-        'price'=>(int)$item['price_rial'],
+        'price'=>(int)$item['display_price_rial'],
         'quantity'=>1,
     ],$products),
 ];
@@ -170,7 +173,7 @@ $analyticsViewListJson = json_encode($analyticsViewList,JSON_UNESCAPED_UNICODE|J
         <?php if ($imageUrl): ?><img src="<?= $e($imageUrl) ?>" alt="<?= $e($item['image_alt_text'] ?: $item['title']) ?>" width="<?= (int)($item['image_width'] ?? 600) ?>" height="<?= (int)($item['image_height'] ?? 600) ?>" loading="lazy"><?php else: ?><div class="product-image"></div><?php endif; ?>
         <h2><?= $e($item['title']) ?></h2>
         <p><?= $e($item['brand'] ?? '') ?> · <?= $e($item['unit_label']) ?></p>
-        <strong><?= number_format((int)round((int)$item['price_rial']/10)) ?> تومان</strong>
+        <strong><?= number_format((int)round((int)$item['display_price_rial']/10)) ?> تومان</strong>
         <p><?= $inStock?'موجود در فروشگاه':'فعلاً ناموجود' ?></p>
       </a>
     <?php endforeach; ?>
