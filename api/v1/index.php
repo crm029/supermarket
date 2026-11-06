@@ -364,7 +364,7 @@ try {
     if (preg_match('#^/admin/pos/sales/([1-9][0-9]*)$#', $path, $posSaleDetailMatch) && $method === 'GET') {
         $session = app_auth_require($db, $tenant);
         app_auth_require_permission($db, $tenant, $session, 'pos.read');
-        app_pos_sale_detail($db, $tenant, (int)$posSaleDetailMatch[1]);
+        app_pos_sale_detail($db, $tenant, $session, (int)$posSaleDetailMatch[1]);
     }
 
     if (preg_match('#^/admin/pos/sales/([1-9][0-9]*)/refunds$#', $path, $posRefundMatch) && $method === 'POST') {
