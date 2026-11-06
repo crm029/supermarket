@@ -17,11 +17,10 @@ $maps = [app_seo_url($seo,'sitemap-core.xml')];
 for ($page = 1; $page <= $productPages; $page++) {
     $maps[] = app_seo_url($seo,'sitemap-products-'.$page.'.xml');
 }
-$today = gmdate('Y-m-d');
 $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
 $xml .= '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
 foreach ($maps as $location) {
-    $xml .= '<sitemap><loc>' . htmlspecialchars($location,ENT_XML1|ENT_QUOTES,'UTF-8') . '</loc><lastmod>' . $today . '</lastmod></sitemap>' . "\n";
+    $xml .= '<sitemap><loc>' . htmlspecialchars($location,ENT_XML1|ENT_QUOTES,'UTF-8') . '</loc></sitemap>' . "\n";
 }
 $xml .= '</sitemapindex>';
 echo $xml;
