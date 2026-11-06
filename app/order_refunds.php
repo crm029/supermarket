@@ -81,6 +81,23 @@ function app_admin_order_refund_wallet(PDO $db, array $tenant, array $session, i
         $update->execute([$tenant['id'],$orderId]);
         if($update->rowCount()!==1)throw new RuntimeException('Order refund state could not be finalized.');
 
+        $activeAssignments=$db->prepare(
+            "SELECT id,assignee_user_id FROM order_assignments
+             WHERE tenant_id=? AND order_id=? AND status='active' FOR UPDATE"
+        );
+        $activeAssignments->execute([$tenant['id'],$orderId]);
+        $cancelledAssignments=$activeAssignments->fetchAll(PDO::FETCH_ASSOC);
+        $cancelAssignments=$db->prepare(
+            "UPDATE order_assignments SET status='cancelled',completed_at=UTC_TIMESTAMP()
+             WHERE tenant_id=? AND order_id=? AND status='active'"
+        );
+        $cancelAssignments->execute([$tenant['id'],$orderId]);
+        foreach($cancelledAssignments as $assignment){
+            app_notification_create($db,(int)$tenant['id'],(int)$assignment['assignee_user_id'],
+                'assignment-cancelled-refund-'.$assignment['id'],'assignment','وظیفه سفارش لغو شد',
+                'سفارش '.$order['order_number'].' بازپرداخت شد و وظیفه عملیاتی شما لغو گردید.','order',$orderId);
+        }
+
         $referralQuery=$db->prepare(
             "SELECT id,referrer_user_id,reward_rial FROM referral_events
              WHERE tenant_id=? AND qualifying_order_id=? AND status IN ('rewarded','qualified')
