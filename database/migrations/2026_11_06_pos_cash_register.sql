@@ -37,6 +37,7 @@ CREATE TABLE pos_sales (
   cashier_user_id BIGINT UNSIGNED NOT NULL,
   sale_number VARCHAR(36) NOT NULL,
   idempotency_key VARCHAR(100) NOT NULL,
+  request_hash CHAR(64) NOT NULL,
   subtotal_rial BIGINT UNSIGNED NOT NULL,
   discount_rial BIGINT UNSIGNED NOT NULL DEFAULT 0,
   total_rial BIGINT UNSIGNED NOT NULL,
