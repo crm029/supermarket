@@ -681,6 +681,7 @@ request POST "/admin/orders/$PICKUP_ORDER_ID/transition" 409 '{"status":"deliver
 request GET /me/tasks 200 "" "$WORKER_TOKEN"
 assert_json worker-pickup-task
 request POST "/admin/orders/$PICKUP_ORDER_ID/assignments/$PICKUP_ASSIGNMENT_ID/complete" 409 '{}' "$TOKEN" "$CSRF"
+request POST "/me/tasks/$PICKUP_ASSIGNMENT_ID/complete" 404 '{}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 request POST "/me/tasks/$PICKUP_ASSIGNMENT_ID/complete" 422 '{}' "$WORKER_TOKEN" "$WORKER_CSRF"
 request POST "/me/tasks/$PICKUP_ASSIGNMENT_ID/complete" 200 '{"recipient_name":"مشتری دریافت حضوری","note":"تحویل با تأیید نام"}' "$WORKER_TOKEN" "$WORKER_CSRF"
 PICKUP_HANDOFF_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM orders WHERE tenant_id=1 AND id=$PICKUP_ORDER_ID")"
