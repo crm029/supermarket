@@ -138,8 +138,11 @@ function app_admin_order_assignment_create(PDO $db, array $tenant, array $sessio
 
 function app_admin_order_assignment_complete(PDO $db, array $tenant, array $session, int $orderId, int $assignmentId): never {
     $body=app_auth_request_body();
-    $recipientName=trim((string)($body['recipient_name']??''));
-    $note=trim((string)($body['note']??''));
+    $recipientValue=$body['recipient_name']??'';
+    $noteValue=$body['note']??'';
+    if(!is_string($recipientValue)||!is_string($noteValue)) app_json(['error'=>'اطلاعات تحویل معتبر نیست.'],422);
+    $recipientName=trim($recipientValue);
+    $note=trim($noteValue);
     if (mb_strlen($note)>300) app_json(['error'=>'یادداشت تحویل بیش از حد مجاز است.'],422);
 
     $db->beginTransaction();
