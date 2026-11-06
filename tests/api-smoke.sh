@@ -306,6 +306,13 @@ assert_json() {
       if (!$picker || !$courier) exit(1);
       exit(0);
     }
+    if ($check === "worker-pickup-task") {
+      foreach (($data["data"] ?? []) as $task) {
+        if (($task["assignment_type"] ?? null) === "pickup" &&
+            ($task["order_status"] ?? null) === "ready_pickup") exit(0);
+      }
+      exit(1);
+    }
     if ($check === "pickup-order-delivered") {
       if (($data["data"]["status"] ?? null) !== "delivered" ||
           ($data["data"]["fulfillment"] ?? null) !== "pickup") exit(1);
@@ -660,7 +667,8 @@ request POST "/admin/orders/$PICKUP_ORDER_ID/assignments" 201 '{"assignment_type
 PICKUP_ASSIGNMENT_ID="$(assert_json created-id)"
 request POST "/admin/orders/$PICKUP_ORDER_ID/transition" 409 '{"status":"delivered"}' "$TOKEN" "$CSRF"
 request GET /me/tasks 200 "" "$WORKER_TOKEN"
-assert_json worker-tasks
+assert_json worker-pickup-task
+request POST "/admin/orders/$PICKUP_ORDER_ID/assignments/$PICKUP_ASSIGNMENT_ID/complete" 409 '{}' "$TOKEN" "$CSRF"
 request POST "/me/tasks/$PICKUP_ASSIGNMENT_ID/complete" 422 '{}' "$WORKER_TOKEN" "$WORKER_CSRF"
 request POST "/me/tasks/$PICKUP_ASSIGNMENT_ID/complete" 200 '{"recipient_name":"مشتری دریافت حضوری","note":"تحویل با تأیید نام"}' "$WORKER_TOKEN" "$WORKER_CSRF"
 PICKUP_HANDOFF_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM orders WHERE tenant_id=1 AND id=$PICKUP_ORDER_ID")"
