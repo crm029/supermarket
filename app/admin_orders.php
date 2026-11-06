@@ -9,7 +9,7 @@ require_once __DIR__ . '/stock_batches.php';
 
 function app_admin_orders_list(PDO $db, array $tenant): never {
     $status = trim((string)($_GET['status'] ?? ''));
-    $allowed = ['pending_payment','paid','accepted','picking','packed','ready_pickup','dispatched','delivered','cancelled','refunded'];
+    $allowed = ['pending_payment','paid','accepted','picking','packed','ready_pickup','dispatched','out_for_delivery','delivered','cancelled','refunded'];
     $where = 'o.tenant_id = ?';
     $params = [$tenant['id']];
     if ($status !== '') {
@@ -68,7 +68,8 @@ function app_admin_order_transition(PDO $db, array $tenant, array $session, int 
             'picking' => ['packed'],
             'packed' => [$order['fulfillment'] === 'pickup' ? 'ready_pickup' : 'dispatched'],
             'ready_pickup' => ['delivered'],
-            'dispatched' => ['delivered'],
+            'dispatched' => ['out_for_delivery'],
+            'out_for_delivery' => ['delivered'],
         ];
         if (!in_array($next, $transitions[$order['status']] ?? [], true)) {
             $db->rollBack();
@@ -76,6 +77,19 @@ function app_admin_order_transition(PDO $db, array $tenant, array $session, int 
         }
         $update = $db->prepare('UPDATE orders SET status = ? WHERE tenant_id = ? AND id = ?');
         $update->execute([$next, $tenant['id'], $orderId]);
+        if ($order['fulfillment'] === 'delivery' && in_array($next,['out_for_delivery','delivered'],true)) {
+            $assignmentQuery=$db->prepare(
+                "SELECT id FROM order_assignments
+                 WHERE tenant_id=? AND order_id=? AND assignment_type='courier' AND status='active'
+                 ORDER BY id DESC LIMIT 1"
+            );
+            $assignmentQuery->execute([$tenant['id'],$orderId]);
+            $assignmentId=$assignmentQuery->fetchColumn();
+            app_delivery_event_create(
+                $db,(int)$tenant['id'],$orderId,$assignmentId?(int)$assignmentId:null,(int)$session['id'],
+                $next,$next==='delivered'?'تحویل توسط مدیر فروشگاه ثبت شد.':'شروع ارسال توسط مدیر فروشگاه ثبت شد.'
+            );
+        }
         app_audit_log($db, (int)$tenant['id'], (int)$session['id'], 'order.status.' . $next, 'order', $orderId, [
             'previous_status' => $order['status'],
             'next_status' => $next,
@@ -85,7 +99,8 @@ function app_admin_order_transition(PDO $db, array $tenant, array $session, int 
             'picking'=>'در حال جمع‌آوری',
             'packed'=>'بسته‌بندی‌شده',
             'ready_pickup'=>'آماده تحویل حضوری',
-            'dispatched'=>'ارسال‌شده',
+            'dispatched'=>'آماده ارسال',
+            'out_for_delivery'=>'در مسیر ارسال',
             'delivered'=>'تحویل‌شده',
         ];
         $statusLabel=$statusLabels[$next]??$next;
@@ -124,6 +139,9 @@ function app_customer_order_detail(PDO $db, array $tenant, array $session, int $
     );
     $items->execute([$tenant['id'], $orderId]);
     $order['items'] = $items->fetchAll();
+    $order['delivery_events'] = $order['fulfillment'] === 'delivery'
+        ? app_delivery_event_list($db,(int)$tenant['id'],$orderId)
+        : [];
     app_json(['data' => $order]);
 }
 
