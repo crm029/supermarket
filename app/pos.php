@@ -149,7 +149,7 @@ function app_pos_sale_detail(PDO $db,array $tenant,int $saleId): never {
         "SELECT i.id sale_item_id,i.product_id,i.product_title_snapshot title,i.sku_snapshot sku,
                 i.unit_price_rial,i.quantity,i.line_total_rial,
                 COALESCE(r.refunded_quantity,0) refunded_quantity,
-                i.quantity-COALESCE(r.refunded_quantity,0) refundable_quantity
+                GREATEST(CAST(i.quantity AS SIGNED)-CAST(COALESCE(r.refunded_quantity,0) AS SIGNED),0) refundable_quantity
          FROM pos_sale_items i
          LEFT JOIN (
             SELECT ri.tenant_id,ri.sale_item_id,SUM(ri.quantity) refunded_quantity
