@@ -47,7 +47,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Transactional pending-order creation with cross-warehouse stock reservations and customer order history API.
 - [x] CLI worker to release expired stock reservations and cancel unpaid orders.
 - [x] ZarinPal server-side verification, order state transitions and customer order detail/cancellation.
-- [ ] Live provider acceptance, refund/reconciliation and courier tracking.
+- [ ] Live provider acceptance and settlement reconciliation; courier delivery tracking is implemented.
 
 ## Phase 3 — immersive storefront
 - [x] Merchant scene/media editor API and admin UI.
@@ -69,11 +69,12 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Transactional reservations, expiry/release and paid-order stock commit.
 - [x] Customer cancellation for pending-payment orders with transactional stock release.
 - [x] Tenant-scoped order queue and guarded fulfilment transitions (accept, picking, packing, pickup/dispatch, delivery).
-- [ ] Cashier assignment, picker workflow, courier tracking and operational dashboards.
+- [x] Picker/courier assignments, staff task controls, guarded out-for-delivery transition, recipient confirmation and customer/admin delivery timelines (MySQL/API integration CI verified).
+- [ ] Cashier assignment and operational dashboards.
 - [x] Seller dashboard with 30-day paid revenue, seven-day sales trend and low-stock count.
 - [x] Tenant-scoped inventory movement ledger with warehouse/product/type/date filters and signed quantities.
 - [x] Tenant-scoped CSV exports for orders and inventory movements, with date/status/warehouse/product filters, formula-injection protection and permission checks.
-- [ ] Operational notifications.
+- [x] Operational notifications.
 
 ## Phase 5 — customer growth and integrations
 - [x] ZarinPal v4 request/verify adapter, payment-attempt persistence, callback verification, stock commit and duplicate-callback protection.
@@ -97,6 +98,8 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Homepage title, description, canonical, social metadata, GroceryStore schema and crawlable category links.
 - [x] Merchant-editable store address, postal address, coordinates and opening hours in the GroceryStore structured data, with input validation and CI coverage.
 - [x] CI smoke tests for SEO pages, sitemap and robots output.
+- [x] Sitemap index with product shards below 50,000 URLs, stable ordering, category pagination, empty-category noindex and canonical legacy redirects.
+- [x] BreadcrumbList structured data, social-card metadata, variant-aware product offers and private-source path protection.
 - [x] Merchant-managed product/category SEO titles and descriptions in the seller dashboard.
 - [x] Merchant-managed unique product slugs, canonical slug URLs, legacy ID-only redirects and permanent redirects from outdated slug variants.
 - [x] Permanent tenant-scoped redirect history when a category slug changes, including redirect-chain updates.
