@@ -115,3 +115,20 @@ INSERT INTO user_roles (tenant_id,role_scope_id,user_id,role_id)
 VALUES (1,1,@api_pos_cashier_id,@api_pos_role_id);
 INSERT INTO auth_sessions (tenant_id,user_id,token_hash,csrf_hash,expires_at)
 VALUES (1,@api_pos_cashier_id,SHA2(REPEAT('P',43),256),SHA2(REPEAT('Q',43),256),DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 DAY));
+
+
+-- Dedicated manager identity for audited POS refund integration coverage.
+INSERT INTO users (tenant_id,full_name,mobile,status,referral_code)
+VALUES (1,'مدیر صندوق آزمون','09120000006','active','CIPOSMANAGER6');
+SET @api_pos_manager_id=LAST_INSERT_ID();
+INSERT INTO roles (tenant_id,role_key,title)
+VALUES (1,'ci_pos_refund_manager','مدیر صندوق آزمون')
+ON DUPLICATE KEY UPDATE title=VALUES(title);
+SET @api_pos_manager_role_id=(SELECT id FROM roles WHERE tenant_id=1 AND role_key='ci_pos_refund_manager' LIMIT 1);
+INSERT IGNORE INTO role_permissions (role_scope_id,role_id,permission_id)
+SELECT 1,@api_pos_manager_role_id,id FROM permissions
+WHERE scope='tenant' AND permission_key IN ('pos.read','pos.shift.open','pos.shift.close','pos.refund.create');
+INSERT INTO user_roles (tenant_id,role_scope_id,user_id,role_id)
+VALUES (1,1,@api_pos_manager_id,@api_pos_manager_role_id);
+INSERT INTO auth_sessions (tenant_id,user_id,token_hash,csrf_hash,expires_at)
+VALUES (1,@api_pos_manager_id,SHA2(REPEAT('M',43),256),SHA2(REPEAT('N',43),256),DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 DAY));
