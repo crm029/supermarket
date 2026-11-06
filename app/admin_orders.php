@@ -86,6 +86,10 @@ function app_admin_order_transition(PDO $db, array $tenant, array $session, int 
                 app_json(['error'=>'ابتدا نیروی جمع‌آوری باید پایان کار خود را ثبت کند.'],409);
             }
         }
+        if ($order['fulfillment'] === 'pickup' && $next === 'delivered') {
+            $db->rollBack();
+            app_json(['error'=>'تحویل حضوری باید توسط مسئول تحویل و از مرکز وظایف کارکنان ثبت شود.'],409);
+        }
         if ($order['fulfillment'] === 'delivery' && $next === 'out_for_delivery') {
             $activeCourier=$db->prepare(
                 "SELECT COUNT(*) FROM order_assignments
