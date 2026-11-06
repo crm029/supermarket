@@ -367,6 +367,11 @@ assert_json() {
       if ((int)($data["data"]["total_rial"]??0)!==125000 || empty($data["data"]["sale_number"])) exit(1);
       exit(0);
     }
+    if ($check === "pos-sales-list") {
+      $rows=$data["data"]??[];
+      if (count($rows)!==1 || (int)($rows[0]["total_rial"]??0)!==125000) exit(1);
+      exit(0);
+    }
     if ($check === "pos-shift-closed") {
       $shift=$data["data"]??[];
       if (($shift["status"]??"")!=="closed" || (int)($shift["expected_cash_rial"]??-1)!==625000 ||
@@ -790,6 +795,8 @@ request POST /admin/pos/sales 201 '{"items":[{"product_id":'$PRODUCT_ID',"quanti
 POS_SALE_ID="$(assert_json pos-sale)"
 request POST /admin/pos/sales 200 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"cash_received_rial":150000,"idempotency_key":"'$POS_IDEMPOTENCY_KEY'"}' "$POS_TOKEN" "$POS_CSRF"
 assert_json pos-sale-idempotent
+request GET /admin/pos/sales 200 "" "$POS_TOKEN"
+assert_json pos-sales-list
 request POST /admin/pos/sales 409 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"cash_received_rial":160000,"idempotency_key":"'$POS_IDEMPOTENCY_KEY'"}' "$POS_TOKEN" "$POS_CSRF"
 request POST "/admin/pos/shifts/$POS_SHIFT_ID/close" 200 '{"counted_cash_rial":625000,"note":"تطبیق کامل صندوق"}' "$POS_TOKEN" "$POS_CSRF"
 assert_json pos-shift-closed
