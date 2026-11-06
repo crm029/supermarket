@@ -47,7 +47,7 @@ $seoJsonLd = $seoCanonical ? json_encode($seoStructuredData,JSON_UNESCAPED_UNICO
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="<?= htmlspecialchars((string)($seoProfile['primary_color'] ?? '#10251d'),ENT_QUOTES,'UTF-8') ?>">
   <meta name="description" content="<?= htmlspecialchars($seoDescription,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?>">
-  <meta name="robots" content="index,follow,max-image-preview:large">
+  <meta name="robots" content="<?= $seoContext ? 'index,follow,max-image-preview:large' : 'noindex,nofollow' ?>">
   <?= app_seo_tracking_markup($seoProfile) ?>
   <title><?= htmlspecialchars($seoTitle,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?></title>
   <?php if ($seoCanonical): ?><link rel="canonical" href="<?= htmlspecialchars($seoCanonical,ENT_QUOTES,'UTF-8') ?>"><?php endif; ?>
