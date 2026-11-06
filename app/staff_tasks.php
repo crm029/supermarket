@@ -31,7 +31,7 @@ function app_staff_task_list(PDO $db, array $tenant, array $session): never {
              JOIN role_permissions rp ON rp.role_scope_id=ur.role_scope_id AND rp.role_id=ur.role_id
              JOIN permissions p ON p.id=rp.permission_id AND p.scope='tenant'
              WHERE ur.tenant_id=a.tenant_id AND ur.user_id=a.assignee_user_id
-               AND p.permission_key=CASE WHEN a.assignment_type='picker' THEN 'orders.pick' ELSE 'orders.deliver' END
+               AND p.permission_key=CASE a.assignment_type WHEN 'picker' THEN 'orders.pick' WHEN 'courier' THEN 'orders.deliver' ELSE 'orders.cashier' END
            )
          GROUP BY a.id,a.assignment_type,a.assigned_at,o.id,o.order_number,o.status,o.fulfillment,o.created_at,
                   ca.recipient,ca.mobile,ca.province,ca.city,ca.address,ca.postal_code,u.full_name,u.mobile
@@ -48,7 +48,7 @@ function app_staff_task_list(PDO $db, array $tenant, array $session): never {
         $task['order_id']=(int)$task['order_id'];
         $task['item_count']=(int)$task['item_count'];
         $task['items']=[];
-        if($task['assignment_type']==='picker'){
+        if(in_array($task['assignment_type'],['picker','cashier'],true)){
             $itemsQuery->execute([$tenant['id'],$task['order_id']]);
             $task['items']=$itemsQuery->fetchAll(PDO::FETCH_ASSOC);
         }
@@ -135,7 +135,7 @@ function app_staff_task_complete(PDO $db, array $tenant, array $session, int $as
     $lookupRow=$lookup->fetch(PDO::FETCH_ASSOC);
     if(!$lookupRow) app_json(['error'=>'وظیفه فعال متعلق به حساب شما پیدا نشد.'],404);
     $assignmentType=(string)$lookupRow['assignment_type'];
-    app_auth_require_permission($db,$tenant,$session,$assignmentType==='picker'?'orders.pick':'orders.deliver');
+    app_auth_require_permission($db,$tenant,$session,['picker'=>'orders.pick','courier'=>'orders.deliver','cashier'=>'orders.cashier'][$assignmentType]??'orders.cashier');
 
     $body=app_auth_request_body();
     $recipientValue=$body['recipient_name']??'';
@@ -172,7 +172,13 @@ function app_staff_task_complete(PDO $db, array $tenant, array $session, int $as
             $db->rollBack();
             app_json(['error'=>'ثبت تحویل فقط پس از شروع مسیر ارسال ممکن است.'],409);
         }
-        if($assignmentType==='courier' && (mb_strlen($recipientName)<2 || mb_strlen($recipientName)>160)){
+        if($assignmentType==='cashier' &&
+            ($orderRow['fulfillment']!=='pickup' || $orderRow['status']!=='ready_pickup')){
+            $db->rollBack();
+            app_json(['error'=>'تحویل حضوری فقط برای سفارش آماده دریافت قابل ثبت است.'],409);
+        }
+        if(in_array($assignmentType,['courier','cashier'],true) &&
+            (mb_strlen($recipientName)<2 || mb_strlen($recipientName)>160)){
             $db->rollBack();
             app_json(['error'=>'نام تحویل‌گیرنده را وارد کنید.'],422);
         }
@@ -185,24 +191,27 @@ function app_staff_task_complete(PDO $db, array $tenant, array $session, int $as
             $db->rollBack();
             app_json(['error'=>'وظیفه قبلاً تکمیل یا لغو شده است.'],409);
         }
-        if($assignmentType==='courier'){
+        if(in_array($assignmentType,['courier','cashier'],true)){
+            $expectedStatus=$assignmentType==='courier'?'out_for_delivery':'ready_pickup';
             $updateOrder=$db->prepare(
-                "UPDATE orders SET status='delivered'
-                 WHERE tenant_id=? AND id=? AND status='out_for_delivery'"
+                "UPDATE orders SET status='delivered' WHERE tenant_id=? AND id=? AND status=?"
             );
-            $updateOrder->execute([$tenant['id'],$lookupRow['order_id']]);
-            if($updateOrder->rowCount()!==1) throw new RuntimeException('Unable to finalize courier delivery.');
-            $deliveryNote='تحویل به: '.$recipientName.($note!==''?' — '.$note:'');
-            app_delivery_event_create($db,(int)$tenant['id'],(int)$lookupRow['order_id'],$assignmentId,
-                (int)$session['id'],'delivered',$deliveryNote);
+            $updateOrder->execute([$tenant['id'],$lookupRow['order_id'],$expectedStatus]);
+            if($updateOrder->rowCount()!==1) throw new RuntimeException('Unable to finalize order handover.');
+            if($assignmentType==='courier'){
+                $deliveryNote='تحویل به: '.$recipientName.($note!==''?' — '.$note:'');
+                app_delivery_event_create($db,(int)$tenant['id'],(int)$lookupRow['order_id'],$assignmentId,
+                    (int)$session['id'],'delivered',$deliveryNote);
+            }
+            $handoverTitle=$assignmentType==='courier'?'سفارش شما تحویل شد':'سفارش شما تحویل حضوری شد';
             app_notification_create($db,(int)$tenant['id'],(int)$orderRow['user_id'],
-                'order-status-'.$lookupRow['order_id'].'-delivered','order','سفارش شما تحویل شد',
+                'order-status-'.$lookupRow['order_id'].'-delivered','order',$handoverTitle,
                 'سفارش '.$orderRow['order_number'].' به تحویل‌گیرنده ثبت‌شده تحویل داده شد.','order',(int)$lookupRow['order_id']);
         }
         app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'staff.task.completed','order',(int)$lookupRow['order_id'],[
             'assignment_id'=>$assignmentId,'assignment_type'=>$assignmentType
         ]);
-        $taskLabel=$assignmentType==='picker'?'جمع‌آوری اقلام':'ارسال و تحویل';
+        $taskLabel=$assignmentType==='picker'?'جمع‌آوری اقلام':($assignmentType==='courier'?'ارسال و تحویل':'تحویل حضوری');
         app_notification_notify_permission($db,(int)$tenant['id'],'orders.assign',
             'staff-task-completed-'.$assignmentId,'assignment','وظیفه سفارش تکمیل شد',
             $taskLabel.' سفارش '.$orderRow['order_number'].' توسط نیروی مسئول تکمیل شد.',
