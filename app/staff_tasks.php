@@ -70,14 +70,7 @@ function app_staff_task_start_delivery(PDO $db, array $tenant, array $session, i
 
     $body=app_auth_request_body();
     $note=trim((string)($body['note']??''));
-    $latRaw=$body['latitude']??null;
-    $lngRaw=$body['longitude']??null;
-    $latitude=($latRaw===null||$latRaw==='')?null:filter_var($latRaw,FILTER_VALIDATE_FLOAT);
-    $longitude=($lngRaw===null||$lngRaw==='')?null:filter_var($lngRaw,FILTER_VALIDATE_FLOAT);
-    if(mb_strlen($note)>500 || $latitude===false || $longitude===false ||
-        (($latitude===null)!==($longitude===null)) ||
-        ($latitude!==null && ((float)$latitude < -90 || (float)$latitude > 90)) ||
-        ($longitude!==null && ((float)$longitude < -180 || (float)$longitude > 180))) {
+    if(mb_strlen($note)>500) {
         app_json(['error'=>'یادداشت یا موقعیت ارسال معتبر نیست.'],422);
     }
 
@@ -112,7 +105,7 @@ function app_staff_task_start_delivery(PDO $db, array $tenant, array $session, i
         if($update->rowCount()!==1) throw new RuntimeException('Unable to start delivery.');
         app_delivery_event_create(
             $db,(int)$tenant['id'],(int)$orderId,$assignmentId,(int)$session['id'],
-            'out_for_delivery',$note!==''?$note:null,$latitude===null?null:(float)$latitude,$longitude===null?null:(float)$longitude
+            'out_for_delivery',$note!==''?$note:null
         );
         app_notification_create($db,(int)$tenant['id'],(int)$orderRow['user_id'],
             'order-status-'.$orderId.'-out_for_delivery','order','سفارش شما در مسیر ارسال است',
