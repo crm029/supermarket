@@ -42,6 +42,16 @@ check_page "/sitemap.xml" "sitemap-core.xml"
 check_page "/sitemap.xml" "sitemap-products-1.xml"
 check_page "/sitemap-core.xml" "http://localhost/category/dairy"
 check_page "/sitemap-products-1.xml" "http://localhost/product/1/test-product"
+status="$(curl -sS -o "$OUT" -w '%{http_code}' -H "Host: localhost" "$BASE_URL/sitemap-products-2.xml")"
+if [[ "$status" != "404" ]]; then
+  echo "Out-of-range product sitemap shard should return 404; received HTTP $status"
+  exit 1
+fi
+status="$(curl -sS -o "$OUT" -w '%{http_code}' -H "Host: unknown.invalid" "$BASE_URL/index.php")"
+if [[ "$status" != "200" ]] || ! grep -Fq 'noindex,nofollow' "$OUT"; then
+  echo "Unverified host homepage must not be indexable"
+  exit 1
+fi
 check_page "/product/1/test-product" "شیر پرچرب یک لیتری"
 check_page "/product/1/test-product" "عنوان سئو محصول تست"
 check_page "/product/1/test-product" "توضیحات متا محصول تست"
