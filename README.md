@@ -96,3 +96,8 @@ For first-time tenant setup, apply database/bootstrap-store-owner.sql after all 
 
 
 Production deployment and external-service acceptance checklist: docs/production-readiness.md. Live launch still requires the store's real hosting, domain, SMS and payment credentials, and store-specific photography.
+
+
+### POS management reports
+
+The seller admin links to `pos-reports.php`, a tenant-scoped reporting view for date-filtered in-person sales, online-vs-in-person totals, shift counts and cash variance, cashier performance, and top-selling in-person items. Its API endpoint is `GET /api/v1/admin/pos/reports` and requires the existing `reports.read` permission. Amounts are stored in rial and displayed in toman.
