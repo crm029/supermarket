@@ -191,3 +191,16 @@ Apply the coupon migration after the pickup-slot migration. The seller panel can
 
 ## Product variants
 Apply the variants migration after the coupons migration. Create a product as “محصول دارای تنوع” in the seller catalogue, then use “مدیریت تنوع‌ها” to add sellable options. Each option is a separate stock-tracked product with its own SKU, barcode, price, unit and low-stock threshold. Customers select an available option on the product detail screen; parent groups cannot be added directly to the cart.
+
+
+## صندوق فروش حضوری (POS)
+
+- پس از اجرای migration مربوط به موجودی بچ‌ها، فایل `database/migrations/2026_11_06_pos_cash_register.sql` را اجرا کنید.
+- صفحه صندوق در `/pos.php` قرار دارد و از همان نشست ورود پنل فروشنده استفاده می‌کند.
+- مدیر فروشگاه از «کارکنان و سطح دسترسی» یک نقش صندوق‌دار بسازد و مجوزهای `pos.read`، `pos.shift.open`، `pos.shift.close` و `pos.sale.create` را به آن بدهد؛ سپس نقش را به حساب فعال کارمند اختصاص دهد.
+- APIها زیر مسیر `/api/v1/admin/pos` هستند: `GET warehouses`، `GET shift`، `POST shifts`، `POST shifts/{id}/close`، `GET products?q=...` و `GET/POST sales`.
+- مبالغ در API به ریال هستند؛ صفحه صندوق مبالغ را به تومان نمایش می‌دهد و هنگام ارسال تبدیل می‌کند.
+- فروش نقدی قیمت را از کاتالوگ سمت سرور می‌گیرد، موجودی آزاد انبار انتخاب‌شده را با بچ‌های FEFO کم می‌کند و حرکت موجودی و رویداد حسابرسی را در همان تراکنش ثبت می‌کند.
+- کلید یکتای فروش به اثرانگشت اقلام، وجه دریافتی و توضیح فاکتور متصل است تا تکرار درخواست با محتوای متفاوت رد شود.
+- انتظار وجه صندوق برابر موجودی اولیه به‌علاوه فروش خالص نقدی است. در بستن شیفت، وجه شمارش‌شده و مغایرت ثبت می‌شود.
+- این نسخه فقط فروش نقدی ساده را پوشش می‌دهد؛ پرداخت ترکیبی، کارت‌خوان بانکی، برگشت فروش POS، چاپگر حرارتی، بارکدخوان سخت‌افزاری و گزارش حسابداری صندوق در مراحل بعدی هستند.
