@@ -7,6 +7,8 @@ BEGIN
   DECLARE shift_unique_count INT DEFAULT 0;
   DECLARE sale_idempotency_count INT DEFAULT 0;
   DECLARE sale_item_fk_count INT DEFAULT 0;
+  DECLARE request_hash_column_count INT DEFAULT 0;
+  DECLARE tenant_fk_count INT DEFAULT 0;
 
   SELECT COUNT(*) INTO table_count
   FROM information_schema.tables
@@ -43,9 +45,25 @@ BEGIN
   SELECT COUNT(DISTINCT constraint_name) INTO sale_item_fk_count
   FROM information_schema.key_column_usage
   WHERE table_schema=DATABASE() AND table_name='pos_sale_items'
-    AND constraint_name IN ('fk_pos_sale_item_tenant','fk_pos_sale_item_sale','fk_pos_sale_item_product');
+    AND constraint_name IN ('fk_pos_sale_item_tenant','fk_pos_sale_item_sale_tenant','fk_pos_sale_item_product_tenant');
   IF sale_item_fk_count <> 3 THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='POS sale items must be tenant-scoped to sale and product';
+  END IF;
+
+  SELECT COUNT(*) INTO request_hash_column_count
+  FROM information_schema.columns
+  WHERE table_schema=DATABASE() AND table_name='pos_sales'
+    AND column_name='request_hash' AND character_maximum_length=64;
+  IF request_hash_column_count <> 1 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='POS idempotency must bind a request hash';
+  END IF;
+
+  SELECT COUNT(DISTINCT constraint_name) INTO tenant_fk_count
+  FROM information_schema.key_column_usage
+  WHERE table_schema=DATABASE() AND table_name='pos_shifts'
+    AND constraint_name IN ('fk_pos_shift_cashier_tenant','fk_pos_shift_warehouse_tenant');
+  IF tenant_fk_count <> 2 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='POS shifts must enforce tenant-safe cashier and warehouse foreign keys';
   END IF;
 END//
 DELIMITER ;
