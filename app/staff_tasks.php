@@ -180,7 +180,7 @@ function app_staff_task_complete(PDO $db, array $tenant, array $session, int $as
             $db->rollBack();
             app_json(['error'=>'ثبت تحویل فقط پس از شروع مسیر ارسال ممکن است.'],409);
         }
-        if($assignmentType==='courier' && (mb_strlen($recipientName)<2 || mb_strlen($recipientName)>160)){
+        if(in_array($assignmentType,['courier','pickup'],true) && (mb_strlen($recipientName)<2 || mb_strlen($recipientName)>160)){
             $db->rollBack();
             app_json(['error'=>'نام تحویل‌گیرنده را وارد کنید.'],422);
         }
@@ -205,21 +205,6 @@ function app_staff_task_complete(PDO $db, array $tenant, array $session, int $as
                 app_delivery_event_create($db,(int)$tenant['id'],(int)$lookupRow['order_id'],$assignmentId,
                     (int)$session['id'],'delivered',$deliveryNote);
             }
-            app_notification_create($db,(int)$tenant['id'],(int)$orderRow['user_id'],
-                'order-status-'.$lookupRow['order_id'].'-delivered','order','سفارش شما تحویل شد',
-                'سفارش '.$orderRow['order_number'].' به تحویل‌گیرنده ثبت‌شده تحویل داده شد.','order',(int)$lookupRow['order_id']);
-        }
-        /* replaced legacy courier completion block */
-        if(false){
-            $updateOrder=$db->prepare(
-                "UPDATE orders SET status='delivered'
-                 WHERE tenant_id=? AND id=? AND status='out_for_delivery'"
-            );
-            $updateOrder->execute([$tenant['id'],$lookupRow['order_id']]);
-            if($updateOrder->rowCount()!==1) throw new RuntimeException('Unable to finalize courier delivery.');
-            $deliveryNote='تحویل به: '.$recipientName.($note!==''?' — '.$note:'');
-            app_delivery_event_create($db,(int)$tenant['id'],(int)$lookupRow['order_id'],$assignmentId,
-                (int)$session['id'],'delivered',$deliveryNote);
             app_notification_create($db,(int)$tenant['id'],(int)$orderRow['user_id'],
                 'order-status-'.$lookupRow['order_id'].'-delivered','order','سفارش شما تحویل شد',
                 'سفارش '.$orderRow['order_number'].' به تحویل‌گیرنده ثبت‌شده تحویل داده شد.','order',(int)$lookupRow['order_id']);
