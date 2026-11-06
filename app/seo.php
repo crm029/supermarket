@@ -54,7 +54,7 @@ function app_seo_store_profile(array $context): array {
 
 function app_seo_category_list(array $context): array {
     $stmt = $context['db']->prepare(
-        'SELECT id,title,slug,sort_order,updated_at
+        "SELECT id,title,slug,sort_order,updated_at
          FROM categories
          WHERE tenant_id=? AND is_active=1
            AND EXISTS (
@@ -64,7 +64,7 @@ function app_seo_category_list(array $context): array {
                AND p.is_active=1 AND p.product_kind<>'variant'
            )
          ORDER BY sort_order,id
-         LIMIT 49999'
+         LIMIT 49999"
     );
     $stmt->execute([(int)$context['tenant']['id']]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
