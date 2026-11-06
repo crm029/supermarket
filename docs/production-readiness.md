@@ -33,6 +33,7 @@ The application code includes customer registration, catalogue management, inven
 - [ ] Reconcile the credit with the original payment and communicate that this is store credit, not a reversal to the bank card or gateway.
 - [ ] Inspect and receive returned goods through the stock-return workflow separately; wallet refunds do not automatically increase inventory.
 - [ ] Verify referral reward reversals and review any negative referrer wallet balances after refund.
+- [ ] Apply `2026_11_06_pos_refunds.sql`; grant `pos.refund.create` only to trusted managers. Verify cash refunds against the active drawer and physically inspect returned goods before any separate stock receipt; POS refunds do not automatically restore stock.
 
 ## Notifications
 
