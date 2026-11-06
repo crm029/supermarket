@@ -351,6 +351,12 @@ assert_json() {
       exit(0);
     }
     if ($check === "pos-empty-shift") { if (($data["data"]["shift"] ?? "missing") !== null) exit(1); exit(0); }
+    if ($check === "pos-shift-open") {
+      $shift=$data["data"]["shift"]??[];
+      if ((int)($shift["opening_float_rial"]??0)!==500000 || (int)($shift["expected_cash_rial"]??0)!==500000 ||
+          ($shift["status"]??"")!=="open") exit(1);
+      exit(0);
+    }
     if ($check === "pos-sale") {
       $sale=$data["data"]??[];
       if ((int)($sale["total_rial"]??0)!==125000 || (int)($sale["cash_received_rial"]??0)!==150000 ||
