@@ -116,7 +116,7 @@ $breadcrumbSchema = json_encode([
     '@type'=>'BreadcrumbList',
     'itemListElement'=>[
         ['@type'=>'ListItem','position'=>1,'name'=>$storeName,'item'=>app_seo_url($seo)],
-        ['@type'=>'ListItem','position'=>2,'name'=>(string)$category['title'],'item'=>$canonical],
+        ['@type'=>'ListItem','position'=>2,'name'=>(string)$category['title'],'item'=>app_seo_url($seo,'category/'.rawurlencode((string)$category['slug']))],
     ],
 ],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT);
 $analyticsViewList = [
