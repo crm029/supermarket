@@ -325,6 +325,11 @@ assert_json() {
           $operations["average_delivery_minutes_30d"] !== null && !is_numeric($operations["average_delivery_minutes_30d"])) exit(1);
       exit(0);
     }
+    if ($check === "operations-delivery-completed") {
+      $operations = $data["data"]["operations"] ?? [];
+      if ((int)($operations["delivered_today"] ?? 0) < 1) exit(1);
+      exit(0);
+    }
     exit(0);
   ' "$OUT" "$1"
 }
@@ -559,6 +564,8 @@ request POST "/me/tasks/$COURIER_ASSIGNMENT_ID/complete" 422 '{}' "$WORKER_TOKEN
 request POST "/me/tasks/$COURIER_ASSIGNMENT_ID/complete" 200 '{"recipient_name":"مشتری تحویل‌گیرنده","note":"تحویل سالم"}' "$WORKER_TOKEN" "$WORKER_CSRF"
 request GET "/me/orders/$ASSIGNMENT_ORDER_ID" 200 "" "$CUSTOMER_TOKEN"
 assert_json delivery-timeline
+request GET /admin/reports/overview 200 "" "$TOKEN"
+assert_json operations-delivery-completed
 request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/assignments" 409 '{"assignment_type":"courier","assignee_user_id":999999999}' "$TOKEN" "$CSRF"
 mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "UPDATE orders SET status='pending_payment' WHERE tenant_id=1 AND id=$ASSIGNMENT_ORDER_ID; UPDATE stock_reservations SET expires_at=DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 MINUTE) WHERE tenant_id=1 AND order_id=$ASSIGNMENT_ORDER_ID AND status='active'"
 php bin/expire-reservations.php
