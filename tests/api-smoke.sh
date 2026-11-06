@@ -197,6 +197,19 @@ assert_json() {
       if ((int)($data["data"]["balance_rial"] ?? -1) !== 0 || !is_array($data["data"]["entries"] ?? null)) exit(1);
       exit(0);
     }
+    if ($check === "wallet-payment") {
+      if (($data["data"]["status"] ?? "") !== "paid" ||
+          ($data["data"]["payment_method"] ?? "") !== "wallet" ||
+          ($data["data"]["already_paid"] ?? null) !== false ||
+          (int)($data["data"]["wallet_balance_rial"] ?? -1) !== 0) exit(1);
+      exit(0);
+    }
+    if ($check === "wallet-payment-idempotent") {
+      if (($data["data"]["status"] ?? "") !== "paid" ||
+          ($data["data"]["payment_method"] ?? "") !== "wallet" ||
+          ($data["data"]["already_paid"] ?? null) !== true) exit(1);
+      exit(0);
+    }
     if ($check === "cart-quote") {
       if ((int)($data["data"]["total_rial"] ?? 0) !== 250000 || (int)($data["data"]["items"][0]["available_quantity"] ?? 0) !== 10) exit(1);
       exit(0);
@@ -460,6 +473,22 @@ ORDER_FEE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-na
 ORDER_TOTAL="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT total_rial FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
 ORDER_ZONE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT delivery_zone_id FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
 if [[ "$ORDER_FEE" != "3000" || "$ORDER_TOTAL" != "253000" || "$ORDER_ZONE" != "$ZONE_ID" ]]; then echo "Most-specific delivery zone fee was not applied to the order."; exit 1; fi
+# Full wallet checkout: ledger debit, stock commit and paid state are one transaction.
+mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "
+  SET @customer_id=(SELECT user_id FROM orders WHERE tenant_id=1 AND id=$ORDER_ID);
+  SET @wallet_id=(SELECT id FROM wallet_accounts WHERE tenant_id=1 AND user_id=@customer_id);
+  INSERT INTO wallet_entries (tenant_id,wallet_id,entry_type,amount_rial,source_type,source_id,idempotency_key,note)
+    VALUES (1,@wallet_id,'credit',253000,'ci_funding',$ORDER_ID,CONCAT('ci-wallet-funding-',$ORDER_ID),'CI wallet funding');
+"
+request POST "/me/orders/$ORDER_ID/pay-wallet" 200 '{}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+assert_json wallet-payment
+request POST "/me/orders/$ORDER_ID/pay-wallet" 200 '{}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+assert_json wallet-payment-idempotent
+WALLET_DEBITS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM wallet_entries WHERE tenant_id=1 AND source_type='order_wallet_payment' AND source_id=$ORDER_ID")"
+WALLET_PAYMENT_ATTEMPTS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM payment_attempts WHERE tenant_id=1 AND order_id=$ORDER_ID AND provider='wallet' AND status='verified'")"
+PAID_ORDER_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
+COMMITTED_RESERVATIONS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM stock_reservations WHERE tenant_id=1 AND order_id=$ORDER_ID AND status='committed'")"
+if [[ "$WALLET_DEBITS" != "1" || "$WALLET_PAYMENT_ATTEMPTS" != "1" || "$PAID_ORDER_STATUS" != "paid" || "$COMMITTED_RESERVATIONS" != "1" ]]; then echo "Wallet payment was not settled exactly once with stock commitment."; exit 1; fi
 RESERVED="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT reserved FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID LIMIT 1")"
 if [[ "$RESERVED" != "2" ]]; then echo "Expected 2 reserved units, received $RESERVED"; exit 1; fi
 request POST "/me/orders/$ORDER_ID/cancel" 200 "" "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
