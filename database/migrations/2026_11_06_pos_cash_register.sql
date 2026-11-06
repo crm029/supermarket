@@ -24,10 +24,11 @@ CREATE TABLE pos_shifts (
   closed_at TIMESTAMP NULL,
   active_cashier_id BIGINT UNSIGNED GENERATED ALWAYS AS (CASE WHEN status='open' THEN cashier_user_id ELSE NULL END) STORED,
   UNIQUE KEY uq_pos_one_open_shift (tenant_id,active_cashier_id),
+  UNIQUE KEY uq_pos_shift_tenant_id (tenant_id,id),
   KEY ix_pos_shift_history (tenant_id,status,opened_at),
   CONSTRAINT fk_pos_shift_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id),
-  CONSTRAINT fk_pos_shift_cashier FOREIGN KEY (cashier_user_id) REFERENCES users(id),
-  CONSTRAINT fk_pos_shift_warehouse FOREIGN KEY (warehouse_id) REFERENCES warehouses(id)
+  CONSTRAINT fk_pos_shift_cashier_tenant FOREIGN KEY (tenant_id,cashier_user_id) REFERENCES users(tenant_id,id),
+  CONSTRAINT fk_pos_shift_warehouse_tenant FOREIGN KEY (tenant_id,warehouse_id) REFERENCES warehouses(tenant_id,id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE pos_sales (
@@ -47,10 +48,11 @@ CREATE TABLE pos_sales (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_pos_sale_number (tenant_id,sale_number),
   UNIQUE KEY uq_pos_sale_idempotency (tenant_id,cashier_user_id,idempotency_key),
+  UNIQUE KEY uq_pos_sale_tenant_id (tenant_id,id),
   KEY ix_pos_sales_shift (tenant_id,shift_id,created_at),
   CONSTRAINT fk_pos_sale_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id),
-  CONSTRAINT fk_pos_sale_shift FOREIGN KEY (shift_id) REFERENCES pos_shifts(id),
-  CONSTRAINT fk_pos_sale_cashier FOREIGN KEY (cashier_user_id) REFERENCES users(id)
+  CONSTRAINT fk_pos_sale_shift_tenant FOREIGN KEY (tenant_id,shift_id) REFERENCES pos_shifts(tenant_id,id),
+  CONSTRAINT fk_pos_sale_cashier_tenant FOREIGN KEY (tenant_id,cashier_user_id) REFERENCES users(tenant_id,id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE pos_sale_items (
@@ -65,6 +67,6 @@ CREATE TABLE pos_sale_items (
   line_total_rial BIGINT UNSIGNED NOT NULL,
   KEY ix_pos_sale_items_sale (tenant_id,sale_id),
   CONSTRAINT fk_pos_sale_item_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id),
-  CONSTRAINT fk_pos_sale_item_sale FOREIGN KEY (sale_id) REFERENCES pos_sales(id),
-  CONSTRAINT fk_pos_sale_item_product FOREIGN KEY (product_id) REFERENCES products(id)
+  CONSTRAINT fk_pos_sale_item_sale_tenant FOREIGN KEY (tenant_id,sale_id) REFERENCES pos_sales(tenant_id,id),
+  CONSTRAINT fk_pos_sale_item_product_tenant FOREIGN KEY (tenant_id,product_id) REFERENCES products(tenant_id,id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
