@@ -210,7 +210,10 @@ function app_staff_task_complete(PDO $db, array $tenant, array $session, int $as
                 'سفارش '.$orderRow['order_number'].' به تحویل‌گیرنده ثبت‌شده تحویل داده شد.','order',(int)$lookupRow['order_id']);
         }
         app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'staff.task.completed','order',(int)$lookupRow['order_id'],[
-            'assignment_id'=>$assignmentId,'assignment_type'=>$assignmentType
+            'assignment_id'=>$assignmentId,
+            'assignment_type'=>$assignmentType,
+            'recipient_name'=>in_array($assignmentType,['courier','pickup'],true)?$recipientName:null,
+            'handoff_note'=>in_array($assignmentType,['courier','pickup'],true)?$note:null,
         ]);
         $taskLabel=['picker'=>'جمع‌آوری اقلام','courier'=>'ارسال و تحویل','pickup'=>'تحویل حضوری سفارش'][$assignmentType];
         app_notification_notify_permission($db,(int)$tenant['id'],'orders.assign',
