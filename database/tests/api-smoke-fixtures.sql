@@ -99,3 +99,19 @@ WHERE tenant_id=1 AND id=1;
 UPDATE categories
 SET description='توضیحات کامل دسته تست',seo_title='عنوان سئو دسته تست',seo_description='توضیحات متا دسته تست'
 WHERE tenant_id=1 AND slug='dairy';
+
+-- Dedicated cashier identity and narrowly scoped POS permissions.
+INSERT INTO users (tenant_id,full_name,mobile,status,referral_code)
+VALUES (1,'صندوق‌دار آزمون','09120000005','active','CIPOSCASHIER5');
+SET @api_pos_cashier_id=LAST_INSERT_ID();
+INSERT INTO roles (tenant_id,role_key,title)
+VALUES (1,'ci_pos_cashier','صندوق‌دار آزمون')
+ON DUPLICATE KEY UPDATE title=VALUES(title);
+SET @api_pos_role_id=(SELECT id FROM roles WHERE tenant_id=1 AND role_key='ci_pos_cashier' LIMIT 1);
+INSERT IGNORE INTO role_permissions (role_scope_id,role_id,permission_id)
+SELECT 1,@api_pos_role_id,id FROM permissions
+WHERE scope='tenant' AND permission_key IN ('pos.read','pos.shift.open','pos.shift.close','pos.sale.create');
+INSERT INTO user_roles (tenant_id,role_scope_id,user_id,role_id)
+VALUES (1,1,@api_pos_cashier_id,@api_pos_role_id);
+INSERT INTO auth_sessions (tenant_id,user_id,token_hash,csrf_hash,expires_at)
+VALUES (1,@api_pos_cashier_id,SHA2(REPEAT('P',43),256),SHA2(REPEAT('Q',43),256),DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 DAY));
