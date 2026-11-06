@@ -23,7 +23,7 @@ function app_admin_order_refund_wallet(PDO $db, array $tenant, array $session, i
             $db->rollBack();
             app_json(['error'=>'سفارش پیدا نشد.'],404);
         }
-        $eligible=['paid','accepted','picking','packed','ready_pickup','dispatched','delivered'];
+        $eligible=['paid','accepted','picking','packed','ready_pickup','dispatched','out_for_delivery','delivered'];
         if(!in_array($order['status'],$eligible,true)){
             $db->rollBack();
             app_json(['error'=>'این سفارش در وضعیت قابل بازپرداخت نیست یا قبلاً بازپرداخت شده است.'],409);
@@ -76,7 +76,7 @@ function app_admin_order_refund_wallet(PDO $db, array $tenant, array $session, i
 
         $update=$db->prepare(
             "UPDATE orders SET status='refunded'
-             WHERE tenant_id=? AND id=? AND status IN ('paid','accepted','picking','packed','ready_pickup','dispatched','delivered')"
+             WHERE tenant_id=? AND id=? AND status IN ('paid','accepted','picking','packed','ready_pickup','dispatched','out_for_delivery','delivered')"
         );
         $update->execute([$tenant['id'],$orderId]);
         if($update->rowCount()!==1)throw new RuntimeException('Order refund state could not be finalized.');
