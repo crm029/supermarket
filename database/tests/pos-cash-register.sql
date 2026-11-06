@@ -1,7 +1,55 @@
--- POS schema and permission smoke checks.
-SELECT 'pos_schema' AS test_name,
-       (SELECT COUNT(*) FROM information_schema.tables
-        WHERE table_schema=DATABASE() AND table_name IN ('pos_shifts','pos_sales','pos_sale_items')) AS table_count,
-       (SELECT COUNT(*) FROM permissions
-        WHERE permission_key IN ('pos.read','pos.shift.open','pos.shift.close','pos.sale.create')
-          AND scope='tenant') AS permission_count;
+-- POS schema and tenant-scope assertions.
+DELIMITER //
+CREATE PROCEDURE assert_pos_cash_register_schema()
+BEGIN
+  DECLARE table_count INT DEFAULT 0;
+  DECLARE permission_count INT DEFAULT 0;
+  DECLARE shift_unique_count INT DEFAULT 0;
+  DECLARE sale_idempotency_count INT DEFAULT 0;
+  DECLARE sale_item_fk_count INT DEFAULT 0;
+
+  SELECT COUNT(*) INTO table_count
+  FROM information_schema.tables
+  WHERE table_schema=DATABASE()
+    AND table_name IN ('pos_shifts','pos_sales','pos_sale_items');
+  IF table_count <> 3 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='POS shift, sale and sale-item tables must exist';
+  END IF;
+
+  SELECT COUNT(*) INTO permission_count
+  FROM permissions
+  WHERE scope='tenant'
+    AND permission_key IN ('pos.read','pos.shift.open','pos.shift.close','pos.sale.create');
+  IF permission_count <> 4 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='All four tenant-scoped POS permissions must exist';
+  END IF;
+
+  SELECT COUNT(*) INTO shift_unique_count
+  FROM information_schema.statistics
+  WHERE table_schema=DATABASE() AND table_name='pos_shifts'
+    AND index_name='uq_pos_one_open_shift';
+  IF shift_unique_count <> 2 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='A cashier must not have multiple open shifts in one tenant';
+  END IF;
+
+  SELECT COUNT(*) INTO sale_idempotency_count
+  FROM information_schema.statistics
+  WHERE table_schema=DATABASE() AND table_name='pos_sales'
+    AND index_name='uq_pos_sale_idempotency';
+  IF sale_idempotency_count <> 3 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='POS sale idempotency unique key is missing';
+  END IF;
+
+  SELECT COUNT(DISTINCT constraint_name) INTO sale_item_fk_count
+  FROM information_schema.key_column_usage
+  WHERE table_schema=DATABASE() AND table_name='pos_sale_items'
+    AND constraint_name IN ('fk_pos_sale_item_tenant','fk_pos_sale_item_sale','fk_pos_sale_item_product');
+  IF sale_item_fk_count <> 3 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='POS sale items must be tenant-scoped to sale and product';
+  END IF;
+END//
+DELIMITER ;
+
+CALL assert_pos_cash_register_schema();
+DROP PROCEDURE assert_pos_cash_register_schema;
+SELECT 'POS cash register schema checks passed' AS result;
