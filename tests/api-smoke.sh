@@ -686,7 +686,8 @@ request POST "/me/tasks/$PICKUP_ASSIGNMENT_ID/complete" 422 '{}' "$WORKER_TOKEN"
 request POST "/me/tasks/$PICKUP_ASSIGNMENT_ID/complete" 200 '{"recipient_name":"مشتری دریافت حضوری","note":"تحویل با تأیید نام"}' "$WORKER_TOKEN" "$WORKER_CSRF"
 PICKUP_HANDOFF_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM orders WHERE tenant_id=1 AND id=$PICKUP_ORDER_ID")"
 PICKUP_ASSIGNMENT_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM order_assignments WHERE tenant_id=1 AND id=$PICKUP_ASSIGNMENT_ID")"
-if [[ "$PICKUP_HANDOFF_STATUS" != "delivered" || "$PICKUP_ASSIGNMENT_STATUS" != "completed" ]]; then echo "Pickup handoff was not finalized with staff confirmation."; exit 1; fi
+PICKUP_AUDIT_RECIPIENT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT JSON_UNQUOTE(JSON_EXTRACT(details,'$.recipient_name')) FROM audit_logs WHERE tenant_id=1 AND action='staff.task.completed' AND entity_type='order' AND entity_id=$PICKUP_ORDER_ID ORDER BY id DESC LIMIT 1")"
+if [[ "$PICKUP_HANDOFF_STATUS" != "delivered" || "$PICKUP_ASSIGNMENT_STATUS" != "completed" || "$PICKUP_AUDIT_RECIPIENT" != "مشتری دریافت حضوری" ]]; then echo "Pickup handoff was not finalized with staff confirmation and recipient audit."; exit 1; fi
 request GET "/me/orders/$PICKUP_ORDER_ID" 200 "" "$CUSTOMER_TOKEN"
 assert_json pickup-order-delivered
 request POST "/me/orders/$PICKUP_ORDER_ID/cancel" 409 "" "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
