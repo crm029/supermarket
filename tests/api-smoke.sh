@@ -330,7 +330,7 @@ assert_json() {
     }
     if ($check === "operations-overview") {
       $operations = $data["data"]["operations"] ?? null;
-      $required = ["waiting_picker","waiting_pack","waiting_courier","in_transit","ready_pickup","delivered_today"];
+      $required = ["waiting_picker","waiting_pack","waiting_courier","in_transit","ready_pickup","waiting_pickup_handoff","delivered_today"];
       if (!is_array($operations)) exit(1);
       foreach ($required as $key) if (!isset($operations[$key]) || !is_numeric($operations[$key])) exit(1);
       if (array_key_exists("average_delivery_minutes_30d",$operations) &&
