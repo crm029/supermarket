@@ -118,3 +118,7 @@
 .admin-delivery-events ol{display:grid;gap:10px;margin:0;padding:0 20px 0 0}
 .admin-delivery-events li{color:#344c3b}
 .admin-delivery-events small{display:block;margin-top:4px;color:#66776b;overflow-wrap:anywhere}
+
+.admin-operations-stats{grid-template-columns:repeat(auto-fit,minmax(145px,1fr));margin-top:14px}
+.admin-operations-stats article{min-width:0}
+.admin-operations-stats strong{font-variant-numeric:tabular-nums}
