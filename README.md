@@ -22,7 +22,7 @@ Implemented and covered by repository tests:
 - Deny-by-default tenant permission checks and audited product/category administration.
 - Seller dashboard, merchant branding and checkout settings, staff roles and permission management, tenant media library, media uploads, scene/hotspot authoring, multi-warehouse receipts/transfers/adjustments, supplier returns, FEFO batch/expiry tracking, audited expired-stock write-off, low-stock alerts, inventory movement history, stock reservation and expiry worker, supplier directory, purchase orders and partial receiving with stock posting.
 - Server-validated cart quotes, persistent cross-device customer carts, customer addresses, tenant postal-code delivery zones, capacity-controlled scheduled pickup, tenant-scoped percentage/fixed coupons with usage limits, transactional pending checkout, customer order history/cancellation and fulfilment transitions.
-- ZarinPal v4 request/verification adapter with idempotent callbacks and stock commit after server-side verification.
+- ZarinPal v4 request/verification adapter with idempotent callbacks, stock commit after server-side verification, encrypted platform-owner-only merchant credentials, Sandbox/Real mode selection and per-attempt gateway snapshots.
 - Append-only wallet credit ledger, customer balance/history API and configurable first-paid-order referral rewards.
 - GitHub Actions PHP/JavaScript validation and MySQL-backed schema, tenant isolation and HTTP API integration checks.
 
@@ -52,7 +52,7 @@ Still in progress:
 - Visual demo: place the repository in XAMPP's `htdocs` and open the project root.
 - API: requires PHP 8.2+ with PDO MySQL, mbstring, cURL and fileinfo; production domain onboarding also requires PHP DNS TXT lookup. See `docs/local-setup.md`.
 - Optional sample database: import `database/schema.sql`, then `database/demo-seed.sql` into a fresh local database. The sample domain is `localhost`.
-- After the existing 2026_11_05 migrations, apply in order: `2026_11_06_order_assignments.sql`, `2026_11_06_notifications.sql`, `2026_11_06_order_wallet_refunds.sql`, and `2026_11_06_domain_verification_challenge.sql`. See `docs/local-setup.md` for the full sequence.
+- After the existing 2026_11_05 migrations, apply in order: `2026_11_06_order_assignments.sql`, `2026_11_06_notifications.sql`, `2026_11_06_order_wallet_refunds.sql`, `2026_11_06_domain_verification_challenge.sql`, and `2026_11_06_platform_payment_settings.sql`. See `docs/local-setup.md` for the full sequence.
 
 ## Documentation
 
