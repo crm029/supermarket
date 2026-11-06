@@ -748,6 +748,7 @@ async function loadReport() {
     document.getElementById("salesChart").textContent=error.message;
   }
 }
+document.getElementById("reloadOperations").addEventListener("click",loadReport);
 async function loadMediaLibrary() {
   try {
     const result=await request("admin/media");
