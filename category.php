@@ -64,6 +64,7 @@ $productsQuery = $seo['db']->prepare(
 );
 $productsQuery->execute([(int)$seo['tenant']['id'],(int)$category['id']]);
 $products = $productsQuery->fetchAll(PDO::FETCH_ASSOC);
+$robotsDirective = $products === [] ? 'noindex,follow' : 'index,follow,max-image-preview:large';
 $profile = app_seo_store_profile($seo);
 $storeName = (string)($profile['name'] ?? $seo['tenant']['name']);
 $visibleDescription = trim(strip_tags((string)($category['description'] ?? '')));
@@ -119,7 +120,7 @@ $analyticsViewListJson = json_encode($analyticsViewList,JSON_UNESCAPED_UNICODE|J
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="robots" content="index,follow,max-image-preview:large">
+  <meta name="robots" content="<?= $e($robotsDirective) ?>">
   <?= app_seo_tracking_markup($profile) ?>
   <title><?= $e($pageTitle) ?></title>
   <meta name="description" content="<?= $e($description) ?>">
