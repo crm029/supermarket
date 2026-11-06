@@ -563,6 +563,10 @@ request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/transition" 200 '{"status":"dis
 mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "UPDATE order_assignments SET status='replaced' WHERE tenant_id=1 AND id=$COURIER_ASSIGNMENT_ID AND status='active'"
 request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/transition" 409 '{"status":"out_for_delivery"}' "$TOKEN" "$CSRF"
 mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "UPDATE order_assignments SET status='active' WHERE tenant_id=1 AND id=$COURIER_ASSIGNMENT_ID AND status='replaced'"
+# A duplicate active courier must also block dispatch; exactly one is required.
+DUPLICATE_COURIER_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "INSERT INTO order_assignments (tenant_id,order_id,assignee_user_id,assignment_type,status,assigned_by_user_id) SELECT tenant_id,order_id,assignee_user_id,assignment_type,'active',assigned_by_user_id FROM order_assignments WHERE tenant_id=1 AND id=$COURIER_ASSIGNMENT_ID; SELECT LAST_INSERT_ID()")"
+request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/transition" 409 '{"status":"out_for_delivery"}' "$TOKEN" "$CSRF"
+mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "UPDATE order_assignments SET status='replaced' WHERE tenant_id=1 AND id=$DUPLICATE_COURIER_ID AND status='active'"
 request POST "/me/tasks/$COURIER_ASSIGNMENT_ID/start-delivery" 200 '{}' "$WORKER_TOKEN" "$WORKER_CSRF"
 request POST "/me/tasks/$COURIER_ASSIGNMENT_ID/complete" 422 '{}' "$WORKER_TOKEN" "$WORKER_CSRF"
 request POST "/me/tasks/$COURIER_ASSIGNMENT_ID/complete" 200 '{"recipient_name":"مشتری تحویل‌گیرنده","note":"تحویل سالم"}' "$WORKER_TOKEN" "$WORKER_CSRF"
