@@ -29,7 +29,6 @@ Implemented and covered by repository tests:
 - GitHub Actions PHP/JavaScript validation and MySQL-backed schema, tenant isolation, authentication, commerce, wallet/referral, SEO and API integration checks.
 
 Still in progress or requiring real-environment acceptance:
-- Cashier assignment and cashier-specific order handoff.
 - Real SMS account/template configuration, live-phone delivery and delivery-report acceptance.
 - Real ZarinPal sandbox/live transactions, settlement reconciliation and bank/gateway refund procedures.
 - Advanced referral fraud controls and merchant reward-policy approval.
