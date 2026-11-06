@@ -124,7 +124,9 @@ function app_pos_create_sale(PDO $db,array $tenant,array $session): never {
 }
 
 function app_pos_sales_list(PDO $db,array $tenant,array $session): never {
-    $shiftId=filter_input(INPUT_GET,'shift_id',FILTER_VALIDATE_INT);$sql='SELECT id,sale_number,shift_id,total_rial,cash_received_rial,change_rial,note,created_at FROM pos_sales WHERE tenant_id=?';$params=[(int)$tenant['id']];
-    if($shiftId!==null&&$shiftId!==false){$sql.=' AND shift_id=?';$params[]=$shiftId;}else{$sql.=' AND cashier_user_id=?';$params[]=(int)$session['id'];}
+    $shiftId=filter_input(INPUT_GET,'shift_id',FILTER_VALIDATE_INT);
+    $sql='SELECT id,sale_number,shift_id,total_rial,cash_received_rial,change_rial,note,created_at FROM pos_sales WHERE tenant_id=? AND cashier_user_id=?';
+    $params=[(int)$tenant['id'],(int)$session['id']];
+    if($shiftId!==null&&$shiftId!==false){$sql.=' AND shift_id=?';$params[]=$shiftId;}
     $sql.=' ORDER BY id DESC LIMIT 100';$stmt=$db->prepare($sql);$stmt->execute($params);app_json(['data'=>$stmt->fetchAll(PDO::FETCH_ASSOC)]);
 }
