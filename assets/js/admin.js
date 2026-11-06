@@ -738,6 +738,7 @@ async function loadReport() {
     document.getElementById("statWaitingCourier").textContent=operationNumber("waiting_courier");
     document.getElementById("statInTransit").textContent=operationNumber("in_transit");
     document.getElementById("statReadyPickup").textContent=operationNumber("ready_pickup");
+    document.getElementById("statWaitingPickupHandoff").textContent=operationNumber("waiting_pickup_handoff");
     document.getElementById("statDeliveredToday").textContent=operationNumber("delivered_today");
     document.getElementById("statAverageDelivery").textContent=operations.average_delivery_minutes_30d===null||operations.average_delivery_minutes_30d===undefined
       ?"—":operationNumber("average_delivery_minutes_30d")+" دقیقه";
