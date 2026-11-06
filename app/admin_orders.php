@@ -75,6 +75,17 @@ function app_admin_order_transition(PDO $db, array $tenant, array $session, int 
             $db->rollBack();
             app_json(['error' => 'این تغییر وضعیت در گردش کار سفارش مجاز نیست.'], 409);
         }
+        if ($order['status'] === 'picking' && $next === 'packed') {
+            $activePicker=$db->prepare(
+                "SELECT COUNT(*) FROM order_assignments
+                 WHERE tenant_id=? AND order_id=? AND assignment_type='picker' AND status='active'"
+            );
+            $activePicker->execute([$tenant['id'],$orderId]);
+            if ((int)$activePicker->fetchColumn() > 0) {
+                $db->rollBack();
+                app_json(['error'=>'ابتدا نیروی جمع‌آوری باید پایان کار خود را ثبت کند.'],409);
+            }
+        }
         $update = $db->prepare('UPDATE orders SET status = ? WHERE tenant_id = ? AND id = ?');
         $update->execute([$next, $tenant['id'], $orderId]);
         if ($order['fulfillment'] === 'delivery' && in_array($next,['out_for_delivery','delivered'],true)) {
