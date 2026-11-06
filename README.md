@@ -101,3 +101,8 @@ Production deployment and external-service acceptance checklist: docs/production
 ### POS management reports
 
 The seller admin links to `pos-reports.php`, a tenant-scoped reporting view for date-filtered in-person sales, online-vs-in-person totals, shift counts and cash variance, cashier performance, and top-selling in-person items. Its API endpoint is `GET /api/v1/admin/pos/reports` and requires the existing `reports.read` permission. Amounts are stored in rial and displayed in toman.
+
+
+### POS cash refunds
+
+Cashier POS refunds are recorded in an immutable, tenant-scoped refund ledger through `POST /api/v1/admin/pos/sales/{sale_id}/refunds`. The endpoint requires CSRF protection, the dedicated `pos.refund.create` permission, an open cashier shift, a reason, and an idempotency key. It locks the original sale and its sale items, rejects quantities already refunded, calculates the amount from the original price snapshot, and records the refund against the active shift. Original sale rows are never edited or deleted. Returned items remain `pending_inspection`; the refund endpoint intentionally does not put them back into sellable stock because the consumed FEFO batch identity is not currently persisted per sale item. The shift's expected cash is reduced by refunds.
