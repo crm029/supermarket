@@ -25,7 +25,7 @@ function app_admin_order_assignment_list(PDO $db, array $tenant, int $orderId): 
     $deliveryEvents = app_delivery_event_list($db,(int)$tenant['id'],$orderId);
 
     $staff = [];
-    foreach (['picker'=>'orders.pick','courier'=>'orders.deliver'] as $type=>$permission) {
+    foreach (['picker'=>'orders.pick','courier'=>'orders.deliver','pickup'=>'orders.pickup_handoff'] as $type=>$permission) {
         $query = $db->prepare(
             "SELECT DISTINCT u.id,u.full_name,u.mobile
              FROM users u
@@ -45,10 +45,10 @@ function app_admin_order_assignment_create(PDO $db, array $tenant, array $sessio
     $body=app_auth_request_body();
     $type=trim((string)($body['assignment_type']??''));
     $assigneeId=filter_var($body['assignee_user_id']??null,FILTER_VALIDATE_INT);
-    if(!in_array($type,['picker','courier'],true)||$assigneeId===false||$assigneeId<1){
+    if(!in_array($type,['picker','courier','pickup'],true)||$assigneeId===false||$assigneeId<1){
         app_json(['error'=>'نوع مسئولیت یا شناسه کارمند معتبر نیست.'],422);
     }
-    $permission=$type==='picker'?'orders.pick':'orders.deliver';
+    $permission=['picker'=>'orders.pick','courier'=>'orders.deliver','pickup'=>'orders.pickup_handoff'][$type];
     $db->beginTransaction();
     try{
         $orderQuery=$db->prepare('SELECT id,order_number,status,fulfillment FROM orders WHERE tenant_id=? AND id=? FOR UPDATE');
@@ -65,6 +65,14 @@ function app_admin_order_assignment_create(PDO $db, array $tenant, array $sessio
         if($type==='courier'&&$order['fulfillment']!=='delivery'){
             $db->rollBack();
             app_json(['error'=>'برای سفارش دریافت حضوری امکان تخصیص پیک وجود ندارد.'],409);
+        }
+        if($type==='pickup'&&$order['fulfillment']!=='pickup'){
+            $db->rollBack();
+            app_json(['error'=>'مسئول تحویل حضوری فقط برای سفارش دریافت حضوری قابل تخصیص است.'],409);
+        }
+        if($type==='pickup'&&!in_array($order['status'],['packed','ready_pickup'],true)){
+            $db->rollBack();
+            app_json(['error'=>'مسئول تحویل حضوری پس از بسته‌بندی قابل تخصیص است.'],409);
         }
         if($type==='picker'&&!in_array($order['status'],['paid','accepted','picking'],true)){
             $db->rollBack();
@@ -123,7 +131,7 @@ function app_admin_order_assignment_create(PDO $db, array $tenant, array $sessio
         app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'order.assignment.'.$type,'order',$orderId,[
             'assignment_id'=>$id,'assignee_user_id'=>$assigneeId
         ]);
-        $assignmentLabel=$type==='picker'?'جمع‌آوری اقلام':'ارسال و تحویل';
+        $assignmentLabel=['picker'=>'جمع‌آوری اقلام','courier'=>'ارسال و تحویل','pickup'=>'تحویل حضوری سفارش'][$type];
         app_notification_create($db,(int)$tenant['id'],$assigneeId,'assignment-created-'.$id,'assignment',
             'وظیفه جدید به شما واگذار شد',
             $assignmentLabel.' سفارش '.$order['order_number'].' به شما واگذار شده است.','order',$orderId);
@@ -163,6 +171,10 @@ function app_admin_order_assignment_complete(PDO $db, array $tenant, array $sess
         if(!$assignmentType){
             $db->rollBack();
             app_json(['error'=>'تخصیص فعال پیدا نشد.'],404);
+        }
+        if($assignmentType==='pickup'){
+            $db->rollBack();
+            app_json(['error'=>'ثبت تحویل حضوری باید از مرکز وظایف کارمند انجام شود.'],409);
         }
         if($assignmentType==='picker' && $orderRow['status']!=='picking'){
             $db->rollBack();
