@@ -248,7 +248,8 @@ function app_pos_create_refund(PDO $db,array $tenant,array $session,int $saleId)
             if(!hash_equals((string)$existing['request_hash'],$hash)){$db->rollBack();app_json(['error'=>'کلید بازپرداخت قبلاً با اطلاعات متفاوت استفاده شده است.'],409);}
             $db->commit();app_json(['data'=>['id'=>(int)$existing['id'],'amount_rial'=>(int)$existing['amount_rial'],'idempotent'=>true],'message'=>'این بازپرداخت قبلاً ثبت شده است.']);
         }
-        $availableCash=(int)$shift['opening_float_rial']+(int)app_pos_summary($db,$tenantId,(int)$shift['id'])['sales_total_rial']-(int)app_pos_summary($db,$tenantId,(int)$shift['id'])['refund_total_rial'];
+        $shiftSummary=app_pos_summary($db,$tenantId,(int)$shift['id']);
+        $availableCash=(int)$shift['opening_float_rial']+(int)$shiftSummary['sales_total_rial']-(int)$shiftSummary['refund_total_rial'];
         $lineQuery=$db->prepare('SELECT id,product_id,product_title_snapshot,sku_snapshot,unit_price_rial,quantity FROM pos_sale_items WHERE tenant_id=? AND sale_id=? AND id=? FOR UPDATE');
         $already=$db->prepare('SELECT COALESCE(SUM(ri.quantity),0) FROM pos_refund_items ri JOIN pos_refunds r ON r.tenant_id=ri.tenant_id AND r.id=ri.refund_id WHERE ri.tenant_id=? AND ri.sale_item_id=?');
         $selected=[];$amount=0;
@@ -258,8 +259,10 @@ function app_pos_create_refund(PDO $db,array $tenant,array $session,int $saleId)
             $already->execute([$tenantId,$itemId]);$refunded=(int)$already->fetchColumn();
             $remaining=(int)$line['quantity']-$refunded;
             if($qty>$remaining){$db->rollBack();app_json(['error'=>'تعداد درخواستی از تعداد باقی‌مانده قابل بازپرداخت بیشتر است.'],409);}
-            $lineAmount=(int)$line['unit_price_rial']*$qty;
-            if($lineAmount<1||$lineAmount>1000000000000||$amount>1000000000000-$lineAmount){$db->rollBack();app_json(['error'=>'مبلغ بازپرداخت خارج از محدوده مجاز است.'],422);}
+            $unitPrice=(int)$line['unit_price_rial'];
+            if($unitPrice<1||$qty>intdiv(1000000000000,$unitPrice)){$db->rollBack();app_json(['error'=>'مبلغ بازپرداخت خارج از محدوده مجاز است.'],422);}
+            $lineAmount=$unitPrice*$qty;
+            if($lineAmount<1||$amount>1000000000000-$lineAmount){$db->rollBack();app_json(['error'=>'مبلغ بازپرداخت خارج از محدوده مجاز است.'],422);}
             $amount+=$lineAmount;$selected[]=['line'=>$line,'quantity'=>$qty,'amount'=>$lineAmount];
         }
         if($amount<1||(int)$sale['total_rial']<$amount){$db->rollBack();app_json(['error'=>'مبلغ بازپرداخت معتبر نیست.'],422);}
