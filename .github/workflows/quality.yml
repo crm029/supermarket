@@ -120,6 +120,12 @@ jobs:
       - name: Verify courier delivery tracking schema and tenant constraints
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/order-delivery-tracking.sql
 
+      - name: Apply cashier assignment migration
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_06_order_cashier_assignment.sql
+
+      - name: Verify cashier assignment permission and schema
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/order-cashier-assignment.sql
+
       - name: Apply order wallet refund migration
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_06_order_wallet_refunds.sql
 
