@@ -29,7 +29,7 @@ if (!empty($seoProfile['street_address'])) {
     if (!empty($seoProfile['postal_code'])) $postalAddress['postalCode']=(string)$seoProfile['postal_code'];
     $seoStructuredData['address']=$postalAddress;
 }
-if ($seoProfile['latitude'] !== null && $seoProfile['longitude'] !== null) {
+if (($seoProfile['latitude'] ?? null) !== null && ($seoProfile['longitude'] ?? null) !== null) {
     $seoStructuredData['geo']=[
         '@type'=>'GeoCoordinates',
         'latitude'=>(float)$seoProfile['latitude'],
