@@ -736,7 +736,7 @@ request POST /cart/quote 409 '{"items":[{"product_id":'$VARIANT_1L_ID',"quantity
 request PATCH "/admin/products/$VARIANT_PARENT_ID" 200 '{"is_active":true}' "$TOKEN" "$CSRF"
 request POST /admin/stock/transfers 200 '{"from_warehouse_id":1,"to_warehouse_id":'$NEW_WAREHOUSE_ID',"product_id":'$PRODUCT_ID',"quantity":2}' "$TOKEN" "$CSRF"
 TOTAL_STOCK="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT SUM(on_hand) FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID")"
-if [[ "$TOTAL_STOCK" != "10" ]]; then echo "Expected 10 total units after wallet sale, receipt, adjustment and transfer; received $TOTAL_STOCK"; exit 1; fi
+if [[ "$TOTAL_STOCK" != "8" ]]; then echo "Expected 8 total units after wallet and pickup sales, receipt, adjustment and transfer; received $TOTAL_STOCK"; exit 1; fi
 
 request POST /admin/scenes 201 '{"title":"راهرو تست","scene_type":"aisle_photo","is_published":false}' "$TOKEN" "$CSRF"
 SCENE_ID="$(assert_json created-id)"
