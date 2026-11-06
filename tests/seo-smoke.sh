@@ -73,6 +73,9 @@ check_page "/index.php" 'openingHours'
 check_page "/category.php?slug=dairy" 'application/ld+json'
 grep -Fq 'RewriteRule ^robots\.txt$ robots.php' .htaccess
 grep -Fq 'RewriteRule ^sitemap\.xml$ sitemap.php' .htaccess
+grep -Fq 'RewriteRule ^sitemap-core\.xml$ sitemap-core.php' .htaccess
+grep -Fq 'RewriteRule ^sitemap-products-' .htaccess
+grep -Fq 'RewriteRule ^(?:app|database|bin|tests|docs|scripts)' .htaccess
 grep -Fq 'RewriteRule ^product/' .htaccess
 grep -Fq 'RewriteRule ^category/' .htaccess
 
