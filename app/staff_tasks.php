@@ -69,7 +69,9 @@ function app_staff_task_start_delivery(PDO $db, array $tenant, array $session, i
     app_auth_require_permission($db,$tenant,$session,'orders.deliver');
 
     $body=app_auth_request_body();
-    $note=trim((string)($body['note']??''));
+    $noteValue=$body['note']??'';
+    if(!is_string($noteValue)) app_json(['error'=>'یادداشت ارسال معتبر نیست.'],422);
+    $note=trim($noteValue);
     if(mb_strlen($note)>500) {
         app_json(['error'=>'یادداشت ارسال معتبر نیست.'],422);
     }
@@ -136,8 +138,11 @@ function app_staff_task_complete(PDO $db, array $tenant, array $session, int $as
     app_auth_require_permission($db,$tenant,$session,$assignmentType==='picker'?'orders.pick':'orders.deliver');
 
     $body=app_auth_request_body();
-    $recipientName=trim((string)($body['recipient_name']??''));
-    $note=trim((string)($body['note']??''));
+    $recipientValue=$body['recipient_name']??'';
+    $noteValue=$body['note']??'';
+    if(!is_string($recipientValue)||!is_string($noteValue)) app_json(['error'=>'اطلاعات تحویل معتبر نیست.'],422);
+    $recipientName=trim($recipientValue);
+    $note=trim($noteValue);
     if(mb_strlen($note)>300) app_json(['error'=>'یادداشت تحویل بیش از حد مجاز است.'],422);
 
     $db->beginTransaction();
