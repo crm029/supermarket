@@ -176,7 +176,10 @@ jobs:
       - name: Apply POS cash register migration
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_06_pos_cash_register.sql
 
-      - name: Verify POS cash register schema
+      - name: Apply POS refund ledger migration
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_06_pos_refunds.sql
+
+      - name: Verify POS cash register and refund schema
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/pos-cash-register.sql
 
       - name: Apply expired stock write-off migration
