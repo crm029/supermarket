@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/notifications.php';
+require_once __DIR__ . '/delivery_tracking.php';
 require_once __DIR__ . '/policies.php';
 require_once __DIR__ . '/stock_batches.php';
 
