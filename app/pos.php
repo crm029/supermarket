@@ -130,3 +130,75 @@ function app_pos_sales_list(PDO $db,array $tenant,array $session): never {
     if($shiftId!==null&&$shiftId!==false){$sql.=' AND shift_id=?';$params[]=$shiftId;}
     $sql.=' ORDER BY id DESC LIMIT 100';$stmt=$db->prepare($sql);$stmt->execute($params);app_json(['data'=>$stmt->fetchAll(PDO::FETCH_ASSOC)]);
 }
+
+
+function app_pos_management_report(PDO $db,array $tenant): never {
+    [$fromUtc,$toUtc,$fromKey,$toKey]=app_report_date_range($tenant);
+    $tenantId=(int)$tenant['id'];
+    $summary=$db->prepare(
+        "SELECT COUNT(*) sale_count,COALESCE(SUM(total_rial),0) sales_total_rial,
+                COALESCE(SUM(cash_received_rial),0) cash_received_rial,
+                COALESCE(SUM(change_rial),0) change_rial
+         FROM pos_sales WHERE tenant_id=? AND created_at>=? AND created_at<?"
+    );
+    $summary->execute([$tenantId,$fromUtc,$toUtc]);
+    $sales=$summary->fetch(PDO::FETCH_ASSOC)?:[];
+    $shifts=$db->prepare(
+        "SELECT COUNT(*) shift_count,
+                SUM(CASE WHEN status='open' THEN 1 ELSE 0 END) open_shift_count,
+                SUM(CASE WHEN status='closed' THEN 1 ELSE 0 END) closed_shift_count,
+                SUM(CASE WHEN status='closed' AND cash_variance_rial<>0 THEN 1 ELSE 0 END) variance_shift_count,
+                COALESCE(SUM(CASE WHEN status='closed' THEN cash_variance_rial ELSE 0 END),0) net_variance_rial
+         FROM pos_shifts WHERE tenant_id=? AND opened_at>=? AND opened_at<?"
+    );
+    $shifts->execute([$tenantId,$fromUtc,$toUtc]);
+    $shiftSummary=$shifts->fetch(PDO::FETCH_ASSOC)?:[];
+    $cashiers=$db->prepare(
+        "SELECT s.cashier_user_id,u.full_name,COUNT(DISTINCT s.id) shift_count,
+                SUM(CASE WHEN s.status='open' THEN 1 ELSE 0 END) open_shift_count,
+                COUNT(DISTINCT ps.id) sale_count,COALESCE(SUM(ps.total_rial),0) sales_total_rial,
+                SUM(CASE WHEN s.status='closed' AND s.cash_variance_rial<>0 THEN 1 ELSE 0 END) variance_shift_count,
+                COALESCE(SUM(CASE WHEN s.status='closed' THEN s.cash_variance_rial ELSE 0 END),0) net_variance_rial
+         FROM pos_shifts s JOIN users u ON u.tenant_id=s.tenant_id AND u.id=s.cashier_user_id
+         LEFT JOIN pos_sales ps ON ps.tenant_id=s.tenant_id AND ps.shift_id=s.id
+             AND ps.created_at>=? AND ps.created_at<?
+         WHERE s.tenant_id=? AND s.opened_at>=? AND s.opened_at<?
+         GROUP BY s.cashier_user_id,u.full_name ORDER BY sales_total_rial DESC,u.full_name"
+    );
+    $cashiers->execute([$fromUtc,$toUtc,$tenantId,$fromUtc,$toUtc]);
+    $topItems=$db->prepare(
+        "SELECT i.product_id,i.product_title_snapshot title,i.sku_snapshot sku,
+                SUM(i.quantity) quantity_sold,SUM(i.line_total_rial) revenue_rial
+         FROM pos_sale_items i JOIN pos_sales s ON s.tenant_id=i.tenant_id AND s.id=i.sale_id
+         WHERE i.tenant_id=? AND s.created_at>=? AND s.created_at<?
+         GROUP BY i.product_id,i.product_title_snapshot,i.sku_snapshot
+         ORDER BY quantity_sold DESC,revenue_rial DESC LIMIT 10"
+    );
+    $topItems->execute([$tenantId,$fromUtc,$toUtc]);
+    $online=$db->prepare(
+        "SELECT COUNT(*) order_count,COALESCE(SUM(total_rial),0) revenue_rial
+         FROM orders WHERE tenant_id=? AND status IN ('paid','accepted','picking','packed','ready_pickup','dispatched','out_for_delivery','delivered')
+           AND created_at>=? AND created_at<?"
+    );
+    $online->execute([$tenantId,$fromUtc,$toUtc]);
+    $onlineSummary=$online->fetch(PDO::FETCH_ASSOC)?:[];
+    app_json(['data'=>[
+        'period'=>['from'=>$fromKey,'to'=>$toKey,'timezone'=>(string)($tenant['timezone']??'Asia/Tehran')],
+        'in_person'=>[
+            'sale_count'=>(int)($sales['sale_count']??0),
+            'sales_total_rial'=>(int)($sales['sales_total_rial']??0),
+            'cash_received_rial'=>(int)($sales['cash_received_rial']??0),
+            'change_rial'=>(int)($sales['change_rial']??0),
+        ],
+        'shifts'=>[
+            'shift_count'=>(int)($shiftSummary['shift_count']??0),
+            'open_shift_count'=>(int)($shiftSummary['open_shift_count']??0),
+            'closed_shift_count'=>(int)($shiftSummary['closed_shift_count']??0),
+            'variance_shift_count'=>(int)($shiftSummary['variance_shift_count']??0),
+            'net_variance_rial'=>(int)($shiftSummary['net_variance_rial']??0),
+        ],
+        'online'=>['order_count'=>(int)($onlineSummary['order_count']??0),'revenue_rial'=>(int)($onlineSummary['revenue_rial']??0)],
+        'cashiers'=>$cashiers->fetchAll(PDO::FETCH_ASSOC),
+        'top_items'=>$topItems->fetchAll(PDO::FETCH_ASSOC),
+    ]]);
+}
