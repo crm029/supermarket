@@ -166,7 +166,8 @@ function app_wallet_pay_order(PDO $db, array $tenant, array $session, int $order
         $gatewayAttempt=$db->prepare(
             "SELECT id FROM payment_attempts
              WHERE tenant_id=? AND order_id=? AND provider<>'wallet'
-               AND status IN ('created','redirected','verified')
+               AND (status IN ('redirected','verified')
+                    OR (status='created' AND created_at>=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 2 MINUTE)))
              ORDER BY id DESC LIMIT 1 FOR UPDATE"
         );
         $gatewayAttempt->execute([$tenant['id'],$orderId]);
