@@ -6,6 +6,8 @@ $seo = app_seo_context();
 if (!$seo) { http_response_code(404); exit('فروشگاه پیدا نشد.'); }
 $slug = $_GET['slug'] ?? '';
 if (!is_string($slug) || $slug === '' || mb_strlen($slug)>140) { http_response_code(404); exit('دسته‌بندی پیدا نشد.'); }
+$page = filter_var($_GET['page'] ?? 1,FILTER_VALIDATE_INT);
+if ($page === false || $page === null || $page < 1) { http_response_code(404); exit('صفحه معتبر نیست.'); }
 
 $stmt = $seo['db']->prepare(
     'SELECT c.id,c.title,c.slug,c.description,c.seo_title,c.seo_description,c.updated_at,c.image_media_id,m.storage_key,m.alt_text
@@ -16,14 +18,6 @@ $stmt = $seo['db']->prepare(
 );
 $stmt->execute([(int)$seo['tenant']['id'],$slug]);
 $category = $stmt->fetch(PDO::FETCH_ASSOC);
-if ($category) {
-    $canonicalPath = '/category/'.rawurlencode((string)$category['slug']);
-    $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '',PHP_URL_PATH) ?: '';
-    if ($currentPath !== $canonicalPath || (string)($_SERVER['HTTP_HOST'] ?? '') !== (string)$seo['host']) {
-        header('Location: '.app_seo_url($seo,ltrim($canonicalPath,'/')),true,301);
-        exit;
-    }
-}
 if (!$category) {
     $sourcePath = '/category/'.rawurlencode($slug);
     $redirectQuery = $seo['db']->prepare(
@@ -33,11 +27,32 @@ if (!$category) {
     $targetPath = (string)($redirectQuery->fetchColumn() ?: '');
     if ($targetPath !== '' && $targetPath !== $sourcePath &&
         preg_match('#^/category/[a-z0-9][a-z0-9-]{0,139}$#',$targetPath)) {
+        if ($page > 1) $targetPath .= '/page/'.$page;
         header('Location: '.app_seo_url($seo,ltrim($targetPath,'/')),true,301);
         exit;
     }
     http_response_code(404);
     exit('دسته‌بندی پیدا نشد.');
+}
+
+$countQuery = $seo['db']->prepare(
+    "SELECT COUNT(*) FROM products
+     WHERE tenant_id=? AND category_id=? AND is_active=1 AND product_kind<>'variant'"
+);
+$countQuery->execute([(int)$seo['tenant']['id'],(int)$category['id']]);
+$totalProducts = (int)$countQuery->fetchColumn();
+$pageSize = 48;
+$pageCount = (int)ceil($totalProducts / $pageSize);
+if (($totalProducts === 0 && $page > 1) || ($pageCount > 0 && $page > $pageCount)) {
+    http_response_code(404);
+    exit('صفحه دسته‌بندی پیدا نشد.');
+}
+$offset = ($page - 1) * $pageSize;
+$canonicalPath = '/category/'.rawurlencode((string)$category['slug']).($page > 1 ? '/page/'.$page : '');
+$currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '',PHP_URL_PATH) ?: '';
+if ($currentPath !== $canonicalPath || (string)($_SERVER['HTTP_HOST'] ?? '') !== (string)$seo['host']) {
+    header('Location: '.app_seo_url($seo,ltrim($canonicalPath,'/')),true,301);
+    exit;
 }
 
 $productsQuery = $seo['db']->prepare(
@@ -64,7 +79,7 @@ $productsQuery = $seo['db']->prepare(
 );
 $productsQuery->execute([(int)$seo['tenant']['id'],(int)$category['id']]);
 $products = $productsQuery->fetchAll(PDO::FETCH_ASSOC);
-$robotsDirective = $products === [] ? 'noindex,follow' : 'index,follow,max-image-preview:large';
+$robotsDirective = $totalProducts === 0 ? 'noindex,follow' : 'index,follow,max-image-preview:large';
 $profile = app_seo_store_profile($seo);
 $storeName = (string)($profile['name'] ?? $seo['tenant']['name']);
 $visibleDescription = trim(strip_tags((string)($category['description'] ?? '')));
@@ -73,14 +88,15 @@ $metaDescription = trim(strip_tags((string)($category['seo_description'] ?? ''))
 if ($metaDescription === '') $metaDescription = $defaultDescription;
 $description = mb_substr(preg_replace('/\s+/u',' ',$metaDescription) ?? $metaDescription,0,160);
 $pageTitle = trim((string)($category['seo_title'] ?? '')) ?: ((string)$category['title'].' | '.$storeName);
-$canonical = app_seo_url($seo,'category/'.rawurlencode((string)$category['slug']));
+if ($page > 1) $pageTitle .= ' | صفحه '.$page;
+$canonical = app_seo_url($seo,ltrim($canonicalPath,'/'));
 $categoryImage = $category['storage_key'] ? app_media_public_url((string)$category['storage_key']) : null;
 $e = static fn(mixed $value): string => htmlspecialchars((string)$value,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');
 $listItems = [];
 foreach ($products as $index=>$item) {
     $listItems[] = [
         '@type'=>'ListItem',
-        'position'=>$index+1,
+        'position'=>$offset+$index+1,
         'url'=>app_seo_url($seo,app_seo_product_path($item)),
         'name'=>(string)$item['title'],
     ];
@@ -151,6 +167,8 @@ $analyticsViewListJson = json_encode($analyticsViewList,JSON_UNESCAPED_UNICODE|J
     .seo-product-card h2{font-size:14px;line-height:1.8}
     .seo-product-card p{font-size:12px;color:var(--muted)}
     .seo-product-card strong{color:var(--forest)}
+    .seo-pagination{max-width:1200px;margin:0 auto 48px;padding:0 4vw;display:flex;align-items:center;justify-content:center;gap:18px}
+    .seo-pagination a{padding:9px 16px;border:1px solid var(--line);border-radius:10px;color:var(--forest);text-decoration:none}
   </style>
 </head>
 <body>
@@ -163,7 +181,7 @@ $analyticsViewListJson = json_encode($analyticsViewList,JSON_UNESCAPED_UNICODE|J
     <p class="eyebrow"><?= $e($storeName) ?></p>
     <h1><?= $e($category['title']) ?></h1>
     <p><?= $e($defaultDescription) ?></p>
-    <p><?= number_format(count($products)) ?> محصول در این دسته‌بندی</p>
+    <p><?= number_format($totalProducts) ?> محصول در این دسته‌بندی</p>
   </header>
   <section class="seo-category-grid" aria-label="محصولات دسته‌بندی">
     <?php foreach ($products as $item):
@@ -180,6 +198,13 @@ $analyticsViewListJson = json_encode($analyticsViewList,JSON_UNESCAPED_UNICODE|J
     <?php endforeach; ?>
     <?php if (!$products): ?><p>هنوز محصولی در این دسته‌بندی ثبت نشده است.</p><?php endif; ?>
   </section>
+  <?php if ($pageCount > 1): ?>
+    <nav class="seo-pagination" aria-label="صفحه‌های دسته‌بندی">
+      <?php if ($page > 1): ?><a href="/category/<?= $e(rawurlencode((string)$category['slug'])) ?><?= $page > 2 ? '/page/'.($page-1) : '' ?>">صفحه قبلی</a><?php endif; ?>
+      <span>صفحه <?= number_format($page) ?> از <?= number_format($pageCount) ?></span>
+      <?php if ($page < $pageCount): ?><a href="/category/<?= $e(rawurlencode((string)$category['slug'])) ?>/page/<?= $page+1 ?>">صفحه بعدی</a><?php endif; ?>
+    </nav>
+  <?php endif; ?>
 </main>
 <footer><div class="brand"><span class="brand-mark">۳۶۰</span><span><?= $e($storeName) ?></span></div><a href="/index.php#store">بازگشت به فروشگاه</a></footer>
 </body>
