@@ -39,7 +39,7 @@ declare(strict_types=1);
     <section class="admin-panel active" id="panel-overview">
       <p class="eyebrow">داشبورد فروشگاه</p><h2>خلاصه وضعیت</h2>
       <div class="admin-stats"><article><small>محصولات فعال</small><strong id="statProducts">—</strong></article><article><small>دسته‌بندی‌ها</small><strong id="statCategories">—</strong></article><article><small>وضعیت اتصال</small><strong id="statConnection">—</strong></article><article><small>فروش تأییدشده ۳۰ روز</small><strong id="statRevenue">—</strong></article><article><small>در انتظار پرداخت</small><strong id="statPending">—</strong></article><article><small>هشدار موجودی کم</small><strong id="statLowStock">—</strong></article></div>
-      <div class="admin-welcome"><h3>وضعیت عملیات سفارش‌ها</h3><div class="admin-stats admin-operations-stats">
+      <div class="admin-welcome"><div class="admin-heading"><h3>وضعیت عملیات سفارش‌ها</h3><button class="text-button" id="reloadOperations" type="button">به‌روزرسانی</button></div><div class="admin-stats admin-operations-stats">
         <article><small>در انتظار تخصیص جمع‌آوری</small><strong id="statWaitingPicker">—</strong></article>
         <article><small>در انتظار بسته‌بندی</small><strong id="statWaitingPack">—</strong></article>
         <article><small>در انتظار تخصیص پیک</small><strong id="statWaitingCourier">—</strong></article>
