@@ -818,6 +818,8 @@ request POST /admin/pos/sales 409 '{"items":[{"product_id":'$PRODUCT_ID',"quanti
 request POST "/admin/pos/sales/$POS_SALE_ID/refunds" 403 '{"reason":"بازپرداخت آزمایشی معتبر","idempotency_key":"pos-refund-noauth-01","items":[]}' "$POS_TOKEN" "$POS_CSRF"
 request POST /admin/pos/shifts 201 '{"warehouse_id":1,"opening_float_rial":200000,"note":"صندوق مدیر برای تست بازپرداخت"}' "$POS_MANAGER_TOKEN" "$POS_MANAGER_CSRF"
 OWNER_REFUND_SHIFT_ID="$(assert_json created-id)"
+request GET /admin/pos/sales 200 "" "$POS_MANAGER_TOKEN"
+assert_json pos-sales-list
 POS_SALE_ITEM_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM pos_sale_items WHERE tenant_id=1 AND sale_id=$POS_SALE_ID ORDER BY id LIMIT 1")"
 request POST "/admin/pos/sales/$POS_SALE_ID/refunds" 201 '{"reason":"مرجوعی کالای بازنشده توسط مشتری","idempotency_key":"ci-pos-refund-00001","items":[{"sale_item_id":'$POS_SALE_ITEM_ID',"quantity":1}]}' "$POS_MANAGER_TOKEN" "$POS_MANAGER_CSRF"
 POS_REFUND_ID="$(assert_json created-id)"
