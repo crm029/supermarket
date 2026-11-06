@@ -57,6 +57,12 @@ function app_seo_category_list(array $context): array {
         'SELECT id,title,slug,sort_order,updated_at
          FROM categories
          WHERE tenant_id=? AND is_active=1
+           AND EXISTS (
+             SELECT 1 FROM products p
+             WHERE p.tenant_id=categories.tenant_id
+               AND p.category_id=categories.id
+               AND p.is_active=1 AND p.product_kind<>'variant'
+           )
          ORDER BY sort_order,id
          LIMIT 49999'
     );
