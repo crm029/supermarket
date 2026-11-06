@@ -35,9 +35,13 @@ check_redirect() {
   fi
 }
 
-check_page "/robots.php" "Sitemap: http://localhost/sitemap.xml"
-check_page "/sitemap.php" "http://localhost/product/1/test-product"
-check_page "/sitemap.php" "http://localhost/category/dairy"
+check_page "/robots.txt" "Sitemap: http://localhost/sitemap.xml"
+check_page "/robots.txt" "Disallow: /database/"
+check_page "/robots.txt" "Disallow: /platform.php"
+check_page "/sitemap.xml" "sitemap-core.xml"
+check_page "/sitemap.xml" "sitemap-products-1.xml"
+check_page "/sitemap-core.xml" "http://localhost/category/dairy"
+check_page "/sitemap-products-1.xml" "http://localhost/product/1/test-product"
 check_page "/product/1/test-product" "شیر پرچرب یک لیتری"
 check_page "/product/1/test-product" "عنوان سئو محصول تست"
 check_page "/product/1/test-product" "توضیحات متا محصول تست"
