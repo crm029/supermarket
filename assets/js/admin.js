@@ -948,7 +948,12 @@ function renderOrderAssignments(order,data) {
     ?'<label>مسئول جمع‌آوری<select id="orderPickerSelect">'+renderOptions(staff.picker)+'</select></label><button class="admin-row-action" data-assign-type="picker">تخصیص جمع‌آورنده</button>':"";
   const courier=canAssign&&order.fulfillment==="delivery"&&["paid","accepted","picking","packed","dispatched"].includes(order.status)
     ?'<label>پیک سفارش<select id="orderCourierSelect">'+renderOptions(staff.courier)+'</select></label><button class="admin-row-action" data-assign-type="courier">تخصیص پیک</button>':"";
-  panel.innerHTML='<h4>تخصیص نیرو و تحویل</h4><ul>'+renderHistory+'</ul><div class="admin-form-grid">'+picker+courier+'</div><p class="admin-hint">فقط کارکنان فعال دارای مجوز جمع‌آوری یا ارسال در همین فروشگاه نمایش داده می‌شوند.</p>';
+  const deliveryLabels={assigned:"پیک تخصیص یافت",out_for_delivery:"شروع مسیر ارسال",delivered:"تحویل سفارش",delivery_failed:"ارسال ناموفق"};
+  const deliveryEvents=data.delivery_events||[];
+  const tracking=deliveryEvents.length
+    ?'<div class="admin-delivery-events"><h5>تاریخچه ارسال</h5><ol>'+deliveryEvents.map(event=>'<li><strong>'+escapeText(deliveryLabels[event.event_type]||event.event_type)+'</strong><small>'+escapeText(event.created_at||"")+'</small>'+(event.note?'<small>'+escapeText(event.note)+'</small>':"")+'</li>').join("")+'</ol></div>'
+    :'';
+  panel.innerHTML='<h4>تخصیص نیرو و تحویل</h4><ul>'+renderHistory+'</ul><div class="admin-form-grid">'+picker+courier+'</div>'+tracking+'<p class="admin-hint">فقط کارکنان فعال دارای مجوز جمع‌آوری یا ارسال در همین فروشگاه نمایش داده می‌شوند.</p>';
 }
 function renderProducts() {
   const query=document.getElementById("productSearch").value.trim().toLocaleLowerCase();
