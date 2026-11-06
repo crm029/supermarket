@@ -306,6 +306,12 @@ assert_json() {
       if (!$picker || !$courier) exit(1);
       exit(0);
     }
+    if ($check === "pickup-handoff-waiting" || $check === "pickup-handoff-assigned") {
+      $count = (int)($data["data"]["operations"]["waiting_pickup_handoff"] ?? -1);
+      $expected = $check === "pickup-handoff-waiting" ? 1 : 0;
+      if ($count !== $expected) exit(1);
+      exit(0);
+    }
     if ($check === "worker-pickup-task") {
       foreach (($data["data"] ?? []) as $task) {
         if (($task["assignment_type"] ?? null) === "pickup" &&
@@ -675,8 +681,12 @@ request POST "/admin/orders/$PICKUP_ORDER_ID/transition" 200 '{"status":"accepte
 request POST "/admin/orders/$PICKUP_ORDER_ID/transition" 200 '{"status":"picking"}' "$TOKEN" "$CSRF"
 request POST "/admin/orders/$PICKUP_ORDER_ID/transition" 200 '{"status":"packed"}' "$TOKEN" "$CSRF"
 request POST "/admin/orders/$PICKUP_ORDER_ID/transition" 200 '{"status":"ready_pickup"}' "$TOKEN" "$CSRF"
+request GET /admin/reports/overview 200 "" "$TOKEN"
+assert_json pickup-handoff-waiting
 request POST "/admin/orders/$PICKUP_ORDER_ID/assignments" 201 '{"assignment_type":"pickup","assignee_user_id":'$WORKER_ID'}' "$TOKEN" "$CSRF"
 PICKUP_ASSIGNMENT_ID="$(assert_json created-id)"
+request GET /admin/reports/overview 200 "" "$TOKEN"
+assert_json pickup-handoff-assigned
 request POST "/admin/orders/$PICKUP_ORDER_ID/transition" 409 '{"status":"delivered"}' "$TOKEN" "$CSRF"
 request GET /me/tasks 200 "" "$WORKER_TOKEN"
 assert_json worker-pickup-task
