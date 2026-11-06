@@ -1283,7 +1283,7 @@ document.getElementById("orderRows").addEventListener("click",async e=>{
       const couponInfo=Number(order.discount_rial)>0?'<p>کد تخفیف: '+escapeText(order.coupon_code||"—")+' · مبلغ تخفیف: '+money(Number(order.discount_rial)/10)+'</p>':"";
       box.hidden=false;
       box.dataset.orderId=String(order.id);
-      const refundable=["paid","accepted","picking","packed","ready_pickup","dispatched","delivered"].includes(order.status);
+      const refundable=["paid","accepted","picking","packed","ready_pickup","dispatched","out_for_delivery","delivered"].includes(order.status);
       const refundControl=refundable?'<div class="refund-warning"><p>بازپرداخت فقط به اعتبار کیف پول انجام می‌شود؛ تراکنش بانکی به‌صورت خودکار برگشت نمی‌خورد و موجودی کالا نیز خودکار به انبار برنمی‌گردد.</p><button class="admin-row-action" data-refund-order="'+Number(order.id)+'">بازپرداخت کامل به کیف پول</button></div>':"";
       box.innerHTML='<h3>سفارش '+escapeText(order.order_number)+'</h3><p>مشتری: '+escapeText(order.customer_name)+' · '+escapeText(order.customer_mobile)+'</p><p>نشانی / روش دریافت: '+escapeText(address)+'</p>'+couponInfo+'<p>توضیحات: '+escapeText(order.customer_note||"—")+'</p>'+refundControl+'<section id="orderAssignmentPanel"><p>در حال دریافت مسئولیت‌های سفارش...</p></section>';
       try{
