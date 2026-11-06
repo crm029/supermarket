@@ -10,6 +10,8 @@ CUSTOMER_TOKEN="$(printf 'U%.0s' {1..43})"
 CUSTOMER_CSRF="$(printf 'W%.0s' {1..43})"
 WORKER_TOKEN="$(printf 'V%.0s' {1..43})"
 WORKER_CSRF="$(printf 'X%.0s' {1..43})"
+POS_TOKEN="$(printf 'P%.0s' {1..43})"
+POS_CSRF="$(printf 'Q%.0s' {1..43})"
 
 request() {
   local method="$1"
@@ -346,6 +348,23 @@ assert_json() {
     if ($check === "operations-delivery-completed") {
       $operations = $data["data"]["operations"] ?? [];
       if ((int)($operations["delivered_today"] ?? 0) < 1) exit(1);
+      exit(0);
+    }
+    if ($check === "pos-empty-shift") { if (($data["data"]["shift"] ?? "missing") !== null) exit(1); exit(0); }
+    if ($check === "pos-sale") {
+      $sale=$data["data"]??[];
+      if ((int)($sale["total_rial"]??0)!==125000 || (int)($sale["cash_received_rial"]??0)!==150000 ||
+          (int)($sale["change_rial"]??0)!==25000 || count($sale["items"]??[])!==1) exit(1);
+      echo (int)($sale["id"]??0); exit(0);
+    }
+    if ($check === "pos-sale-idempotent") {
+      if ((int)($data["data"]["total_rial"]??0)!==125000 || empty($data["data"]["sale_number"])) exit(1);
+      exit(0);
+    }
+    if ($check === "pos-shift-closed") {
+      $shift=$data["data"]??[];
+      if (($shift["status"]??"")!=="closed" || (int)($shift["expected_cash_rial"]??-1)!==625000 ||
+          (int)($shift["counted_cash_rial"]??-1)!==625000 || (int)($shift["cash_variance_rial"]??-1)!==0) exit(1);
       exit(0);
     }
     exit(0);
@@ -749,6 +768,27 @@ request PATCH "/admin/products/$VARIANT_PARENT_ID" 200 '{"is_active":true}' "$TO
 request POST /admin/stock/transfers 200 '{"from_warehouse_id":1,"to_warehouse_id":'$NEW_WAREHOUSE_ID',"product_id":'$PRODUCT_ID',"quantity":2}' "$TOKEN" "$CSRF"
 TOTAL_STOCK="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT SUM(on_hand) FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID")"
 if [[ "$TOTAL_STOCK" != "8" ]]; then echo "Expected 8 total units after wallet and pickup sales, receipt, adjustment and transfer; received $TOTAL_STOCK"; exit 1; fi
+
+# Cashier POS: isolated permissions, shift lifecycle, cash sale, idempotency and stock posting.
+request GET /admin/pos/warehouses 200 "" "$POS_TOKEN"
+request GET /admin/pos/shift 200 "" "$POS_TOKEN"
+assert_json pos-empty-shift
+request POST /admin/pos/shifts 201 '{"warehouse_id":1,"opening_float_rial":500000,"note":"شروع تست صندوق"}' "$POS_TOKEN" "$POS_CSRF"
+POS_SHIFT_ID="$(assert_json created-id)"
+request GET /admin/pos/shift 200 "" "$POS_TOKEN"
+assert_json pos-shift-open
+POS_IDEMPOTENCY_KEY="ci-pos-sale-00000001"
+request POST /admin/pos/sales 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"cash_received_rial":150000,"idempotency_key":"'$POS_IDEMPOTENCY_KEY'"}' "$POS_TOKEN" "$POS_CSRF"
+POS_SALE_ID="$(assert_json pos-sale)"
+request POST /admin/pos/sales 200 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"cash_received_rial":150000,"idempotency_key":"'$POS_IDEMPOTENCY_KEY'"}' "$POS_TOKEN" "$POS_CSRF"
+assert_json pos-sale-idempotent
+request POST /admin/pos/sales 409 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"cash_received_rial":160000,"idempotency_key":"'$POS_IDEMPOTENCY_KEY'"}' "$POS_TOKEN" "$POS_CSRF"
+request POST "/admin/pos/shifts/$POS_SHIFT_ID/close" 200 '{"counted_cash_rial":625000,"note":"تطبیق کامل صندوق"}' "$POS_TOKEN" "$POS_CSRF"
+assert_json pos-shift-closed
+request POST "/admin/pos/shifts/$POS_SHIFT_ID/close" 409 '{"counted_cash_rial":625000}' "$POS_TOKEN" "$POS_CSRF"
+POS_SALE_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM pos_sales WHERE tenant_id=1 AND id=$POS_SALE_ID AND request_hash IS NOT NULL")"
+POS_MOVEMENT_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM stock_movements WHERE tenant_id=1 AND reference_type='pos_sale' AND reference_id=$POS_SALE_ID AND movement_type='sale' AND quantity=-1")"
+if [[ "$POS_SALE_COUNT" != "1" || "$POS_MOVEMENT_COUNT" != "1" ]]; then echo "POS sale ledger or stock movement was not recorded exactly once."; exit 1; fi
 
 request POST /admin/scenes 201 '{"title":"راهرو تست","scene_type":"aisle_photo","is_published":false}' "$TOKEN" "$CSRF"
 SCENE_ID="$(assert_json created-id)"
