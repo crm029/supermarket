@@ -26,5 +26,5 @@ CREATE TABLE order_delivery_events (
   CONSTRAINT fk_order_delivery_events_assignment
     FOREIGN KEY (tenant_id,assignment_id) REFERENCES order_assignments(tenant_id,id),
   CONSTRAINT fk_order_delivery_events_actor
-    FOREIGN KEY (tenant_id,actor_user_id) REFERENCES users(tenant_id,id),
+    FOREIGN KEY (tenant_id,actor_user_id) REFERENCES users(tenant_id,id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
