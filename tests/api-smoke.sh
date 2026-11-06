@@ -781,6 +781,9 @@ TOTAL_STOCK="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-
 if [[ "$TOTAL_STOCK" != "8" ]]; then echo "Expected 8 total units after wallet and pickup sales, receipt, adjustment and transfer; received $TOTAL_STOCK"; exit 1; fi
 
 # Cashier POS: isolated permissions, shift lifecycle, cash sale, idempotency and stock posting.
+request GET /admin/pos/reports 200 "" "$TOKEN"
+request GET /admin/pos/reports 403 "" "$CUSTOMER_TOKEN"
+
 request GET /admin/pos/shift 403 "" "$CUSTOMER_TOKEN"
 request POST /admin/pos/shifts 419 '{"warehouse_id":1,"opening_float_rial":500000}' "$POS_TOKEN"
 request GET /admin/pos/warehouses 200 "" "$POS_TOKEN"
