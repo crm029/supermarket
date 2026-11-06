@@ -78,6 +78,7 @@ Real merchant photography, production domains, SMS credentials and payment-gatew
 - New tenants remain pending until the platform DNS TXT challenge at _supermarket360-verification.<domain> is resolved to the one-time token. Tokens expire after 24 hours and can be reissued; the backend verifies the TXT value before activation.
 - Payment result: payment-result.php
 - Customer registration uses mobile OTP; the development-only log provider is not a production SMS service.
+- ZarinPal merchant credentials and Sandbox/Real selection are configured only by the platform owner in `platform.php`; the merchant ID is encrypted at rest and never returned in full by the API.
 - Checkout validates the cart on the server, saves the customer's delivery address, creates a pending-payment order and reserves stock for 20 minutes.
 - Configure the ZarinPal merchant ID and exact public callback origin before testing payment. See docs/local-setup.md.
 - Schedule bin/expire-reservations.php every minute to release stock for unpaid orders.
