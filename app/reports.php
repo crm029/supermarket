@@ -59,7 +59,13 @@ function app_admin_report_overview(PDO $db, array $tenant): never {
                  AND a.assignment_type='courier' AND a.status='active'
              ) THEN 1 ELSE 0 END) AS waiting_courier,
            SUM(CASE WHEN o.fulfillment='delivery' AND o.status='out_for_delivery' THEN 1 ELSE 0 END) AS in_transit,
-           SUM(CASE WHEN o.fulfillment='pickup' AND o.status='ready_pickup' THEN 1 ELSE 0 END) AS ready_pickup
+           SUM(CASE WHEN o.fulfillment='pickup' AND o.status='ready_pickup' THEN 1 ELSE 0 END) AS ready_pickup,
+           SUM(CASE WHEN o.fulfillment='pickup' AND o.status='ready_pickup'
+             AND NOT EXISTS (
+               SELECT 1 FROM order_assignments a
+               WHERE a.tenant_id=o.tenant_id AND a.order_id=o.id
+                 AND a.assignment_type='pickup' AND a.status='active'
+             ) THEN 1 ELSE 0 END) AS waiting_pickup_handoff
          FROM orders o
          WHERE o.tenant_id=?"
     );
@@ -100,6 +106,7 @@ function app_admin_report_overview(PDO $db, array $tenant): never {
             'waiting_courier'=>(int)($operationSummary['waiting_courier']??0),
             'in_transit'=>(int)($operationSummary['in_transit']??0),
             'ready_pickup'=>(int)($operationSummary['ready_pickup']??0),
+            'waiting_pickup_handoff'=>(int)($operationSummary['waiting_pickup_handoff']??0),
             'delivered_today'=>(int)$deliveredToday->fetchColumn(),
             'average_delivery_minutes_30d'=>$averageDeliveryMinutes===false||$averageDeliveryMinutes===null?null:(int)$averageDeliveryMinutes,
         ],
