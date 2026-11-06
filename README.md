@@ -23,7 +23,7 @@ Implemented and covered by repository tests:
 - Deny-by-default tenant permissions, seller dashboard, staff roles, permission management and audited catalogue operations.
 - Tenant media library, scene/hotspot authoring, multi-warehouse inventory, transfers/adjustments, supplier purchasing and returns, FEFO batch/expiry tracking, low-stock alerts and stock reservation workers.
 - Server-validated persistent carts, customer addresses, delivery zones, scheduled pickup, coupons, transactional checkout, order history/cancellation and guarded fulfilment transitions.
-- Picker/courier assignment, recipient-confirmed delivery, customer shipment timeline, operational dashboard KPIs and in-app notifications.
+- Picker/courier/pickup-handoff assignments, recipient-confirmed delivery and in-person pickup, customer shipment timeline, operational dashboard KPIs and in-app notifications.
 - ZarinPal v4 adapter with idempotent server-side verification, encrypted platform-owner-only merchant credentials and Sandbox/Real controls.
 - Append-only wallet ledger, customer wallet checkout, idempotent settlement, transactional inventory commit, audited full-order wallet-credit refunds and first-paid-order referral rewards.
 - GitHub Actions PHP/JavaScript validation and MySQL-backed schema, tenant isolation, authentication, commerce, wallet/referral, SEO and API integration checks.
