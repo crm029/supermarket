@@ -135,6 +135,41 @@ function app_pos_sales_list(PDO $db,array $tenant,array $session): never {
 }
 
 
+
+function app_pos_sale_detail(PDO $db,array $tenant,int $saleId): never {
+    $saleQuery=$db->prepare(
+        'SELECT id,sale_number,shift_id,cashier_user_id,subtotal_rial,discount_rial,total_rial,
+                cash_received_rial,change_rial,note,created_at
+         FROM pos_sales WHERE tenant_id=? AND id=? LIMIT 1'
+    );
+    $saleQuery->execute([(int)$tenant['id'],$saleId]);
+    $sale=$saleQuery->fetch(PDO::FETCH_ASSOC);
+    if(!$sale)app_json(['error'=>'فروش حضوری پیدا نشد.'],404);
+    $itemsQuery=$db->prepare(
+        "SELECT i.id sale_item_id,i.product_id,i.product_title_snapshot title,i.sku_snapshot sku,
+                i.unit_price_rial,i.quantity,i.line_total_rial,
+                COALESCE(r.refunded_quantity,0) refunded_quantity,
+                i.quantity-COALESCE(r.refunded_quantity,0) refundable_quantity
+         FROM pos_sale_items i
+         LEFT JOIN (
+            SELECT ri.tenant_id,ri.sale_item_id,SUM(ri.quantity) refunded_quantity
+            FROM pos_refund_items ri
+            JOIN pos_refunds rf ON rf.tenant_id=ri.tenant_id AND rf.id=ri.refund_id
+            WHERE ri.tenant_id=? AND rf.sale_id=?
+            GROUP BY ri.tenant_id,ri.sale_item_id
+         ) r ON r.tenant_id=i.tenant_id AND r.sale_item_id=i.id
+         WHERE i.tenant_id=? AND i.sale_id=? ORDER BY i.id"
+    );
+    $itemsQuery->execute([(int)$tenant['id'],$saleId,(int)$tenant['id'],$saleId]);
+    $refundsQuery=$db->prepare(
+        'SELECT id,amount_rial,reason,stock_status,created_at
+         FROM pos_refunds WHERE tenant_id=? AND sale_id=? ORDER BY id DESC'
+    );
+    $refundsQuery->execute([(int)$tenant['id'],$saleId]);
+    app_json(['data'=>['sale'=>$sale,'items'=>$itemsQuery->fetchAll(PDO::FETCH_ASSOC),'refunds'=>$refundsQuery->fetchAll(PDO::FETCH_ASSOC)]]);
+}
+
+
 function app_pos_management_report(PDO $db,array $tenant): never {
     [$fromUtc,$toUtc,$fromKey,$toKey]=app_report_date_range($tenant);
     $tenantId=(int)$tenant['id'];
