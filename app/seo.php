@@ -58,7 +58,7 @@ function app_seo_category_list(array $context): array {
          FROM categories
          WHERE tenant_id=? AND is_active=1
          ORDER BY sort_order,id
-         LIMIT 500'
+         LIMIT 49999'
     );
     $stmt->execute([(int)$context['tenant']['id']]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
