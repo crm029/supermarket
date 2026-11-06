@@ -71,7 +71,7 @@ function app_staff_task_start_delivery(PDO $db, array $tenant, array $session, i
     $body=app_auth_request_body();
     $note=trim((string)($body['note']??''));
     if(mb_strlen($note)>500) {
-        app_json(['error'=>'یادداشت یا موقعیت ارسال معتبر نیست.'],422);
+        app_json(['error'=>'یادداشت ارسال معتبر نیست.'],422);
     }
 
     $db->beginTransaction();
