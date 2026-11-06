@@ -530,7 +530,7 @@ mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "
   INSERT INTO user_roles (tenant_id,role_scope_id,user_id,role_id) VALUES (1,1,@worker_id,@worker_role);
   INSERT INTO role_permissions (role_scope_id,role_id,permission_id)
     SELECT 1,@worker_role,id FROM permissions
-    WHERE permission_key IN ('orders.pick','orders.deliver') AND scope='tenant';
+    WHERE permission_key IN ('orders.pick','orders.deliver','orders.pickup_handoff') AND scope='tenant';
   INSERT INTO auth_sessions (tenant_id,user_id,token_hash,csrf_hash,expires_at)
     VALUES (1,@worker_id,SHA2(REPEAT('V',43),256),SHA2(REPEAT('X',43),256),DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 DAY));
 "
@@ -645,7 +645,25 @@ assert_json pickup-slots
 request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}],"fulfillment":"pickup","pickup_slot_id":'$PICKUP_SLOT_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 PICKUP_ORDER_ID="$(assert_json order-created)"
 request POST /checkout 409 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}],"fulfillment":"pickup","pickup_slot_id":'$PICKUP_SLOT_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
-request POST "/me/orders/$PICKUP_ORDER_ID/cancel" 200 "" "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+# Pickup orders require a named staff handoff; admins cannot silently mark them delivered.
+mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "UPDATE orders SET status='paid' WHERE tenant_id=1 AND id=$PICKUP_ORDER_ID"
+request POST "/admin/orders/$PICKUP_ORDER_ID/transition" 200 '{"status":"accepted"}' "$TOKEN" "$CSRF"
+request POST "/admin/orders/$PICKUP_ORDER_ID/transition" 200 '{"status":"picking"}' "$TOKEN" "$CSRF"
+request POST "/admin/orders/$PICKUP_ORDER_ID/transition" 200 '{"status":"packed"}' "$TOKEN" "$CSRF"
+request POST "/admin/orders/$PICKUP_ORDER_ID/transition" 200 '{"status":"ready_pickup"}' "$TOKEN" "$CSRF"
+request POST "/admin/orders/$PICKUP_ORDER_ID/assignments" 201 '{"assignment_type":"pickup","assignee_user_id":'$WORKER_ID'}' "$TOKEN" "$CSRF"
+PICKUP_ASSIGNMENT_ID="$(assert_json created-id)"
+request POST "/admin/orders/$PICKUP_ORDER_ID/transition" 409 '{"status":"delivered"}' "$TOKEN" "$CSRF"
+request GET /me/tasks 200 "" "$WORKER_TOKEN"
+assert_json worker-tasks
+request POST "/me/tasks/$PICKUP_ASSIGNMENT_ID/complete" 422 '{}' "$WORKER_TOKEN" "$WORKER_CSRF"
+request POST "/me/tasks/$PICKUP_ASSIGNMENT_ID/complete" 200 '{"recipient_name":"مشتری دریافت حضوری","note":"تحویل با تأیید نام"}' "$WORKER_TOKEN" "$WORKER_CSRF"
+PICKUP_HANDOFF_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM orders WHERE tenant_id=1 AND id=$PICKUP_ORDER_ID")"
+PICKUP_ASSIGNMENT_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM order_assignments WHERE tenant_id=1 AND id=$PICKUP_ASSIGNMENT_ID")"
+if [[ "$PICKUP_HANDOFF_STATUS" != "delivered" || "$PICKUP_ASSIGNMENT_STATUS" != "completed" ]]; then echo "Pickup handoff was not finalized with staff confirmation."; exit 1; fi
+request GET "/me/orders/$PICKUP_ORDER_ID" 200 "" "$CUSTOMER_TOKEN"
+assert_json delivery-timeline
+request POST "/me/orders/$PICKUP_ORDER_ID/cancel" 409 "" "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 request DELETE "/admin/pickup-slots/$PICKUP_SLOT_ID" 200 "" "$TOKEN" "$CSRF"
 request GET /pickup-slots 200
 assert_json pickup-slots-empty
