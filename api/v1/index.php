@@ -342,7 +342,7 @@ try {
         app_admin_report_overview($db, $tenant);
     }
 
-    if ($path === '/admin/pos/shift' && $method === 'GET') {
+    if ($path === '/admin/pos/reports' && $method === 'GET') {\n        $session = app_auth_require($db, $tenant);\n        app_auth_require_permission($db, $tenant, $session, 'reports.read');\n        app_pos_management_report($db, $tenant);\n    }\n\n    if ($path === '/admin/pos/shift' && $method === 'GET') {
         $session = app_auth_require($db, $tenant);
         app_auth_require_permission($db, $tenant, $session, 'pos.read');
         app_pos_shift_current($db, $tenant, $session);
