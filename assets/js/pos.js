@@ -25,7 +25,7 @@ async function posInit(){
     select.innerHTML=posWarehouses.map(w=>'<option value="'+Number(w.id)+'">'+posEscape(w.title)+'</option>').join("");
     await posLoadShift();
   }catch(error){
-    posMessage(error.message+" — برای ورود ابتدا پنل مدیریت را باز کنید.","error");
+    posMessage(error.message+" — برای استفاده از صندوق، مدیر فروشگاه باید مجوزهای POS را به نقش شما اختصاص دهد.","error");
     document.getElementById("posLoginLink").hidden=false;
   }
 }
