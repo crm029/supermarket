@@ -66,6 +66,11 @@ check_redirect "/product/1" "/product/1/test-product"
 check_redirect "/product/1/old-product-slug" "/product/1/test-product"
 check_redirect "/product.php?id=1" "/product/1/test-product"
 check_page "/category/dairy" "/product/1/test-product"
+status="$(curl -sS -o "$OUT" -w '%{http_code}' -H "Host: localhost" "$BASE_URL/category/dairy/page/2")"
+if [[ "$status" != "404" ]]; then
+  echo "Out-of-range category page should return 404; received HTTP $status"
+  exit 1
+fi
 check_page "/category/dairy" "عنوان سئو دسته تست"
 check_page "/category/dairy" "توضیحات متا دسته تست"
 check_redirect "/category.php?slug=dairy" "/category/dairy"
@@ -96,6 +101,7 @@ grep -Fq 'RewriteRule ^sitemap-core\.xml$ sitemap-core.php' .htaccess
 grep -Fq 'RewriteRule ^sitemap-products-' .htaccess
 grep -Fq 'RewriteRule ^(?:app|database|bin|tests|docs|scripts)' .htaccess
 grep -Fq 'RewriteRule ^product/' .htaccess
+grep -Fq 'RewriteRule ^category/([a-z0-9][a-z0-9-]{0,139})/page/' .htaccess
 grep -Fq 'RewriteRule ^category/' .htaccess
 
 echo "SEO landing pages, canonical metadata, robots and sitemap smoke tests passed."
