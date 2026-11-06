@@ -219,6 +219,12 @@ function app_payment_callback(PDO $db, array $tenant): never {
         }
 
         $db->beginTransaction();
+        // Keep the lock order consistent with wallet settlement: order first, payment attempt second.
+        $orderQuery = $db->prepare('SELECT id, user_id, order_number, status FROM orders WHERE tenant_id = ? AND id = ? FOR UPDATE');
+        $orderQuery->execute([$tenant['id'], $attempt['order_id']]);
+        $order = $orderQuery->fetch();
+        if (!$order) throw new RuntimeException('Payment order not found.');
+
         $lockAttempt = $db->prepare('SELECT id, order_id, status FROM payment_attempts WHERE tenant_id = ? AND id = ? FOR UPDATE');
         $lockAttempt->execute([$tenant['id'], $attempt['id']]);
         $lockedAttempt = $lockAttempt->fetch();
@@ -227,11 +233,6 @@ function app_payment_callback(PDO $db, array $tenant): never {
             $db->commit();
             app_payment_redirect_result('success', (int)$attempt['order_id']);
         }
-
-        $orderQuery = $db->prepare('SELECT id, user_id, order_number, status FROM orders WHERE tenant_id = ? AND id = ? FOR UPDATE');
-        $orderQuery->execute([$tenant['id'], $attempt['order_id']]);
-        $order = $orderQuery->fetch();
-        if (!$order) throw new RuntimeException('Payment order not found.');
 
         $reservationResult=app_stock_commit_order_reservations(
             $db,(int)$tenant['id'],(int)$order['id'],(int)$order['user_id'],
