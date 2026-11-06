@@ -20,11 +20,11 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Opaque database-backed sessions, HttpOnly cookies and CSRF-protected logout.
 - [x] Customer registration with pending status, OTP activation and optional referral attribution.
 - [x] Kavenegar Verify Lookup production OTP adapter with server-side credentials and delivery response validation.
-- [ ] Merchant Kavenegar account/template credentials, password reset and delivery reports.
+- [ ] Merchant SMS credentials/templates, password recovery and delivery reports; platform OTP adapter is implemented.
 - [x] Tenant/platform permission catalog, role grants, deny-by-default product API checks and product-change audit events.
 - [x] Tenant staff role creation, permission assignment, employee role assignment/removal UI and API; staff-management privilege cannot be delegated.
-- [ ] Platform super-admin authorization.
-- [ ] Platform super-admin tenant provisioning and domain verification.
+- [x] Platform super-admin authorization with OTP-verified accounts, global permission scope and owner-only payment configuration.
+- [x] Platform super-admin tenant provisioning, one-time DNS TXT domain challenges, expiry/attempt controls and verified-host activation.
 - [x] Secure tenant-scoped image upload with MIME, size, dimension and storage-key validation.
 - [x] Store settings UI, branding controls, fulfillment availability, delivery fee, minimum order and reservation duration.
 - [x] Tenant media library browsing with usage counts and reusable media IDs.
@@ -47,7 +47,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Transactional pending-order creation with cross-warehouse stock reservations and customer order history API.
 - [x] CLI worker to release expired stock reservations and cancel unpaid orders.
 - [x] ZarinPal server-side verification, order state transitions and customer order detail/cancellation.
-- [ ] Live provider acceptance and settlement reconciliation; courier delivery tracking is implemented.
+- [ ] Live provider acceptance and settlement reconciliation; courier assignment, customer delivery tracking and operational delivery workflow are implemented.
 
 ## Phase 3 — immersive storefront
 - [x] Merchant scene/media editor API and admin UI.
@@ -71,7 +71,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Tenant-scoped order queue and guarded fulfilment transitions (accept, picking, packing, pickup/dispatch, delivery).
 - [x] Picker/courier assignments, staff task controls, guarded out-for-delivery transition, recipient confirmation and customer/admin delivery timelines (MySQL/API integration CI verified).
 - [x] Tenant-scoped operations KPIs: picker queue, packing queue, courier queue, in-transit orders, pickup-ready orders, daily deliveries and average route-to-delivery time.
-- [ ] Cashier assignment.
+- [ ] Cashier assignment and cashier-specific order handoff.
 - [x] Seller dashboard with 30-day paid revenue, seven-day sales trend and low-stock count.
 - [x] Tenant-scoped inventory movement ledger with warehouse/product/type/date filters and signed quantities.
 - [x] Tenant-scoped CSV exports for orders and inventory movements, with date/status/warehouse/product filters, formula-injection protection and permission checks.
@@ -79,7 +79,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 
 ## Phase 5 — customer growth and integrations
 - [x] ZarinPal v4 request/verify adapter, payment-attempt persistence, callback verification, stock commit and duplicate-callback protection.
-- [ ] Live merchant credentials, sandbox acceptance, settlement reconciliation and refund handling.
+- [ ] Real-provider sandbox/live acceptance and settlement reconciliation; full-order wallet-credit refunds are implemented, but gateway/bank refunds remain unavailable.
 - [x] Kavenegar Verify Lookup OTP adapter with configurable template.
 - [ ] Live SMS account/template credentials, delivery reports and alternate-provider adapter.
 - [x] Append-only wallet credit ledger, customer balance/history endpoint and idempotent first-paid-order referral rewards (merchant-configured rate).
@@ -88,8 +88,10 @@ Status is intentionally conservative: a checklist item is complete only when imp
 
 ## Phase 6 — SaaS launch
 - [ ] Plans, subscription billing, platform support and finance audit.
-- [ ] Custom domains, HTTPS, backups, monitoring and disaster recovery.
-- [ ] Security review, load testing, accessibility and device testing.
+- [x] Custom-domain ownership verification and tenant provisioning workflow.
+- [ ] Production DNS/HTTPS deployment, backups, monitoring and disaster recovery.
+- [x] Source-level security review and automated PHP/JavaScript/MySQL/API/tenant-isolation checks.
+- [ ] Independent staging penetration test, load testing, accessibility and physical-device acceptance.
 - [ ] Merchant acceptance, operational runbooks and production release.
 
 ## Phase 7 — search visibility and SEO
