@@ -21,15 +21,18 @@ function app_pos_active_shift(PDO $db,int $tenantId,int $cashierId,bool $lock=fa
 }
 
 function app_pos_summary(PDO $db,int $tenantId,int $shiftId): array {
-    $q=$db->prepare('SELECT COUNT(*) sale_count,COALESCE(SUM(total_rial),0) sales_total_rial FROM pos_sales WHERE tenant_id=? AND shift_id=?');
-    $q->execute([$tenantId,$shiftId]);return $q->fetch(PDO::FETCH_ASSOC)?:['sale_count'=>0,'sales_total_rial'=>0];
+    $q=$db->prepare("SELECT COUNT(*) sale_count,COALESCE(SUM(total_rial),0) sales_total_rial FROM pos_sales WHERE tenant_id=? AND shift_id=?");
+    $q->execute([$tenantId,$shiftId]);$row=$q->fetch(PDO::FETCH_ASSOC)?:['sale_count'=>0,'sales_total_rial'=>0];
+    $refunds=$db->prepare("SELECT COALESCE(SUM(amount_rial),0) refund_total_rial FROM pos_refunds WHERE tenant_id=? AND shift_id=?");
+    $refunds->execute([$tenantId,$shiftId]);$row['refund_total_rial']=(int)$refunds->fetchColumn();
+    return $row;
 }
 
 function app_pos_shift_current(PDO $db,array $tenant,array $session): never {
     $shift=app_pos_active_shift($db,(int)$tenant['id'],(int)$session['id']);
     if(!$shift)app_json(['data'=>['shift'=>null]]);
     $summary=app_pos_summary($db,(int)$tenant['id'],(int)$shift['id']);
-    $shift['summary']=$summary;$shift['expected_cash_rial']=(int)$shift['opening_float_rial']+(int)$summary['sales_total_rial'];
+    $shift['summary']=$summary;$shift['expected_cash_rial']=(int)$shift['opening_float_rial']+(int)$summary['sales_total_rial']-(int)$summary['refund_total_rial'];
     app_json(['data'=>['shift'=>$shift]]);
 }
 
@@ -62,12 +65,12 @@ function app_pos_shift_close(PDO $db,array $tenant,array $session,int $shiftId):
         if(!$shift){$db->rollBack();app_json(['error'=>'شیفت صندوق پیدا نشد.'],404);}
         if($shift['status']!=='open'){$db->rollBack();app_json(['error'=>'این شیفت قبلاً بسته شده است.'],409);}
         $summary=app_pos_summary($db,(int)$tenant['id'],$shiftId);
-        $expected=(int)$shift['opening_float_rial']+(int)$summary['sales_total_rial'];$variance=$counted-$expected;
+        $expected=(int)$shift['opening_float_rial']+(int)$summary['sales_total_rial']-(int)$summary['refund_total_rial'];$variance=$counted-$expected;
         $update=$db->prepare("UPDATE pos_shifts SET status='closed',expected_cash_rial=?,counted_cash_rial=?,cash_variance_rial=?,closing_note=?,closed_at=UTC_TIMESTAMP() WHERE tenant_id=? AND id=? AND status='open'");
         $update->execute([$expected,$counted,$variance,$note===''?null:$note,$tenant['id'],$shiftId]);
         if($update->rowCount()!==1)throw new RuntimeException('POS shift close conflict.');
-        app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'pos.shift.closed','pos_shift',$shiftId,['expected_cash_rial'=>$expected,'counted_cash_rial'=>$counted,'cash_variance_rial'=>$variance,'sale_count'=>(int)$summary['sale_count']]);
-        $db->commit();app_json(['data'=>['id'=>$shiftId,'status'=>'closed','sale_count'=>(int)$summary['sale_count'],'expected_cash_rial'=>$expected,'counted_cash_rial'=>$counted,'cash_variance_rial'=>$variance],'message'=>'شیفت بسته شد و مغایرت صندوق ثبت شد.']);
+        app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'pos.shift.closed','pos_shift',$shiftId,['expected_cash_rial'=>$expected,'counted_cash_rial'=>$counted,'cash_variance_rial'=>$variance,'sale_count'=>(int)$summary['sale_count'],'refund_total_rial'=>(int)$summary['refund_total_rial']]);
+        $db->commit();app_json(['data'=>['id'=>$shiftId,'status'=>'closed','sale_count'=>(int)$summary['sale_count'],'refund_total_rial'=>(int)$summary['refund_total_rial'],'expected_cash_rial'=>$expected,'counted_cash_rial'=>$counted,'cash_variance_rial'=>$variance],'message'=>'شیفت بسته شد و مغایرت صندوق ثبت شد.']);
     }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
 }
 
@@ -204,4 +207,77 @@ function app_pos_management_report(PDO $db,array $tenant): never {
         'cashiers'=>$cashiers->fetchAll(PDO::FETCH_ASSOC),
         'top_items'=>$topItems->fetchAll(PDO::FETCH_ASSOC),
     ]]);
+}
+
+
+/**
+ * Record a cash POS refund without silently returning goods to sellable stock.
+ * Returned items remain pending physical inspection; stock is restored only by
+ * a separate, audited inventory receipt after inspection.
+ */
+function app_pos_create_refund(PDO $db,array $tenant,array $session,int $saleId): never {
+    $body=app_pos_body();
+    $key=trim((string)($body['idempotency_key']??''));
+    if(!preg_match('/^[A-Za-z0-9._:-]{12,100}$/',$key))app_json(['error'=>'کلید یکتای بازپرداخت معتبر نیست.'],422);
+    $reason=trim((string)($body['reason']??''));
+    if(mb_strlen($reason)<12||mb_strlen($reason)>500)app_json(['error'=>'دلیل بازپرداخت باید بین ۱۲ تا ۵۰۰ نویسه باشد.'],422);
+    $rawItems=$body['items']??null;
+    if(!is_array($rawItems)||count($rawItems)<1||count($rawItems)>100)app_json(['error'=>'اقلام بازپرداخت معتبر نیستند.'],422);
+    $requested=[];
+    foreach($rawItems as $line){
+        if(!is_array($line))app_json(['error'=>'قلم بازپرداخت معتبر نیست.'],422);
+        $itemId=filter_var($line['sale_item_id']??null,FILTER_VALIDATE_INT);
+        $qty=filter_var($line['quantity']??null,FILTER_VALIDATE_INT);
+        if($itemId===false||$itemId<1||$qty===false||$qty<1||$qty>1000000)app_json(['error'=>'شناسه قلم یا تعداد بازپرداخت معتبر نیست.'],422);
+        if(isset($requested[$itemId]))app_json(['error'=>'هر قلم فروش باید فقط یک بار در فهرست بازپرداخت بیاید.'],422);
+        $requested[$itemId]=$qty;
+    }
+    ksort($requested,SORT_NUMERIC);
+    $hash=hash('sha256',(string)json_encode(['sale_id'=>$saleId,'items'=>$requested,'reason'=>$reason],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+    $tenantId=(int)$tenant['id'];$actorId=(int)$session['id'];
+    $db->beginTransaction();
+    try{
+        $shift=app_pos_active_shift($db,$tenantId,$actorId,true);
+        if(!$shift){$db->rollBack();app_json(['error'=>'برای ثبت بازپرداخت، صندوق‌دار باید شیفت باز داشته باشد.'],409);}
+        $saleQuery=$db->prepare('SELECT id,sale_number,shift_id,total_rial FROM pos_sales WHERE tenant_id=? AND id=? FOR UPDATE');
+        $saleQuery->execute([$tenantId,$saleId]);$sale=$saleQuery->fetch(PDO::FETCH_ASSOC);
+        if(!$sale){$db->rollBack();app_json(['error'=>'فروش حضوری پیدا نشد.'],404);}
+        $prior=$db->prepare('SELECT id,request_hash,amount_rial FROM pos_refunds WHERE tenant_id=? AND cashier_user_id=? AND idempotency_key=? LIMIT 1');
+        $prior->execute([$tenantId,$actorId,$key]);$existing=$prior->fetch(PDO::FETCH_ASSOC);
+        if($existing){
+            if(!hash_equals((string)$existing['request_hash'],$hash)){$db->rollBack();app_json(['error'=>'کلید بازپرداخت قبلاً با اطلاعات متفاوت استفاده شده است.'],409);}
+            $db->commit();app_json(['data'=>['id'=>(int)$existing['id'],'amount_rial'=>(int)$existing['amount_rial'],'idempotent'=>true],'message'=>'این بازپرداخت قبلاً ثبت شده است.']);
+        }
+        $availableCash=(int)$shift['opening_float_rial']+(int)app_pos_summary($db,$tenantId,(int)$shift['id'])['sales_total_rial']-(int)app_pos_summary($db,$tenantId,(int)$shift['id'])['refund_total_rial'];
+        $lineQuery=$db->prepare('SELECT id,product_id,product_title_snapshot,sku_snapshot,unit_price_rial,quantity FROM pos_sale_items WHERE tenant_id=? AND sale_id=? AND id=? FOR UPDATE');
+        $already=$db->prepare('SELECT COALESCE(SUM(ri.quantity),0) FROM pos_refund_items ri JOIN pos_refunds r ON r.tenant_id=ri.tenant_id AND r.id=ri.refund_id WHERE ri.tenant_id=? AND ri.sale_item_id=?');
+        $selected=[];$amount=0;
+        foreach($requested as $itemId=>$qty){
+            $lineQuery->execute([$tenantId,$saleId,$itemId]);$line=$lineQuery->fetch(PDO::FETCH_ASSOC);
+            if(!$line){$db->rollBack();app_json(['error'=>'یکی از اقلام به این فروش تعلق ندارد.'],422);}
+            $already->execute([$tenantId,$itemId]);$refunded=(int)$already->fetchColumn();
+            $remaining=(int)$line['quantity']-$refunded;
+            if($qty>$remaining){$db->rollBack();app_json(['error'=>'تعداد درخواستی از تعداد باقی‌مانده قابل بازپرداخت بیشتر است.'],409);}
+            $lineAmount=(int)$line['unit_price_rial']*$qty;
+            if($lineAmount<1||$lineAmount>1000000000000||$amount>1000000000000-$lineAmount){$db->rollBack();app_json(['error'=>'مبلغ بازپرداخت خارج از محدوده مجاز است.'],422);}
+            $amount+=$lineAmount;$selected[]=['line'=>$line,'quantity'=>$qty,'amount'=>$lineAmount];
+        }
+        if($amount<1||(int)$sale['total_rial']<$amount){$db->rollBack();app_json(['error'=>'مبلغ بازپرداخت معتبر نیست.'],422);}
+        if($amount>$availableCash){$db->rollBack();app_json(['error'=>'وجه موردنیاز در مانده مورد انتظار صندوق کافی نیست.'],409);}
+        $insert=$db->prepare("INSERT INTO pos_refunds (tenant_id,sale_id,shift_id,cashier_user_id,idempotency_key,request_hash,amount_rial,reason,stock_status) VALUES (?,?,?,?,?,?,?,?,'pending_inspection')");
+        $insert->execute([$tenantId,$saleId,$shift['id'],$actorId,$key,$hash,$amount,$reason]);$refundId=(int)$db->lastInsertId();
+        $itemInsert=$db->prepare("INSERT INTO pos_refund_items (tenant_id,refund_id,sale_item_id,product_id,product_title_snapshot,sku_snapshot,quantity,amount_rial,stock_status) VALUES (?,?,?,?,?,?,?,?,'pending_inspection')");
+        foreach($selected as $entry){$line=$entry['line'];$itemInsert->execute([$tenantId,$refundId,$line['id'],$line['product_id'],$line['product_title_snapshot'],$line['sku_snapshot'],$entry['quantity'],$entry['amount']]);}
+        app_audit_log($db,$tenantId,$actorId,'pos.sale.refunded','pos_refund',$refundId,[
+            'sale_id'=>$saleId,'sale_number'=>$sale['sale_number'],'amount_rial'=>$amount,
+            'reason'=>$reason,'item_count'=>count($selected),'stock_status'=>'pending_inspection'
+        ]);
+        $db->commit();
+        app_json(['data'=>['id'=>$refundId,'sale_id'=>$saleId,'amount_rial'=>$amount,'currency'=>'IRR','stock_status'=>'pending_inspection'],
+            'message'=>'بازپرداخت نقدی ثبت شد؛ اقلام مرجوعی تا زمان بازرسی به موجودی قابل‌فروش اضافه نمی‌شوند.'],201);
+    }catch(PDOException $e){
+        if($db->inTransaction())$db->rollBack();
+        if($e->getCode()==='23000')app_json(['error'=>'درخواست بازپرداخت تکراری یا هم‌زمان است.'],409);
+        throw $e;
+    }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
 }
