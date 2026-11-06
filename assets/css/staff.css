@@ -23,3 +23,9 @@
 .staff-task .task-complete{margin-top:12px}
 .staff-empty{padding:36px 20px;text-align:center;border:1px dashed #cbd8cd;border-radius:18px;color:#66776b;background:#fff}
 @media(max-width:600px){.staff-shell{margin-top:24px}.staff-login{padding:22px}.staff-heading{align-items:flex-start;flex-direction:column}.staff-actions{width:100%}.staff-actions button{flex:1}.staff-task-head{align-items:flex-start;flex-direction:column}}
+
+.staff-task-wait{padding:10px 12px;border-radius:10px;background:#f4f6f3;color:#66776b!important;font-size:13px}
+.staff-delivery-proof{display:grid;gap:12px;margin-top:16px;padding:16px;border:1px solid #dfe7e0;border-radius:14px;background:#f8faf8}
+.staff-delivery-proof label{display:grid;gap:7px;color:#344c3b;font-size:13px;font-weight:700}
+.staff-delivery-proof input{width:100%;min-height:44px;padding:10px 12px;border:1px solid #d2ddd4;border-radius:10px;background:#fff;font:inherit}
+.staff-delivery-proof button,.staff-task .task-start-delivery{margin-top:8px}
