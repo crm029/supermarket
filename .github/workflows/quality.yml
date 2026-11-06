@@ -54,6 +54,7 @@ jobs:
           node --check assets/js/platform.js
           node --check assets/js/notifications.js
           node --check assets/js/pos.js
+          node --check assets/js/pos-refunds.js
 
       - name: Check patch whitespace
         run: git diff --check
