@@ -29,7 +29,7 @@ Implemented and covered by repository tests:
 - GitHub Actions PHP/JavaScript validation and MySQL-backed schema, tenant isolation, authentication, commerce, wallet/referral, SEO and API integration checks.
 
 Still in progress or requiring real-environment acceptance:
-- POS API foundation: cashier shift opening/closing, cash sale creation with server-priced items, FEFO batch stock deduction, idempotency key, cash-change calculation and shift reconciliation endpoints; cashier UI, role assignment workflow and end-to-end POS integration tests remain pending.
+- Cashier POS page and API: shift opening/closing, barcode/SKU/product search, server-priced cash sales, FEFO batch stock deduction, idempotent sale requests, change calculation and shift cash reconciliation; cashier role creation/assignment uses the staff permission panel. Payment terminals, refunds and thermal printing remain pending.
 - Real SMS account/template configuration, live-phone delivery and delivery-report acceptance.
 - Real ZarinPal sandbox/live transactions, settlement reconciliation and bank/gateway refund procedures.
 - Advanced referral fraud controls and merchant reward-policy approval.
