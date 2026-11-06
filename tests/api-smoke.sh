@@ -12,6 +12,8 @@ WORKER_TOKEN="$(printf 'V%.0s' {1..43})"
 WORKER_CSRF="$(printf 'X%.0s' {1..43})"
 POS_TOKEN="$(printf 'P%.0s' {1..43})"
 POS_CSRF="$(printf 'Q%.0s' {1..43})"
+POS_MANAGER_TOKEN="$(printf 'M%.0s' {1..43})"
+POS_MANAGER_CSRF="$(printf 'N%.0s' {1..43})"
 
 request() {
   local method="$1"
@@ -802,14 +804,14 @@ request GET /admin/pos/sales 200 "" "$POS_TOKEN"
 assert_json pos-sales-list
 request POST /admin/pos/sales 409 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"cash_received_rial":160000,"idempotency_key":"'$POS_IDEMPOTENCY_KEY'"}' "$POS_TOKEN" "$POS_CSRF"
 request POST "/admin/pos/sales/$POS_SALE_ID/refunds" 403 '{"reason":"بازپرداخت آزمایشی معتبر","idempotency_key":"pos-refund-noauth-01","items":[]}' "$POS_TOKEN" "$POS_CSRF"
-request POST /admin/pos/shifts 201 '{"warehouse_id":1,"opening_float_rial":200000,"note":"صندوق مدیر برای تست بازپرداخت"}' "$TOKEN" "$CSRF"
+request POST /admin/pos/shifts 201 '{"warehouse_id":1,"opening_float_rial":200000,"note":"صندوق مدیر برای تست بازپرداخت"}' "$POS_MANAGER_TOKEN" "$POS_MANAGER_CSRF"
 OWNER_REFUND_SHIFT_ID="$(assert_json created-id)"
 POS_SALE_ITEM_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM pos_sale_items WHERE tenant_id=1 AND sale_id=$POS_SALE_ID ORDER BY id LIMIT 1")"
-request POST "/admin/pos/sales/$POS_SALE_ID/refunds" 201 '{"reason":"مرجوعی کالای بازنشده توسط مشتری","idempotency_key":"ci-pos-refund-00001","items":[{"sale_item_id":'$POS_SALE_ITEM_ID',"quantity":1}]}' "$TOKEN" "$CSRF"
+request POST "/admin/pos/sales/$POS_SALE_ID/refunds" 201 '{"reason":"مرجوعی کالای بازنشده توسط مشتری","idempotency_key":"ci-pos-refund-00001","items":[{"sale_item_id":'$POS_SALE_ITEM_ID',"quantity":1}]}' "$POS_MANAGER_TOKEN" "$POS_MANAGER_CSRF"
 POS_REFUND_ID="$(assert_json created-id)"
-request POST "/admin/pos/sales/$POS_SALE_ID/refunds" 200 '{"reason":"مرجوعی کالای بازنشده توسط مشتری","idempotency_key":"ci-pos-refund-00001","items":[{"sale_item_id":'$POS_SALE_ITEM_ID',"quantity":1}]}' "$TOKEN" "$CSRF"
-request POST "/admin/pos/sales/$POS_SALE_ID/refunds" 409 '{"reason":"مرجوعی کالای بازنشده توسط مشتری","idempotency_key":"ci-pos-refund-00002","items":[{"sale_item_id":'$POS_SALE_ITEM_ID',"quantity":1}]}' "$TOKEN" "$CSRF"
-request POST "/admin/pos/shifts/$OWNER_REFUND_SHIFT_ID/close" 200 '{"counted_cash_rial":75000,"note":"تطبیق پس از بازپرداخت"}' "$TOKEN" "$CSRF"
+request POST "/admin/pos/sales/$POS_SALE_ID/refunds" 200 '{"reason":"مرجوعی کالای بازنشده توسط مشتری","idempotency_key":"ci-pos-refund-00001","items":[{"sale_item_id":'$POS_SALE_ITEM_ID',"quantity":1}]}' "$POS_MANAGER_TOKEN" "$POS_MANAGER_CSRF"
+request POST "/admin/pos/sales/$POS_SALE_ID/refunds" 409 '{"reason":"مرجوعی کالای بازنشده توسط مشتری","idempotency_key":"ci-pos-refund-00002","items":[{"sale_item_id":'$POS_SALE_ITEM_ID',"quantity":1}]}' "$POS_MANAGER_TOKEN" "$POS_MANAGER_CSRF"
+request POST "/admin/pos/shifts/$OWNER_REFUND_SHIFT_ID/close" 200 '{"counted_cash_rial":75000,"note":"تطبیق پس از بازپرداخت"}' "$POS_MANAGER_TOKEN" "$POS_MANAGER_CSRF"
 POS_REFUND_CHECK="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM pos_refunds r JOIN pos_refund_items i ON i.tenant_id=r.tenant_id AND i.refund_id=r.id WHERE r.tenant_id=1 AND r.id=$POS_REFUND_ID AND r.stock_status='pending_inspection' AND i.stock_status='pending_inspection' AND r.amount_rial=125000")"
 if [[ "$POS_REFUND_CHECK" != "1" ]]; then echo "POS refund ledger or inspection hold was not recorded."; exit 1; fi
 
