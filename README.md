@@ -29,7 +29,7 @@ Implemented and covered by repository tests:
 - GitHub Actions PHP/JavaScript validation and MySQL-backed schema, tenant isolation, authentication, commerce, wallet/referral, SEO and API integration checks.
 
 Still in progress or requiring real-environment acceptance:
-- In-store POS cash register, cashier shifts, cash collection/reconciliation and counter-sale inventory posting.
+- POS API foundation: cashier shift opening/closing, cash sale creation with server-priced items, FEFO batch stock deduction, idempotency key, cash-change calculation and shift reconciliation endpoints; cashier UI, role assignment workflow and end-to-end POS integration tests remain pending.
 - Real SMS account/template configuration, live-phone delivery and delivery-report acceptance.
 - Real ZarinPal sandbox/live transactions, settlement reconciliation and bank/gateway refund procedures.
 - Advanced referral fraud controls and merchant reward-policy approval.
@@ -57,7 +57,7 @@ Still in progress or requiring real-environment acceptance:
 - Visual demo: place the repository in XAMPP's `htdocs` and open the project root.
 - API: requires PHP 8.2+ with PDO MySQL, mbstring, cURL, OpenSSL and fileinfo; production domain onboarding also requires PHP DNS TXT lookup. See `docs/local-setup.md`.
 - Optional sample database: import `database/schema.sql`, then `database/demo-seed.sql` into a fresh local database. The sample domain is `localhost`.
-- After the existing 2026_11_05 migrations, apply in order: `2026_11_06_order_assignments.sql`, `2026_11_06_pickup_handoff.sql`, `2026_11_06_notifications.sql`, `2026_11_06_order_wallet_refunds.sql`, `2026_11_06_domain_verification_challenge.sql`, and `2026_11_06_platform_payment_settings.sql`. See `docs/local-setup.md` for the full sequence.
+- After the existing 2026_11_05 migrations, apply in order: `2026_11_06_order_assignments.sql`, `2026_11_06_pos_cash_register.sql`, `2026_11_06_pickup_handoff.sql`, `2026_11_06_notifications.sql`, `2026_11_06_order_wallet_refunds.sql`, `2026_11_06_domain_verification_challenge.sql`, and `2026_11_06_platform_payment_settings.sql`. See `docs/local-setup.md` for the full sequence.
 
 ## Documentation
 
