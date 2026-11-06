@@ -65,52 +65,69 @@ function app_payment_start(PDO $db, array $tenant, array $session): never {
     $orderId = filter_var($body['order_id'] ?? null, FILTER_VALIDATE_INT);
     if ($orderId === false || $orderId < 1) app_json(['error' => 'شناسه سفارش معتبر نیست.'], 422);
 
-    $orderQuery = $db->prepare(
-        "SELECT id, order_number, status, total_rial
-         FROM orders WHERE tenant_id = ? AND user_id = ? AND id = ? LIMIT 1"
-    );
-    $orderQuery->execute([$tenant['id'], $session['id'], $orderId]);
-    $order = $orderQuery->fetch();
-    if (!$order) app_json(['error' => 'سفارش پیدا نشد.'], 404);
-    if ($order['status'] !== 'pending_payment') app_json(['error' => 'این سفارش در انتظار پرداخت نیست.'], 409);
-
-    $reservation = $db->prepare(
-        "SELECT 1 FROM stock_reservations
-         WHERE tenant_id = ? AND order_id = ? AND status = 'active'
-           AND expires_at > UTC_TIMESTAMP() LIMIT 1"
-    );
-    $reservation->execute([$tenant['id'], $orderId]);
-    if (!$reservation->fetchColumn()) app_json(['error' => 'مهلت رزرو موجودی تمام شده است؛ سفارش جدید ثبت کنید.'], 409);
-
+    // Serialize gateway-attempt creation against wallet settlement on the same order.
+    $db->beginTransaction();
     try {
+        $orderQuery = $db->prepare(
+            "SELECT id, order_number, status, total_rial
+             FROM orders WHERE tenant_id = ? AND user_id = ? AND id = ? FOR UPDATE"
+        );
+        $orderQuery->execute([$tenant['id'], $session['id'], $orderId]);
+        $order = $orderQuery->fetch();
+        if (!$order) {
+            $db->rollBack();
+            app_json(['error' => 'سفارش پیدا نشد.'], 404);
+        }
+        if ($order['status'] !== 'pending_payment') {
+            $db->rollBack();
+            app_json(['error' => 'این سفارش در انتظار پرداخت نیست.'], 409);
+        }
+
+        $reservation = $db->prepare(
+            "SELECT 1 FROM stock_reservations
+             WHERE tenant_id = ? AND order_id = ? AND status = 'active'
+               AND expires_at > UTC_TIMESTAMP() LIMIT 1 FOR UPDATE"
+        );
+        $reservation->execute([$tenant['id'], $orderId]);
+        if (!$reservation->fetchColumn()) {
+            $db->rollBack();
+            app_json(['error' => 'مهلت رزرو موجودی تمام شده است؛ سفارش جدید ثبت کنید.'], 409);
+        }
+
         $config = app_payment_config();
+        $existing = $db->prepare(
+            "SELECT authority, status FROM payment_attempts
+             WHERE tenant_id = ? AND order_id = ? AND provider = 'zarinpal'
+             ORDER BY id DESC LIMIT 1 FOR UPDATE"
+        );
+        $existing->execute([$tenant['id'], $orderId]);
+        $previous = $existing->fetch();
+        if ($previous && $previous['status'] === 'redirected' && $previous['authority']) {
+            $db->commit();
+            app_json(['data' => ['redirect_url' => $config['start_pay'] . $previous['authority'],
+                'authority' => $previous['authority'], 'order_number' => $order['order_number']]]);
+        }
+        if ($previous && $previous['status'] === 'verified') {
+            $db->commit();
+            app_json(['data' => ['already_paid' => true, 'order_number' => $order['order_number']]]);
+        }
+
+        $idempotency = 'order-' . $orderId . '-' . bin2hex(random_bytes(6));
+        $insert = $db->prepare(
+            "INSERT INTO payment_attempts
+             (tenant_id,order_id,provider,idempotency_key,amount_rial,status)
+             VALUES (?, ?, 'zarinpal', ?, ?, 'created')"
+        );
+        $insert->execute([$tenant['id'], $orderId, $idempotency, $order['total_rial']]);
+        $attemptId = (int)$db->lastInsertId();
+        $db->commit();
     } catch (Throwable $e) {
-        app_json(['error' => 'درگاه پرداخت هنوز پیکربندی نشده است.'], 503);
+        if ($db->inTransaction()) $db->rollBack();
+        if ($e instanceof RuntimeException && $e->getMessage() === 'Payment configuration is incomplete.') {
+            app_json(['error' => 'درگاه پرداخت هنوز پیکربندی نشده است.'], 503);
+        }
+        throw $e;
     }
-
-    $existing = $db->prepare(
-        "SELECT authority, status FROM payment_attempts
-         WHERE tenant_id = ? AND order_id = ? AND provider = 'zarinpal'
-         ORDER BY id DESC LIMIT 1"
-    );
-    $existing->execute([$tenant['id'], $orderId]);
-    $previous = $existing->fetch();
-    if ($previous && $previous['status'] === 'redirected' && $previous['authority']) {
-        app_json(['data' => ['redirect_url' => $config['start_pay'] . $previous['authority'],
-            'authority' => $previous['authority'], 'order_number' => $order['order_number']]]);
-    }
-    if ($previous && $previous['status'] === 'verified') {
-        app_json(['data' => ['already_paid' => true, 'order_number' => $order['order_number']]]);
-    }
-
-    $idempotency = 'order-' . $orderId . '-' . bin2hex(random_bytes(6));
-    $insert = $db->prepare(
-        "INSERT INTO payment_attempts
-         (tenant_id,order_id,provider,idempotency_key,amount_rial,status)
-         VALUES (?, ?, 'zarinpal', ?, ?, 'created')"
-    );
-    $insert->execute([$tenant['id'], $orderId, $idempotency, $order['total_rial']]);
-    $attemptId = (int)$db->lastInsertId();
 
     try {
         $provider = app_payment_http_post($config['request_url'], [
@@ -123,23 +140,24 @@ function app_payment_start(PDO $db, array $tenant, array $session): never {
         $code = (int)($provider['data']['code'] ?? 0);
         $authority = (string)($provider['data']['authority'] ?? '');
         if ($code !== 100 || !preg_match('/^[A-Za-z0-9_-]{5,64}$/', $authority)) {
-            $fail = $db->prepare("UPDATE payment_attempts SET status = 'failed' WHERE id = ?");
-            $fail->execute([$attemptId]);
+            $fail = $db->prepare("UPDATE payment_attempts SET status = 'failed' WHERE tenant_id = ? AND id = ? AND status = 'created'");
+            $fail->execute([$tenant['id'], $attemptId]);
             app_json(['error' => 'درگاه پرداخت درخواست را نپذیرفت.'], 502);
         }
         $update = $db->prepare(
             "UPDATE payment_attempts SET authority = ?, status = 'redirected'
-             WHERE id = ? AND status = 'created'"
+             WHERE tenant_id = ? AND id = ? AND status = 'created'"
         );
-        $update->execute([$authority, $attemptId]);
+        $update->execute([$authority, $tenant['id'], $attemptId]);
+        if ($update->rowCount() !== 1) throw new RuntimeException('Payment attempt state changed unexpectedly.');
         app_json(['data' => [
             'redirect_url' => $config['start_pay'] . $authority,
             'authority' => $authority,
             'order_number' => $order['order_number'],
         ]]);
     } catch (Throwable $e) {
-        $fail = $db->prepare("UPDATE payment_attempts SET status = 'failed' WHERE id = ? AND status = 'created'");
-        $fail->execute([$attemptId]);
+        $fail = $db->prepare("UPDATE payment_attempts SET status = 'failed' WHERE tenant_id = ? AND id = ? AND status = 'created'");
+        $fail->execute([$tenant['id'], $attemptId]);
         error_log('[supermarket360-payment] ' . $e->getMessage());
         app_json(['error' => 'ارتباط با درگاه پرداخت برقرار نشد. کمی بعد دوباره تلاش کنید.'], 502);
     }
