@@ -731,6 +731,16 @@ async function loadReport() {
     document.getElementById("statRevenue").textContent=money(Number(data.paid_revenue_rial_30d)/10);
     document.getElementById("statPending").textContent=new Intl.NumberFormat("fa-IR").format(Number(data.pending_payment_count)||0);
     document.getElementById("statLowStock").textContent=new Intl.NumberFormat("fa-IR").format(Number(data.low_stock_count)||0);
+    const operations=data.operations||{};
+    const operationNumber=(key)=>new Intl.NumberFormat("fa-IR").format(Number(operations[key])||0);
+    document.getElementById("statWaitingPicker").textContent=operationNumber("waiting_picker");
+    document.getElementById("statWaitingPack").textContent=operationNumber("waiting_pack");
+    document.getElementById("statWaitingCourier").textContent=operationNumber("waiting_courier");
+    document.getElementById("statInTransit").textContent=operationNumber("in_transit");
+    document.getElementById("statReadyPickup").textContent=operationNumber("ready_pickup");
+    document.getElementById("statDeliveredToday").textContent=operationNumber("delivered_today");
+    document.getElementById("statAverageDelivery").textContent=operations.average_delivery_minutes_30d===null||operations.average_delivery_minutes_30d===undefined
+      ?"—":operationNumber("average_delivery_minutes_30d")+" دقیقه";
     const days=data.daily_sales||[];
     const max=Math.max(1,...days.map(d=>Number(d.revenue_rial)||0));
     document.getElementById("salesChart").innerHTML=days.map(d=>'<div class="sales-bar-row"><span>'+escapeText(d.day)+'</span><div><i style="width:'+Math.max(2,(Number(d.revenue_rial)||0)/max*100)+'%"></i></div><strong>'+money(Number(d.revenue_rial)/10)+'</strong></div>').join("")||'<p>در این بازه فروشی ثبت نشده است.</p>';
