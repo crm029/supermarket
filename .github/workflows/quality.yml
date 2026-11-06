@@ -105,6 +105,9 @@ jobs:
       - name: Apply owner-only platform payment settings migration
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_06_platform_payment_settings.sql
 
+      - name: Verify platform payment settings defaults and permission scope
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/platform-payment-settings.sql
+
       - name: Apply order picker and courier assignment migration
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_06_order_assignments.sql
 
