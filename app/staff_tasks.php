@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/policies.php';
 require_once __DIR__ . '/notifications.php';
+require_once __DIR__ . '/delivery_tracking.php';
 
 function app_staff_task_list(PDO $db, array $tenant, array $session): never {
     $stmt=$db->prepare(
