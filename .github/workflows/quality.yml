@@ -235,6 +235,18 @@ jobs:
           curl -fsS -H "Host: localhost" http://127.0.0.1:8100/index.php >/dev/null
           bash tests/seo-smoke.sh
 
+      - name: Seed encrypted gateway settings for preflight
+        env:
+          APP_ENV: production
+          APP_KEY: ci-production-preflight-secret-with-more-than-32-characters
+          APP_BASE_URL: https://store.example.test
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: supermarket360
+          DB_USERNAME: root
+          DB_PASSWORD: root
+          ZARINPAL_MERCHANT_ID: ci-placeholder-merchant-id
+        run: php tests/seed-ci-payment-settings.php
+
       - name: Run read-only production deployment preflight
         env:
           APP_ENV: production
