@@ -49,6 +49,18 @@ try {
     $method = app_method();
     $db = app_db();
 
+    if ($path === '/platform/payment-settings') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_platform_permission($db, $tenant, $session, 'platform.payments.manage');
+        if ($method === 'GET') app_payment_platform_settings_read($db);
+        if ($method === 'PUT') {
+            app_auth_require_csrf($session);
+            app_payment_platform_settings_update($db, $tenant, $session);
+        }
+        header('Allow: GET, PUT');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
     if ($path === '/platform/audit' && $method === 'GET') {
         $session = app_auth_require($db, $tenant);
         app_auth_require_platform_permission($db, $tenant, $session, 'platform.audit.read');
