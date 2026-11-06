@@ -100,6 +100,9 @@ try {
         $pass('Database schema', count($requiredTables) . ' required core tables are present.');
     }
 
+    $columnQuery = $db->prepare(
+        'SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?'
+    );
     $requiredPaymentColumns = ['gateway_mode', 'merchant_id_encrypted'];
     $missingPaymentColumns = [];
     foreach ($requiredPaymentColumns as $column) {
@@ -113,9 +116,6 @@ try {
     }
 
     $requiredDomainColumns = ['verification_token_hash', 'verification_expires_at', 'verification_attempts'];
-    $columnQuery = $db->prepare(
-        'SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?'
-    );
     $missingDomainColumns = [];
     foreach ($requiredDomainColumns as $column) {
         $columnQuery->execute(['tenant_domains', $column]);
