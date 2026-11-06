@@ -34,7 +34,7 @@ if (!$category) {
 
 $productsQuery = $seo['db']->prepare(
     "SELECT p.id,p.title,p.sku,p.seo_slug,p.brand,p.description,p.unit_label,p.price_rial,p.image_media_id,
-            m.storage_key,m.alt_text AS image_alt_text,
+            m.storage_key,m.alt_text AS image_alt_text,m.width AS image_width,m.height AS image_height,
             COALESCE((SELECT SUM(sl.on_hand-sl.reserved)
                       FROM stock_levels sl
                       JOIN warehouses w ON w.tenant_id=sl.tenant_id AND w.id=sl.warehouse_id
@@ -159,7 +159,7 @@ $analyticsViewListJson = json_encode($analyticsViewList,JSON_UNESCAPED_UNICODE|J
       $inStock = (int)$item['available_quantity'] > 0;
     ?>
       <a class="seo-product-card" href="/<?= $e(app_seo_product_path($item)) ?>">
-        <?php if ($imageUrl): ?><img src="<?= $e($imageUrl) ?>" alt="<?= $e($item['image_alt_text'] ?: $item['title']) ?>" loading="lazy"><?php else: ?><div class="product-image"></div><?php endif; ?>
+        <?php if ($imageUrl): ?><img src="<?= $e($imageUrl) ?>" alt="<?= $e($item['image_alt_text'] ?: $item['title']) ?>" width="<?= (int)($item['image_width'] ?? 600) ?>" height="<?= (int)($item['image_height'] ?? 600) ?>" loading="lazy"><?php else: ?><div class="product-image"></div><?php endif; ?>
         <h2><?= $e($item['title']) ?></h2>
         <p><?= $e($item['brand'] ?? '') ?> · <?= $e($item['unit_label']) ?></p>
         <strong><?= number_format((int)round((int)$item['price_rial']/10)) ?> تومان</strong>
