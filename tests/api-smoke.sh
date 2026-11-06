@@ -350,7 +350,7 @@ assert_json() {
       if ((int)($operations["delivered_today"] ?? 0) < 1) exit(1);
       exit(0);
     }
-    if ($check === "pos-empty-shift") { if (($data["data"]["shift"] ?? "missing") !== null) exit(1); exit(0); }
+    if ($check === "pos-empty-shift") { if (!array_key_exists("shift",$data["data"]??[]) || $data["data"]["shift"] !== null) exit(1); exit(0); }
     if ($check === "pos-shift-open") {
       $shift=$data["data"]["shift"]??[];
       if ((int)($shift["opening_float_rial"]??0)!==500000 || (int)($shift["expected_cash_rial"]??0)!==500000 ||
