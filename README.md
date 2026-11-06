@@ -22,6 +22,7 @@ Implemented and covered by repository tests:
 - Deny-by-default tenant permission checks and audited product/category administration.
 - Seller dashboard, merchant branding and checkout settings, staff roles and permission management, tenant media library, media uploads, scene/hotspot authoring, multi-warehouse receipts/transfers/adjustments, supplier returns, FEFO batch/expiry tracking, audited expired-stock write-off, low-stock alerts, inventory movement history, stock reservation and expiry worker, supplier directory, purchase orders and partial receiving with stock posting.
 - Server-validated cart quotes, persistent cross-device customer carts, customer addresses, tenant postal-code delivery zones, capacity-controlled scheduled pickup, tenant-scoped percentage/fixed coupons with usage limits, transactional pending checkout, customer order history/cancellation and fulfilment transitions.
+- Staff picker/courier task workflow with guarded order stages, recipient-confirmed delivery, tenant-scoped delivery event history and customer-facing shipment timeline.
 - ZarinPal v4 request/verification adapter with idempotent callbacks, stock commit after server-side verification, encrypted platform-owner-only merchant credentials, Sandbox/Real mode selection and per-attempt gateway snapshots.
 - Append-only wallet credit ledger, customer balance/history API and configurable first-paid-order referral rewards.
 - GitHub Actions PHP/JavaScript validation and MySQL-backed schema, tenant isolation and HTTP API integration checks.
@@ -29,7 +30,7 @@ Implemented and covered by repository tests:
 Still in progress:
 - Platform super-admin authorization and tenant/domain provisioning.
 - Wallet spending, refunds/reversals, advanced referral fraud controls and reward policy approval for each merchant.
-- Cashier/picker/courier assignment, courier tracking and operational notifications.
+- Cashier assignment and operational dashboards; courier status tracking, picker workflow and operational notifications are implemented.
 - Real-store photography/onboarding and responsive image delivery.
 - Google Search Console/GA4 setup and production Core Web Vitals review.
 - Live merchant SMS/payment credentials, settlement reconciliation, refund acceptance, hosting, backups, monitoring, load/device/accessibility testing and production sign-off.
