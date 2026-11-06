@@ -100,6 +100,8 @@ grep -Fq 'RewriteRule ^sitemap\.xml$ sitemap.php' .htaccess
 grep -Fq 'RewriteRule ^sitemap-core\.xml$ sitemap-core.php' .htaccess
 grep -Fq 'RewriteRule ^sitemap-products-' .htaccess
 grep -Fq 'RewriteRule ^(?:app|database|bin|tests|docs|scripts)' .htaccess
+grep -Fq 'RewriteRule (^|/)\\.' .htaccess
+grep -Fq 'RewriteRule ^category/([a-z0-9][a-z0-9-]{0,139})/page/' .htaccess
 grep -Fq 'RewriteRule ^product/' .htaccess
 grep -Fq 'RewriteRule ^category/([a-z0-9][a-z0-9-]{0,139})/page/' .htaccess
 grep -Fq 'RewriteRule ^category/' .htaccess
