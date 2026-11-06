@@ -1,7 +1,7 @@
 # Local setup (XAMPP)
 
 ## Current status
-The root `index.php` provides a local storefront preview; live tenant catalogue, customer accounts, checkout, wallet and seller operations require the API and database. The API requires PHP 8.2+ with PDO MySQL, mbstring, cURL and fileinfo. Customer registration/login uses OTP; checkout creates pending orders and stock reservations; payment completion requires server-side ZarinPal verification. The local `SMS_PROVIDER=log` driver is development-only.
+The root `index.php` provides a local storefront preview; live tenant catalogue, customer accounts, checkout, wallet and seller operations require the API and database. The API requires PHP 8.2+ with PDO MySQL, mbstring, cURL, OpenSSL and fileinfo. Customer registration/login uses OTP; checkout creates pending orders and stock reservations; payment completion requires server-side ZarinPal verification. The local `SMS_PROVIDER=log` driver is development-only.
 
 ## Prepare database
 1. Create a database named `supermarket360` with utf8mb4.
