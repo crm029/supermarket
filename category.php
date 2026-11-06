@@ -16,6 +16,14 @@ $stmt = $seo['db']->prepare(
 );
 $stmt->execute([(int)$seo['tenant']['id'],$slug]);
 $category = $stmt->fetch(PDO::FETCH_ASSOC);
+if ($category) {
+    $canonicalPath = '/category/'.rawurlencode((string)$category['slug']);
+    $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '',PHP_URL_PATH) ?: '';
+    if ($currentPath !== $canonicalPath || (string)($_SERVER['HTTP_HOST'] ?? '') !== (string)$seo['host']) {
+        header('Location: '.app_seo_url($seo,ltrim($canonicalPath,'/')),true,301);
+        exit;
+    }
+}
 if (!$category) {
     $sourcePath = '/category/'.rawurlencode($slug);
     $redirectQuery = $seo['db']->prepare(
