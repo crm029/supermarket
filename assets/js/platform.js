@@ -37,6 +37,21 @@
       }).join("");
     }catch(error){box.innerHTML='<div class="platform-empty">'+escapeText(error.message)+'</div>';}
   }
+  async function loadPaymentSettings(){
+    const section=$("platformPaymentSection");
+    try{
+      const result=await api("platform/payment-settings");
+      const data=result.data||{};
+      $("platformPaymentMode").value=data.mode==="live"?"live":"sandbox";
+      $("platformPaymentStatus").textContent=data.merchant_configured
+        ? "شناسه ثبت‌شده: "+(data.merchant_masked||"ثبت شده")+" · آخرین تغییر: "+(data.updated_at||"نامشخص")
+        : "هنوز شناسه مرچنت ثبت نشده است؛ برای شروع تست، شناسه Sandbox را وارد کنید.";
+      section.hidden=false;
+    }catch(error){
+      section.hidden=true;
+      if(error.message!=="برای مدیریت پلتفرم دسترسی کافی ندارید.")message("platformMessage",error.message,true);
+    }
+  }
   async function loadTenants(){
     const box=$("platformTenantList");box.innerHTML="<p>در حال دریافت فهرست...</p>";
     try{
@@ -61,7 +76,7 @@
     try{
       const me=await api("me");currentUser=me.data;
       const csrf=await api("auth/csrf");csrfToken=csrf.data.csrf_token;
-      showDashboard();await loadTenants();
+      showDashboard();await Promise.all([loadTenants(),loadPaymentSettings()]);
     }catch(error){
       showLogin();
       if(error.message!=="برای ادامه وارد حساب کاربری شوید.")message("platformLoginMessage",error.message,true);
@@ -77,8 +92,29 @@
   $("platformVerifyOtp").addEventListener("click",async()=>{
     try{
       const result=await api("auth/verify-otp",{method:"POST",body:JSON.stringify({mobile:$("platformMobile").value.trim(),code:$("platformOtpCode").value.trim()})});
-      currentUser=result.data.user;csrfToken=result.data.csrf_token;showDashboard();await loadTenants();
+      currentUser=result.data.user;csrfToken=result.data.csrf_token;showDashboard();await Promise.all([loadTenants(),loadPaymentSettings()]);
     }catch(error){message("platformLoginMessage",error.message,true);}
+  });
+  $("platformPaymentForm").addEventListener("submit",async event=>{
+    event.preventDefault();
+    const mode=$("platformPaymentMode").value;
+    let confirmationPhrase="";
+    if(mode==="live"){
+      const phrase=window.prompt("برای فعال‌سازی درگاه واقعی، عبارت REAL را دقیقاً وارد کنید:");
+      if(phrase===null)return;
+      confirmationPhrase=phrase.trim();
+      if(confirmationPhrase!=="REAL"){message("platformPaymentMessage","عبارت تأیید صحیح نیست.",true);return;}
+    }
+    try{
+      const result=await api("platform/payment-settings",{method:"PUT",csrf:true,body:JSON.stringify({
+        mode,
+        merchant_id:$("platformMerchantId").value.trim(),
+        confirmation_phrase:confirmationPhrase
+      })});
+      $("platformMerchantId").value="";
+      message("platformPaymentMessage",result.message||"تنظیمات ذخیره شد.");
+      await loadPaymentSettings();
+    }catch(error){message("platformPaymentMessage",error.message,true);}
   });
   $("platformCreateForm").addEventListener("submit",async event=>{
     event.preventDefault();

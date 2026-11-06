@@ -64,6 +64,21 @@ declare(strict_types=1);
       </section>
     </section>
 
+    <section id="platformPaymentSection" class="platform-payment-panel" hidden>
+      <div class="platform-section-heading"><h2>تنظیمات درگاه پرداخت سراسری</h2><span class="platform-owner-only">فقط مالک پلتفرم</span></div>
+      <p>شناسه مرچنت به‌صورت رمزنگاری‌شده در پایگاه داده نگهداری می‌شود و هیچ‌وقت در پاسخ API یا پنل به‌صورت کامل نمایش داده نمی‌شود. این تنظیم برای درگاه تمام فروشگاه‌های متصل به پلتفرم اعمال می‌شود.</p>
+      <form id="platformPaymentForm">
+        <div class="platform-form-grid">
+          <label>شناسه مرچنت زرین‌پال<input id="platformMerchantId" type="password" maxlength="64" autocomplete="new-password" dir="ltr" placeholder="برای حفظ شناسه فعلی خالی بگذارید"></label>
+          <label>حالت درگاه<select id="platformPaymentMode"><option value="sandbox">Sandbox — آزمایشی</option><option value="live">Real — واقعی</option></select></label>
+        </div>
+        <p id="platformPaymentStatus" class="platform-payment-status">در حال دریافت وضعیت درگاه...</p>
+        <p class="platform-payment-warning">حالت Real فقط روی سرور production با دامنه HTTPS اجازه شروع پرداخت می‌گیرد. قبل از تغییر به Real، ترمینال و دامنه بازگشت زرین‌پال را بررسی کنید.</p>
+        <button class="primary-button" type="submit">ذخیره تنظیمات درگاه</button>
+      </form>
+      <p id="platformPaymentMessage" class="platform-message" role="status" aria-live="polite"></p>
+    </section>
+
     <section class="platform-list-section">
       <div class="platform-section-heading"><h2>فروشگاه‌های ثبت‌شده</h2><span id="platformTenantCount"></span></div>
       <div id="platformTenantList" class="platform-tenant-list"><p>در حال بارگذاری...</p></div>

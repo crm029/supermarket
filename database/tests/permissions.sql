@@ -25,7 +25,7 @@ BEGIN
     INSERT INTO role_permissions (role_scope_id, role_id, permission_id)
     SELECT 1, @manager_role, id
     FROM permissions
-    WHERE permission_key = 'platform.tenants.manage' AND scope = 'platform';
+    WHERE permission_key IN ('platform.tenants.manage','platform.payments.manage') AND scope = 'platform';
   END;
   IF rejected = FALSE THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Tenant role accepted a platform permission';
@@ -70,7 +70,7 @@ BEGIN
   JOIN permissions p ON p.id = rp.permission_id
   WHERE ur.tenant_id = 1
     AND ur.user_id = @tenant_one_user
-    AND p.permission_key = 'platform.tenants.manage'
+    AND p.permission_key IN ('platform.tenants.manage','platform.payments.manage')
     AND p.scope = 'tenant';
 
   IF granted_count <> 0 THEN

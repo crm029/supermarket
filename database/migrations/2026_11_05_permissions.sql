@@ -37,7 +37,8 @@ INSERT INTO permissions (permission_key, scope, description) VALUES
 ('staff.manage','tenant','مدیریت کارکنان فروشگاه'),
 ('media.manage','tenant','مدیریت رسانه‌های فروشگاه'),
 ('platform.tenants.manage','platform','مدیریت مستأجران پلتفرم'),
-('platform.audit.read','platform','مشاهده گزارش حسابرسی پلتفرم');
+('platform.audit.read','platform','مشاهده گزارش حسابرسی پلتفرم'),
+('platform.payments.manage','platform','مدیریت محرمانه تنظیمات درگاه پرداخت');
 
 DELIMITER //
 CREATE TRIGGER trg_role_permissions_scope_insert

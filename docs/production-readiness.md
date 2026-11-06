@@ -11,7 +11,7 @@ The application code includes customer registration, catalogue management, inven
 
 ## Server
 
-- [ ] PHP 8.2 or newer with pdo_mysql, mbstring, cURL, fileinfo and DNS TXT lookup support.
+- [ ] PHP 8.2 or newer with pdo_mysql, mbstring, cURL, OpenSSL, fileinfo and DNS TXT lookup support.
 - [ ] MySQL 8.0.16 or newer; run schema.sql and every migration in documented order.
 - [ ] Configure Apache mod_rewrite and permit the supplied API .htaccess rules.
 - [ ] Set APP_ENV=production, APP_DEBUG=false, APP_KEY to a unique random secret of at least 32 characters, and APP_BASE_URL to the exact HTTPS public origin.
@@ -22,8 +22,8 @@ The application code includes customer registration, catalogue management, inven
 
 - [ ] Set SMS_PROVIDER=kavenegar and configure the real KAVENEGAR_API_KEY and approved KAVENEGAR_VERIFY_TEMPLATE.
 - [ ] Confirm delivery, resend, expiry and rate-limit behaviour using a real phone before launch.
-- [ ] Configure ZARINPAL_MERCHANT_ID and ZARINPAL_SANDBOX=false.
-- [ ] Register the exact HTTPS callback domain with the payment provider.
+- [ ] Apply `2026_11_06_platform_payment_settings.sql`; the platform owner enters the merchant ID in platform.php and selects Real mode. The credential is encrypted at rest and hidden from tenant managers/staff.
+- [ ] Keep APP_KEY stable and secret (it protects the encrypted merchant ID); register the exact HTTPS callback domain with the payment provider.
 - [ ] Complete sandbox and low-value live tests for success, cancellation, duplicate callbacks, delayed callbacks and provider outages.
 - [ ] Configure settlement reconciliation and a separate external gateway refund procedure; the internal wallet-credit refund flow does not reverse bank or ZarinPal payments.
 

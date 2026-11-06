@@ -39,7 +39,7 @@ INSERT IGNORE INTO role_permissions (role_scope_id,role_id,permission_id)
 SELECT 0,@platform_role_id,id
 FROM permissions
 WHERE scope='platform'
-  AND permission_key IN ('platform.tenants.manage','platform.audit.read');
+  AND permission_key IN ('platform.tenants.manage','platform.audit.read','platform.payments.manage');
 
 INSERT IGNORE INTO user_roles (tenant_id,role_scope_id,user_id,role_id)
 VALUES (@platform_tenant_id,0,@platform_user_id,@platform_role_id);

@@ -7,8 +7,51 @@ require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/wallet.php';
 require_once __DIR__ . '/stock_batches.php';
 
-function app_payment_config(): array {
-    $merchant = trim((string)(app_env('ZARINPAL_MERCHANT_ID') ?? ''));
+function app_payment_merchant_encrypt(string $merchant): string {
+    if (!function_exists('openssl_encrypt')) throw new RuntimeException('OpenSSL is required to protect payment credentials.');
+    $key = hash('sha256', 'supermarket360:zarinpal:merchant:v1:' . app_auth_secret(), true);
+    $nonce = random_bytes(12);
+    $tag = '';
+    $ciphertext = openssl_encrypt($merchant, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $nonce, $tag, 'supermarket360:zarinpal:v1', 16);
+    if (!is_string($ciphertext) || strlen($tag) !== 16) throw new RuntimeException('Unable to protect payment credentials.');
+    return 'v1:' . base64_encode($nonce . $tag . $ciphertext);
+}
+
+function app_payment_merchant_decrypt(?string $stored): ?string {
+    if ($stored === null || $stored === '') return null;
+    if (!str_starts_with($stored, 'v1:') || !function_exists('openssl_decrypt')) {
+        throw new RuntimeException('Stored payment credentials cannot be decrypted.');
+    }
+    $packed = base64_decode(substr($stored, 3), true);
+    if (!is_string($packed) || strlen($packed) < 29) throw new RuntimeException('Stored payment credentials are invalid.');
+    $key = hash('sha256', 'supermarket360:zarinpal:merchant:v1:' . app_auth_secret(), true);
+    $plain = openssl_decrypt(substr($packed, 28), 'aes-256-gcm', $key, OPENSSL_RAW_DATA, substr($packed, 0, 12), substr($packed, 12, 16), 'supermarket360:zarinpal:v1');
+    if (!is_string($plain) || $plain === '') throw new RuntimeException('Stored payment credentials cannot be decrypted.');
+    return $plain;
+}
+
+function app_payment_config(?PDO $db = null, ?array $attemptSnapshot = null): array {
+    $merchant = '';
+    $mode = null;
+    $encryptedMerchant = null;
+
+    if ($attemptSnapshot !== null && isset($attemptSnapshot['gateway_mode'])) {
+        $mode = (string)$attemptSnapshot['gateway_mode'];
+        $encryptedMerchant = $attemptSnapshot['merchant_id_encrypted'] ?? null;
+    }
+    if ($db !== null && ($mode === null || !$encryptedMerchant)) {
+        $settings = $db->query('SELECT merchant_id_encrypted, mode FROM platform_payment_settings WHERE id = 1 LIMIT 1')->fetch();
+        if ($settings) {
+            if ($mode === null) $mode = (string)$settings['mode'];
+            if (!$encryptedMerchant) $encryptedMerchant = $settings['merchant_id_encrypted'] ?? null;
+        }
+    }
+    $merchant = app_payment_merchant_decrypt(is_string($encryptedMerchant) ? $encryptedMerchant : null) ?? trim((string)(app_env('ZARINPAL_MERCHANT_ID') ?? ''));
+    if ($mode === null) {
+        $mode = filter_var(app_env('ZARINPAL_SANDBOX', 'true'), FILTER_VALIDATE_BOOLEAN) ? 'sandbox' : 'live';
+    }
+    if (!in_array($mode, ['sandbox', 'live'], true)) throw new RuntimeException('ZarinPal gateway mode is invalid.');
+
     $baseUrl = rtrim(trim((string)(app_env('APP_BASE_URL') ?? '')), '/');
     $parts = $baseUrl !== '' ? parse_url($baseUrl) : false;
     if ($merchant === '' || $parts === false || empty($parts['scheme']) || empty($parts['host']) ||
@@ -20,16 +63,76 @@ function app_payment_config(): array {
     if ($production && strtolower((string)$parts['scheme']) !== 'https') {
         throw new RuntimeException('APP_BASE_URL must use HTTPS in production.');
     }
-    $sandbox = filter_var(app_env('ZARINPAL_SANDBOX', 'false'), FILTER_VALIDATE_BOOLEAN);
+    if ($mode === 'live' && (!$production || strtolower((string)$parts['scheme']) !== 'https')) {
+        throw new RuntimeException('درگاه واقعی فقط روی محیط production با نشانی HTTPS فعال می‌شود.');
+    }
+    $sandbox = $mode === 'sandbox';
     $apiBase = $sandbox ? 'https://sandbox.zarinpal.com/pg/v4/payment' : 'https://api.zarinpal.com/pg/v4/payment';
     $startPay = $sandbox ? 'https://sandbox.zarinpal.com/pg/StartPay/' : 'https://www.zarinpal.com/pg/StartPay/';
     return [
         'merchant_id' => $merchant,
+        'merchant_id_encrypted' => app_payment_merchant_encrypt($merchant),
+        'mode' => $mode,
         'callback_url' => $baseUrl . '/api/v1/payments/zarinpal/callback',
         'request_url' => $apiBase . '/request.json',
         'verify_url' => $apiBase . '/verify.json',
         'start_pay' => $startPay,
     ];
+}
+
+function app_payment_platform_settings_read(PDO $db): never {
+    $row = $db->query('SELECT merchant_id_encrypted, mode, updated_at FROM platform_payment_settings WHERE id = 1 LIMIT 1')->fetch();
+    $merchant = $row ? app_payment_merchant_decrypt($row['merchant_id_encrypted'] ?? null) : null;
+    if (!$merchant) $merchant = trim((string)(app_env('ZARINPAL_MERCHANT_ID') ?? ''));
+    $mode = $row ? (string)$row['mode'] : (filter_var(app_env('ZARINPAL_SANDBOX', 'true'), FILTER_VALIDATE_BOOLEAN) ? 'sandbox' : 'live');
+    app_json(['data' => [
+        'mode' => $mode,
+        'merchant_configured' => $merchant !== '',
+        'merchant_masked' => $merchant === '' ? null : '••••••••' . substr($merchant, -4),
+        'updated_at' => $row['updated_at'] ?? null,
+    ]]);
+}
+
+function app_payment_platform_settings_update(PDO $db, array $tenant, array $session): never {
+    $body = app_auth_request_body();
+    $mode = (string)($body['mode'] ?? '');
+    $merchantInput = trim((string)($body['merchant_id'] ?? ''));
+    $confirmation = (string)($body['confirmation_phrase'] ?? '');
+    if (!in_array($mode, ['sandbox', 'live'], true) ||
+        ($merchantInput !== '' && !preg_match('/^[A-Za-z0-9-]{8,64}$/', $merchantInput)) ||
+        ($mode === 'live' && $confirmation !== 'REAL')) {
+        app_json(['error' => 'تنظیمات درگاه معتبر نیست؛ برای حالت واقعی عبارت REAL الزامی است.'], 422);
+    }
+
+    $db->beginTransaction();
+    try {
+        $row = $db->query('SELECT merchant_id_encrypted, mode FROM platform_payment_settings WHERE id = 1 FOR UPDATE')->fetch();
+        $previousMode = $row ? (string)$row['mode'] : 'sandbox';
+        $encrypted = $row['merchant_id_encrypted'] ?? null;
+        if ($merchantInput !== '') $encrypted = app_payment_merchant_encrypt($merchantInput);
+        $currentMerchant = app_payment_merchant_decrypt(is_string($encrypted) ? $encrypted : null)
+            ?? trim((string)(app_env('ZARINPAL_MERCHANT_ID') ?? ''));
+        if ($currentMerchant === '') {
+            $db->rollBack();
+            app_json(['error' => 'ابتدا شناسه مرچنت زرین‌پال را وارد کنید.'], 422);
+        }
+        $save = $db->prepare(
+            'INSERT INTO platform_payment_settings (id,merchant_id_encrypted,mode,updated_by)
+             VALUES (1,?,?,?) ON DUPLICATE KEY UPDATE merchant_id_encrypted=VALUES(merchant_id_encrypted),
+             mode=VALUES(mode),updated_by=VALUES(updated_by),updated_at=UTC_TIMESTAMP()'
+        );
+        $save->execute([$encrypted, $mode, (int)$session['id']]);
+        app_audit_log($db, (int)$tenant['id'], (int)$session['id'], 'platform.payment_gateway.updated', 'platform_payment_settings', 1, [
+            'mode_from' => $previousMode,
+            'mode_to' => $mode,
+            'merchant_id_changed' => $merchantInput !== '',
+        ]);
+        $db->commit();
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        throw $e;
+    }
+    app_json(['message' => 'تنظیمات درگاه با موفقیت ذخیره شد.', 'data' => ['mode' => $mode]]);
 }
 
 function app_payment_http_post(string $url, array $payload): array {
@@ -95,7 +198,7 @@ function app_payment_start(PDO $db, array $tenant, array $session): never {
         }
 
         try {
-            $config = app_payment_config();
+            $config = app_payment_config($db);
         } catch (Throwable $e) {
             $db->rollBack();
             app_json(['error' => 'درگاه پرداخت هنوز پیکربندی نشده است.'], 503);
@@ -127,10 +230,10 @@ function app_payment_start(PDO $db, array $tenant, array $session): never {
         $idempotency = 'order-' . $orderId . '-' . bin2hex(random_bytes(6));
         $insert = $db->prepare(
             "INSERT INTO payment_attempts
-             (tenant_id,order_id,provider,idempotency_key,amount_rial,status)
-             VALUES (?, ?, 'zarinpal', ?, ?, 'created')"
+             (tenant_id,order_id,provider,idempotency_key,amount_rial,gateway_mode,merchant_id_encrypted,status)
+             VALUES (?, ?, 'zarinpal', ?, ?, ?, ?, 'created')"
         );
-        $insert->execute([$tenant['id'], $orderId, $idempotency, $order['total_rial']]);
+        $insert->execute([$tenant['id'], $orderId, $idempotency, $order['total_rial'], $config['mode'], $config['merchant_id_encrypted']]);
         $attemptId = (int)$db->lastInsertId();
         $db->commit();
     } catch (Throwable $e) {
@@ -191,7 +294,7 @@ function app_payment_callback(PDO $db, array $tenant): never {
     }
 
     $find = $db->prepare(
-        "SELECT id, order_id, amount_rial, status
+        "SELECT id, order_id, amount_rial, status, gateway_mode, merchant_id_encrypted
          FROM payment_attempts
          WHERE tenant_id = ? AND provider = 'zarinpal' AND authority = ?
          LIMIT 1"
@@ -211,7 +314,7 @@ function app_payment_callback(PDO $db, array $tenant): never {
     }
 
     try {
-        $config = app_payment_config();
+        $config = app_payment_config($db, $attempt);
         $provider = app_payment_http_post($config['verify_url'], [
             'merchant_id' => $config['merchant_id'],
             'amount' => (int)$attempt['amount_rial'],
