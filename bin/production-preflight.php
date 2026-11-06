@@ -6,7 +6,7 @@ declare(strict_types=1);
  * Run from the repository root with APP_ENV=production and the real server environment.
  * This command never prints secret values and never changes the database.
  */
-require_once dirname(__DIR__) . '/app/bootstrap.php';
+require_once dirname(__DIR__) . '/app/payments.php';
 
 $checks = [];
 $fail = static function (string $label, string $detail) use (&$checks): void {
@@ -32,7 +32,7 @@ if (PHP_VERSION_ID < 80200) {
     $pass('PHP', PHP_VERSION);
 }
 
-foreach (['pdo_mysql', 'mbstring', 'curl', 'fileinfo'] as $extension) {
+foreach (['pdo_mysql', 'mbstring', 'curl', 'fileinfo', 'openssl'] as $extension) {
     extension_loaded($extension)
         ? $pass('PHP extension: ' . $extension, 'Loaded.')
         : $fail('PHP extension: ' . $extension, 'Install and enable this extension.');
@@ -84,7 +84,7 @@ try {
         'role_permissions', 'auth_sessions', 'auth_challenges',
         'products', 'categories', 'stock_levels', 'stock_reservations',
         'orders', 'order_assignments', 'order_refunds', 'notifications',
-        'payment_attempts', 'media_assets', 'wallet_accounts', 'wallet_entries', 'referral_events',
+        'payment_attempts', 'platform_payment_settings', 'media_assets', 'wallet_accounts', 'wallet_entries', 'referral_events',
     ];
     $tableQuery = $db->prepare(
         'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?'
@@ -98,6 +98,18 @@ try {
         $fail('Database schema', 'Missing required tables: ' . implode(', ', $missing) . '. Apply the documented schema and migrations.');
     } else {
         $pass('Database schema', count($requiredTables) . ' required core tables are present.');
+    }
+
+    $requiredPaymentColumns = ['gateway_mode', 'merchant_id_encrypted'];
+    $missingPaymentColumns = [];
+    foreach ($requiredPaymentColumns as $column) {
+        $columnQuery->execute(['payment_attempts', $column]);
+        if ((int)$columnQuery->fetchColumn() !== 1) $missingPaymentColumns[] = $column;
+    }
+    if ($missingPaymentColumns !== []) {
+        $fail('Payment attempt snapshots', 'Missing payment_attempts columns: ' . implode(', ', $missingPaymentColumns) . '. Apply the platform payment settings migration.');
+    } else {
+        $pass('Payment attempt snapshots', 'Gateway mode and encrypted merchant snapshots are present.');
     }
 
     $requiredDomainColumns = ['verification_token_hash', 'verification_expires_at', 'verification_attempts'];
@@ -137,12 +149,19 @@ if ($smsProvider !== 'kavenegar' ||
     $pass('SMS provider', 'Kavenegar credentials and template are present; live delivery still needs a real-phone test.');
 }
 
-if (trim((string)(app_env('ZARINPAL_MERCHANT_ID') ?? '')) === '') {
-    $fail('Payment gateway', 'Configure the merchant-owned ZARINPAL_MERCHANT_ID.');
-} elseif (filter_var(app_env('ZARINPAL_SANDBOX', 'true'), FILTER_VALIDATE_BOOLEAN)) {
-    $fail('Payment gateway', 'ZARINPAL_SANDBOX must be false for production.');
-} else {
-    $pass('Payment gateway', 'Merchant ID is present and sandbox mode is disabled; provider acceptance is not verified by this check.');
+try {
+    if (!$db instanceof PDO) throw new RuntimeException('Database connection is unavailable.');
+    $gatewaySettings = $db->query('SELECT merchant_id_encrypted, mode FROM platform_payment_settings WHERE id = 1 LIMIT 1')->fetch();
+    if (!$gatewaySettings || trim((string)($gatewaySettings['merchant_id_encrypted'] ?? '')) === '') {
+        $fail('Payment gateway', 'The platform owner must save the merchant ID through platform.php; environment-only fallback is not accepted for production.');
+    } elseif ((string)$gatewaySettings['mode'] !== 'live') {
+        $fail('Payment gateway', 'The platform owner must select Real mode in platform.php before production checkout can accept payments.');
+    } else {
+        app_payment_config($db);
+        $pass('Payment gateway', 'Encrypted merchant credentials and Real mode are configured; provider acceptance still requires a real transaction.');
+    }
+} catch (Throwable $error) {
+    $fail('Payment gateway', 'Platform gateway settings are unavailable or invalid: ' . $error->getMessage());
 }
 
 $mediaPath = trim((string)(app_env('MEDIA_STORAGE_PATH') ?? ''));
