@@ -306,6 +306,11 @@ assert_json() {
       if (!$picker || !$courier) exit(1);
       exit(0);
     }
+    if ($check === "pickup-order-delivered") {
+      if (($data["data"]["status"] ?? null) !== "delivered" ||
+          ($data["data"]["fulfillment"] ?? null) !== "pickup") exit(1);
+      exit(0);
+    }
     if ($check === "delivery-timeline") {
       $events = $data["data"]["delivery_events"] ?? [];
       $types = array_column($events,"event_type");
@@ -662,7 +667,7 @@ PICKUP_HANDOFF_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --sk
 PICKUP_ASSIGNMENT_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM order_assignments WHERE tenant_id=1 AND id=$PICKUP_ASSIGNMENT_ID")"
 if [[ "$PICKUP_HANDOFF_STATUS" != "delivered" || "$PICKUP_ASSIGNMENT_STATUS" != "completed" ]]; then echo "Pickup handoff was not finalized with staff confirmation."; exit 1; fi
 request GET "/me/orders/$PICKUP_ORDER_ID" 200 "" "$CUSTOMER_TOKEN"
-assert_json delivery-timeline
+assert_json pickup-order-delivered
 request POST "/me/orders/$PICKUP_ORDER_ID/cancel" 409 "" "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 request DELETE "/admin/pickup-slots/$PICKUP_SLOT_ID" 200 "" "$TOKEN" "$CSRF"
 request GET /pickup-slots 200
