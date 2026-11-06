@@ -155,17 +155,20 @@ function app_pos_management_report(PDO $db,array $tenant): never {
     $shiftSummary=$shifts->fetch(PDO::FETCH_ASSOC)?:[];
     $cashiers=$db->prepare(
         "SELECT s.cashier_user_id,u.full_name,COUNT(DISTINCT s.id) shift_count,
-                SUM(CASE WHEN s.status='open' THEN 1 ELSE 0 END) open_shift_count,
+                (SELECT COUNT(*) FROM pos_shifts os WHERE os.tenant_id=s.tenant_id AND os.cashier_user_id=s.cashier_user_id
+                   AND os.status='open' AND os.opened_at>=? AND os.opened_at<?) open_shift_count,
                 COUNT(DISTINCT ps.id) sale_count,COALESCE(SUM(ps.total_rial),0) sales_total_rial,
-                SUM(CASE WHEN s.status='closed' AND s.cash_variance_rial<>0 THEN 1 ELSE 0 END) variance_shift_count,
-                COALESCE(SUM(CASE WHEN s.status='closed' THEN s.cash_variance_rial ELSE 0 END),0) net_variance_rial
+                (SELECT COUNT(*) FROM pos_shifts vs WHERE vs.tenant_id=s.tenant_id AND vs.cashier_user_id=s.cashier_user_id
+                   AND vs.status='closed' AND vs.cash_variance_rial<>0 AND vs.opened_at>=? AND vs.opened_at<?) variance_shift_count,
+                (SELECT COALESCE(SUM(vs.cash_variance_rial),0) FROM pos_shifts vs WHERE vs.tenant_id=s.tenant_id
+                   AND vs.cashier_user_id=s.cashier_user_id AND vs.status='closed' AND vs.opened_at>=? AND vs.opened_at<?) net_variance_rial
          FROM pos_shifts s JOIN users u ON u.tenant_id=s.tenant_id AND u.id=s.cashier_user_id
          LEFT JOIN pos_sales ps ON ps.tenant_id=s.tenant_id AND ps.shift_id=s.id
              AND ps.created_at>=? AND ps.created_at<?
          WHERE s.tenant_id=? AND s.opened_at>=? AND s.opened_at<?
          GROUP BY s.cashier_user_id,u.full_name ORDER BY sales_total_rial DESC,u.full_name"
     );
-    $cashiers->execute([$fromUtc,$toUtc,$tenantId,$fromUtc,$toUtc]);
+    $cashiers->execute([$fromUtc,$toUtc,$fromUtc,$toUtc,$fromUtc,$toUtc,$fromUtc,$toUtc,$tenantId,$fromUtc,$toUtc]);
     $topItems=$db->prepare(
         "SELECT i.product_id,i.product_title_snapshot title,i.sku_snapshot sku,
                 SUM(i.quantity) quantity_sold,SUM(i.line_total_rial) revenue_rial
@@ -183,7 +186,7 @@ function app_pos_management_report(PDO $db,array $tenant): never {
     $online->execute([$tenantId,$fromUtc,$toUtc]);
     $onlineSummary=$online->fetch(PDO::FETCH_ASSOC)?:[];
     app_json(['data'=>[
-        'period'=>['from'=>$fromKey,'to'=>$toKey,'timezone'=>(string)($tenant['timezone']??'Asia/Tehran')],
+        'period'=>['from'=>substr($fromKey,0,4).'-'.substr($fromKey,4,2).'-'.substr($fromKey,6,2),'to'=>substr($toKey,0,4).'-'.substr($toKey,4,2).'-'.substr($toKey,6,2),'timezone'=>(string)($tenant['timezone']??'Asia/Tehran')],
         'in_person'=>[
             'sale_count'=>(int)($sales['sale_count']??0),
             'sales_total_rial'=>(int)($sales['sales_total_rial']??0),
