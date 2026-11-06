@@ -9,7 +9,7 @@ function app_admin_report_overview(PDO $db, array $tenant): never {
         "SELECT COUNT(*) AS order_count,
                 COALESCE(SUM(CASE WHEN status IN ('paid','accepted','picking','packed','ready_pickup','dispatched','out_for_delivery','delivered') THEN total_rial ELSE 0 END),0) AS paid_revenue_rial,
                 SUM(CASE WHEN status='pending_payment' THEN 1 ELSE 0 END) AS pending_payment_count,
-                SUM(CASE WHEN DATE(created_at)=UTC_DATE() AND status IN ('paid','accepted','picking','packed','ready_pickup','dispatched','delivered') THEN total_rial ELSE 0 END) AS today_revenue_rial
+                SUM(CASE WHEN DATE(created_at)=UTC_DATE() AND status IN ('paid','accepted','picking','packed','ready_pickup','dispatched','out_for_delivery','delivered') THEN total_rial ELSE 0 END) AS today_revenue_rial
          FROM orders WHERE tenant_id=? AND created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)"
     );
     $orders->execute([$tenantId]);
@@ -32,7 +32,7 @@ function app_admin_report_overview(PDO $db, array $tenant): never {
     $daily=$db->prepare(
         "SELECT DATE(created_at) AS day,
                 COUNT(*) AS order_count,
-                COALESCE(SUM(CASE WHEN status IN ('paid','accepted','picking','packed','ready_pickup','dispatched','delivered') THEN total_rial ELSE 0 END),0) AS revenue_rial
+                COALESCE(SUM(CASE WHEN status IN ('paid','accepted','picking','packed','ready_pickup','dispatched','out_for_delivery','delivered') THEN total_rial ELSE 0 END),0) AS revenue_rial
          FROM orders WHERE tenant_id=? AND created_at >= DATE_SUB(UTC_DATE(), INTERVAL 6 DAY)
          GROUP BY DATE(created_at) ORDER BY day"
     );
@@ -155,7 +155,7 @@ function app_report_csv_row(mixed $stream, array $row): void {
 
 function app_admin_report_orders_csv(PDO $db, array $tenant): never {
     [$fromUtc,$toUtc,$fromLabel,$toLabel] = app_report_date_range($tenant);
-    $statuses = ['pending_payment','paid','accepted','picking','packed','ready_pickup','dispatched','delivered','cancelled','refunded'];
+    $statuses = ['pending_payment','paid','accepted','picking','packed','ready_pickup','dispatched','out_for_delivery','delivered','cancelled','refunded'];
     $status = $_GET['status'] ?? '';
     if ($status !== '' && (!is_string($status) || !in_array($status,$statuses,true))) {
         app_json(['error'=>'وضعیت سفارش معتبر نیست.'],422);
