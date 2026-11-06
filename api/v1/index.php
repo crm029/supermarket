@@ -28,6 +28,7 @@ require_once dirname(__DIR__, 2) . '/app/coupons.php';
 require_once dirname(__DIR__, 2) . '/app/purchasing.php';
 require_once dirname(__DIR__, 2) . '/app/supplier_returns.php';
 require_once dirname(__DIR__, 2) . '/app/stock_batches.php';
+require_once dirname(__DIR__, 2) . '/app/pos.php';
 
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
@@ -339,6 +340,47 @@ try {
         $session = app_auth_require($db, $tenant);
         app_auth_require_permission($db, $tenant, $session, 'reports.read');
         app_admin_report_overview($db, $tenant);
+    }
+
+    if ($path === '/admin/pos/shift' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'pos.read');
+        app_pos_shift_current($db, $tenant, $session);
+    }
+
+    if ($path === '/admin/pos/shifts' && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'pos.shift.open');
+        app_pos_shift_open($db, $tenant, $session);
+    }
+
+    if (preg_match('#^/admin/pos/shifts/([1-9][0-9]*)/close$#', $path, $posCloseMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'pos.shift.close');
+        app_pos_shift_close($db, $tenant, $session, (int)$posCloseMatch[1]);
+    }
+
+    if ($path === '/admin/pos/products' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'pos.read');
+        app_pos_catalog_search($db, $tenant);
+    }
+
+    if ($path === '/admin/pos/sales') {
+        $session = app_auth_require($db, $tenant);
+        if ($method === 'GET') {
+            app_auth_require_permission($db, $tenant, $session, 'pos.read');
+            app_pos_sales_list($db, $tenant, $session);
+        }
+        if ($method === 'POST') {
+            app_auth_require_csrf($session);
+            app_auth_require_permission($db, $tenant, $session, 'pos.sale.create');
+            app_pos_create_sale($db, $tenant, $session);
+        }
+        header('Allow: GET, POST');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
     }
 
     if ($path === '/admin/orders' && $method === 'GET') {
