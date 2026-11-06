@@ -8,6 +8,15 @@ INSERT INTO permissions (permission_key, scope, description) VALUES
 ('pos.sale.create','tenant','ثبت فروش نقدی حضوری')
 ON DUPLICATE KEY UPDATE description=VALUES(description);
 
+-- Existing store owners should retain full operational access when this migration
+-- is applied to a live tenant after the owner bootstrap has already run.
+INSERT IGNORE INTO role_permissions (role_scope_id,role_id,permission_id)
+SELECT r.role_scope_id,r.id,p.id
+FROM roles r
+JOIN permissions p ON p.scope='tenant'
+ AND p.permission_key IN ('pos.read','pos.shift.open','pos.shift.close','pos.sale.create')
+WHERE r.tenant_id IS NOT NULL AND r.role_key='store_owner';
+
 CREATE TABLE pos_shifts (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   tenant_id BIGINT UNSIGNED NOT NULL,
