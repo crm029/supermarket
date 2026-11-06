@@ -21,6 +21,7 @@ CREATE TABLE order_delivery_events (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_order_delivery_event_assignment_type (tenant_id,assignment_id,event_type),
   KEY ix_order_delivery_events_order (tenant_id,order_id,created_at,id),
+  KEY ix_order_delivery_events_type_date (tenant_id,event_type,created_at),
   CONSTRAINT fk_order_delivery_events_order
     FOREIGN KEY (tenant_id,order_id) REFERENCES orders(tenant_id,id),
   CONSTRAINT fk_order_delivery_events_assignment

@@ -38,7 +38,17 @@ declare(strict_types=1);
   <section class="admin-content">
     <section class="admin-panel active" id="panel-overview">
       <p class="eyebrow">داشبورد فروشگاه</p><h2>خلاصه وضعیت</h2>
-      <div class="admin-stats"><article><small>محصولات فعال</small><strong id="statProducts">—</strong></article><article><small>دسته‌بندی‌ها</small><strong id="statCategories">—</strong></article><article><small>وضعیت اتصال</small><strong id="statConnection">—</strong></article><article><small>فروش تأییدشده ۳۰ روز</small><strong id="statRevenue">—</strong></article><article><small>در انتظار پرداخت</small><strong id="statPending">—</strong></article><article><small>هشدار موجودی کم</small><strong id="statLowStock">—</strong></article></div><div class="admin-welcome"><h3>فروش روزانه ۷ روز اخیر</h3><div id="salesChart" class="sales-chart">در حال بارگذاری...</div></div>
+      <div class="admin-stats"><article><small>محصولات فعال</small><strong id="statProducts">—</strong></article><article><small>دسته‌بندی‌ها</small><strong id="statCategories">—</strong></article><article><small>وضعیت اتصال</small><strong id="statConnection">—</strong></article><article><small>فروش تأییدشده ۳۰ روز</small><strong id="statRevenue">—</strong></article><article><small>در انتظار پرداخت</small><strong id="statPending">—</strong></article><article><small>هشدار موجودی کم</small><strong id="statLowStock">—</strong></article></div>
+      <div class="admin-welcome"><div class="admin-heading"><h3>وضعیت عملیات سفارش‌ها</h3><button class="text-button" id="reloadOperations" type="button">به‌روزرسانی</button></div><div class="admin-stats admin-operations-stats">
+        <article><small>در انتظار تخصیص جمع‌آوری</small><strong id="statWaitingPicker">—</strong></article>
+        <article><small>در انتظار بسته‌بندی</small><strong id="statWaitingPack">—</strong></article>
+        <article><small>در انتظار تخصیص پیک</small><strong id="statWaitingCourier">—</strong></article>
+        <article><small>در مسیر ارسال</small><strong id="statInTransit">—</strong></article>
+        <article><small>آماده تحویل حضوری</small><strong id="statReadyPickup">—</strong></article>
+        <article><small>تحویل‌های امروز</small><strong id="statDeliveredToday">—</strong></article>
+        <article><small>میانگین زمان ارسال ۳۰ روز</small><strong id="statAverageDelivery">—</strong></article>
+      </div></div>
+      <div class="admin-welcome"><h3>فروش روزانه ۷ روز اخیر</h3><div id="salesChart" class="sales-chart">در حال بارگذاری...</div></div>
       <div class="admin-toolbar">
         <label>از تاریخ <input id="reportFromDate" type="date"></label>
         <label>تا تاریخ <input id="reportToDate" type="date"></label>

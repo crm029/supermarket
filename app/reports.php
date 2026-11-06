@@ -7,9 +7,9 @@ function app_admin_report_overview(PDO $db, array $tenant): never {
     $tenantId=(int)$tenant['id'];
     $orders=$db->prepare(
         "SELECT COUNT(*) AS order_count,
-                COALESCE(SUM(CASE WHEN status IN ('paid','accepted','picking','packed','ready_pickup','dispatched','delivered') THEN total_rial ELSE 0 END),0) AS paid_revenue_rial,
+                COALESCE(SUM(CASE WHEN status IN ('paid','accepted','picking','packed','ready_pickup','dispatched','out_for_delivery','delivered') THEN total_rial ELSE 0 END),0) AS paid_revenue_rial,
                 SUM(CASE WHEN status='pending_payment' THEN 1 ELSE 0 END) AS pending_payment_count,
-                SUM(CASE WHEN DATE(created_at)=UTC_DATE() AND status IN ('paid','accepted','picking','packed','ready_pickup','dispatched','delivered') THEN total_rial ELSE 0 END) AS today_revenue_rial
+                SUM(CASE WHEN DATE(created_at)=UTC_DATE() AND status IN ('paid','accepted','picking','packed','ready_pickup','dispatched','out_for_delivery','delivered') THEN total_rial ELSE 0 END) AS today_revenue_rial
          FROM orders WHERE tenant_id=? AND created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)"
     );
     $orders->execute([$tenantId]);
@@ -32,11 +32,61 @@ function app_admin_report_overview(PDO $db, array $tenant): never {
     $daily=$db->prepare(
         "SELECT DATE(created_at) AS day,
                 COUNT(*) AS order_count,
-                COALESCE(SUM(CASE WHEN status IN ('paid','accepted','picking','packed','ready_pickup','dispatched','delivered') THEN total_rial ELSE 0 END),0) AS revenue_rial
+                COALESCE(SUM(CASE WHEN status IN ('paid','accepted','picking','packed','ready_pickup','dispatched','out_for_delivery','delivered') THEN total_rial ELSE 0 END),0) AS revenue_rial
          FROM orders WHERE tenant_id=? AND created_at >= DATE_SUB(UTC_DATE(), INTERVAL 6 DAY)
          GROUP BY DATE(created_at) ORDER BY day"
     );
     $daily->execute([$tenantId]);
+
+    $operations=$db->prepare(
+        "SELECT
+           SUM(CASE WHEN o.status IN ('paid','accepted')
+             AND NOT EXISTS (
+               SELECT 1 FROM order_assignments a
+               WHERE a.tenant_id=o.tenant_id AND a.order_id=o.id
+                 AND a.assignment_type='picker' AND a.status='active'
+             ) THEN 1 ELSE 0 END) AS waiting_picker,
+           SUM(CASE WHEN o.status='picking'
+             AND NOT EXISTS (
+               SELECT 1 FROM order_assignments a
+               WHERE a.tenant_id=o.tenant_id AND a.order_id=o.id
+                 AND a.assignment_type='picker' AND a.status='active'
+             ) THEN 1 ELSE 0 END) AS waiting_pack,
+           SUM(CASE WHEN o.fulfillment='delivery' AND o.status IN ('packed','dispatched')
+             AND NOT EXISTS (
+               SELECT 1 FROM order_assignments a
+               WHERE a.tenant_id=o.tenant_id AND a.order_id=o.id
+                 AND a.assignment_type='courier' AND a.status='active'
+             ) THEN 1 ELSE 0 END) AS waiting_courier,
+           SUM(CASE WHEN o.fulfillment='delivery' AND o.status='out_for_delivery' THEN 1 ELSE 0 END) AS in_transit,
+           SUM(CASE WHEN o.fulfillment='pickup' AND o.status='ready_pickup' THEN 1 ELSE 0 END) AS ready_pickup
+         FROM orders o
+         WHERE o.tenant_id=?"
+    );
+    $operations->execute([$tenantId]);
+    $operationSummary=$operations->fetch(PDO::FETCH_ASSOC) ?: [];
+
+    $deliveredToday=$db->prepare(
+        "SELECT COUNT(*) FROM order_delivery_events
+         WHERE tenant_id=? AND event_type='delivered'
+           AND created_at>=UTC_DATE() AND created_at<DATE_ADD(UTC_DATE(),INTERVAL 1 DAY)"
+    );
+    $deliveredToday->execute([$tenantId]);
+
+    $averageDelivery=$db->prepare(
+        "SELECT ROUND(AVG(TIMESTAMPDIFF(MINUTE,started.created_at,delivered.created_at))) 
+         FROM order_delivery_events started
+         JOIN order_delivery_events delivered
+           ON delivered.tenant_id=started.tenant_id
+          AND delivered.order_id=started.order_id
+          AND delivered.assignment_id=started.assignment_id
+          AND delivered.event_type='delivered'
+         WHERE started.tenant_id=? AND started.event_type='out_for_delivery'
+           AND delivered.created_at>=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 30 DAY)"
+    );
+    $averageDelivery->execute([$tenantId]);
+    $averageDeliveryMinutes=$averageDelivery->fetchColumn();
+
     app_json(['data'=>[
         'period_days'=>30,
         'order_count_30d'=>(int)($summary['order_count']??0),
@@ -44,6 +94,15 @@ function app_admin_report_overview(PDO $db, array $tenant): never {
         'today_revenue_rial'=>(int)($summary['today_revenue_rial']??0),
         'pending_payment_count'=>(int)($summary['pending_payment_count']??0),
         'low_stock_count'=>$lowStock,
+        'operations'=>[
+            'waiting_picker'=>(int)($operationSummary['waiting_picker']??0),
+            'waiting_pack'=>(int)($operationSummary['waiting_pack']??0),
+            'waiting_courier'=>(int)($operationSummary['waiting_courier']??0),
+            'in_transit'=>(int)($operationSummary['in_transit']??0),
+            'ready_pickup'=>(int)($operationSummary['ready_pickup']??0),
+            'delivered_today'=>(int)$deliveredToday->fetchColumn(),
+            'average_delivery_minutes_30d'=>$averageDeliveryMinutes===false||$averageDeliveryMinutes===null?null:(int)$averageDeliveryMinutes,
+        ],
         'daily_sales'=>$daily->fetchAll(),
     ]]);
 }
@@ -96,7 +155,7 @@ function app_report_csv_row(mixed $stream, array $row): void {
 
 function app_admin_report_orders_csv(PDO $db, array $tenant): never {
     [$fromUtc,$toUtc,$fromLabel,$toLabel] = app_report_date_range($tenant);
-    $statuses = ['pending_payment','paid','accepted','picking','packed','ready_pickup','dispatched','delivered','cancelled','refunded'];
+    $statuses = ['pending_payment','paid','accepted','picking','packed','ready_pickup','dispatched','out_for_delivery','delivered','cancelled','refunded'];
     $status = $_GET['status'] ?? '';
     if ($status !== '' && (!is_string($status) || !in_array($status,$statuses,true))) {
         app_json(['error'=>'وضعیت سفارش معتبر نیست.'],422);

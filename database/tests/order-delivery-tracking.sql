@@ -7,6 +7,7 @@ BEGIN
   DECLARE foreign_key_count INT DEFAULT 0;
   DECLARE assignment_index_count INT DEFAULT 0;
   DECLARE event_index_count INT DEFAULT 0;
+  DECLARE event_date_index_count INT DEFAULT 0;
 
   SELECT COUNT(*) INTO status_has_delivery
   FROM information_schema.columns
@@ -49,6 +50,14 @@ BEGIN
     AND index_name='uq_order_delivery_event_assignment_type';
   IF event_index_count <> 3 THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Delivery event idempotency index is missing';
+  END IF;
+
+  SELECT COUNT(*) INTO event_date_index_count
+  FROM information_schema.statistics
+  WHERE table_schema=DATABASE() AND table_name='order_delivery_events'
+    AND index_name='ix_order_delivery_events_type_date';
+  IF event_date_index_count <> 3 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Delivery event date index is missing';
   END IF;
 END//
 DELIMITER ;
