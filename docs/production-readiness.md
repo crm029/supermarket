@@ -11,7 +11,7 @@ The application code includes customer registration, catalogue management, inven
 
 ## Server
 
-- [ ] PHP 8.2 or newer with pdo_mysql, mbstring, cURL, fileinfo and DNS TXT lookup support.
+- [ ] PHP 8.2 or newer with pdo_mysql, mbstring, cURL, OpenSSL, fileinfo and DNS TXT lookup support.
 - [ ] MySQL 8.0.16 or newer; run schema.sql and every migration in documented order.
 - [ ] Configure Apache mod_rewrite and permit the supplied API .htaccess rules.
 - [ ] Set APP_ENV=production, APP_DEBUG=false, APP_KEY to a unique random secret of at least 32 characters, and APP_BASE_URL to the exact HTTPS public origin.
