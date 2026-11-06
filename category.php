@@ -82,6 +82,14 @@ $schema = [
     'mainEntity'=>['@type'=>'ItemList','itemListElement'=>$listItems],
 ];
 $jsonLd = json_encode($schema,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT);
+$breadcrumbSchema = json_encode([
+    '@context'=>'https://schema.org',
+    '@type'=>'BreadcrumbList',
+    'itemListElement'=>[
+        ['@type'=>'ListItem','position'=>1,'name'=>$storeName,'item'=>app_seo_url($seo)],
+        ['@type'=>'ListItem','position'=>2,'name'=>(string)$category['title'],'item'=>$canonical],
+    ],
+],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT);
 $analyticsViewList = [
     'item_list_id'=>'category-'.(int)$category['id'],
     'item_list_name'=>(string)$category['title'],
@@ -110,10 +118,14 @@ $analyticsViewListJson = json_encode($analyticsViewList,JSON_UNESCAPED_UNICODE|J
   <meta property="og:title" content="<?= $e($pageTitle) ?>">
   <meta property="og:description" content="<?= $e($description) ?>">
   <meta property="og:url" content="<?= $e($canonical) ?>">
-  <?php if ($categoryImage): ?><meta property="og:image" content="<?= $e($categoryImage) ?>"><?php endif; ?>
+  <?php if ($categoryImage): ?><meta property="og:image" content="<?= $e($categoryImage) ?>"><meta property="og:image:alt" content="<?= $e($category['alt_text'] ?: $category['title']) ?>"><?php endif; ?>
   <meta name="twitter:card" content="<?= $categoryImage?'summary_large_image':'summary' ?>">
+  <meta name="twitter:title" content="<?= $e($pageTitle) ?>">
+  <meta name="twitter:description" content="<?= $e($description) ?>">
+  <?php if ($categoryImage): ?><meta name="twitter:image" content="<?= $e($categoryImage) ?>"><?php endif; ?>
   <link rel="stylesheet" href="/assets/css/app.css">
   <script type="application/ld+json"><?= $jsonLd ?: '{}' ?></script>
+  <script type="application/ld+json"><?= $breadcrumbSchema ?: '{}' ?></script>
   <script>
     document.addEventListener('sm360:analytics-ready',function(){
       window.sm360Track('view_item_list',<?= $analyticsViewListJson ?: '{}' ?>);
