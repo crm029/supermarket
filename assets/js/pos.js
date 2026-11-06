@@ -34,6 +34,7 @@ async function posLoadShift(){
   document.getElementById("posOpenShift").hidden=!!posShift;
   document.getElementById("posActiveShift").hidden=!posShift;
   document.getElementById("posSaleArea").hidden=!posShift;
+  document.getElementById("posCloseShift").hidden=!posShift;
   if(posShift){
     document.getElementById("posShiftWarehouse").textContent=posShift.warehouse_title;
     document.getElementById("posShiftOpening").textContent=posMoney(posShift.opening_float_rial);
