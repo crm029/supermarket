@@ -12,28 +12,32 @@ A multi-tenant, white-label supermarket commerce platform with an immersive virt
 
 ## Current repository status
 
-The repository now contains a tenant-aware PHP commerce backend, customer authentication, catalogue and stock operations, a photo-tour storefront editor, checkout and a ZarinPal adapter. It remains an active development build, **not yet approved for production**.
+The repository contains a substantial tenant-aware PHP commerce platform and an immersive virtual-storefront experience. The latest main-branch CI runs for PHP syntax and quality/security checks are passing. This is still an active development build and is **not approved for production launch** until real hosting, provider acceptance and operational release gates are completed.
 
 Implemented and covered by repository tests:
-- Persian RTL responsive storefront with guided category navigation, live tenant catalogue/product details, photo-tour scenes, interactive hotspots and procedural WebGL free movement through live category shelves with clickable live catalogue products (with a non-WebGL fallback).
-- Tenant-aware MySQL schema, verified-host tenant resolution, composite tenant-scope constraints and cross-tenant negative tests.
-- Tenant-aware SEO foundation: primary-domain canonical URLs, robots and sitemap endpoints, crawlable product/category landing pages, Open Graph/Twitter metadata and GroceryStore/Product/CollectionPage structured data.
+- Persian RTL responsive storefront with guided category navigation, photo-tour scenes, interactive hotspots and optional WebGL free movement through live category shelves, with a non-WebGL fallback.
+- Central MySQL multi-tenant architecture, verified-host tenant resolution, composite tenant-scope constraints and cross-tenant negative tests.
+- Platform-owner OTP access, tenant provisioning, one-time DNS TXT domain ownership challenges, tenant listing and audited platform actions.
+- Tenant-aware product/category SEO, canonical URLs, structured data, paginated category pages, sitemap index/product shards, robots rules and private-source path protection.
 - OTP registration/login foundation, rate limiting, hashed challenges, database-backed sessions, HttpOnly cookies and CSRF protection; Kavenegar Verify Lookup adapter is available when real credentials are configured.
-- Deny-by-default tenant permission checks and audited product/category administration.
-- Seller dashboard, merchant branding and checkout settings, staff roles and permission management, tenant media library, media uploads, scene/hotspot authoring, multi-warehouse receipts/transfers/adjustments, supplier returns, FEFO batch/expiry tracking, audited expired-stock write-off, low-stock alerts, inventory movement history, stock reservation and expiry worker, supplier directory, purchase orders and partial receiving with stock posting.
-- Server-validated cart quotes, persistent cross-device customer carts, customer addresses, tenant postal-code delivery zones, capacity-controlled scheduled pickup, tenant-scoped percentage/fixed coupons with usage limits, transactional pending checkout, customer order history/cancellation and fulfilment transitions.
-- Staff picker/courier task workflow with guarded order stages, recipient-confirmed delivery, tenant-scoped delivery event history and customer-facing shipment timeline.
-- ZarinPal v4 request/verification adapter with idempotent callbacks, stock commit after server-side verification, encrypted platform-owner-only merchant credentials, Sandbox/Real mode selection and per-attempt gateway snapshots.
-- Append-only wallet credit ledger, customer balance/history API and configurable first-paid-order referral rewards.
-- GitHub Actions PHP/JavaScript validation and MySQL-backed schema, tenant isolation and HTTP API integration checks.
+- Deny-by-default tenant permissions, seller dashboard, staff roles, permission management and audited catalogue operations.
+- Tenant media library, scene/hotspot authoring, multi-warehouse inventory, transfers/adjustments, supplier purchasing and returns, FEFO batch/expiry tracking, low-stock alerts and stock reservation workers.
+- Server-validated persistent carts, customer addresses, delivery zones, scheduled pickup, coupons, transactional checkout, order history/cancellation and guarded fulfilment transitions.
+- Picker/courier assignment, recipient-confirmed delivery, customer shipment timeline, operational dashboard KPIs and in-app notifications.
+- ZarinPal v4 adapter with idempotent server-side verification, encrypted platform-owner-only merchant credentials and Sandbox/Real controls.
+- Append-only wallet ledger, customer wallet checkout, idempotent settlement, transactional inventory commit, audited full-order wallet-credit refunds and first-paid-order referral rewards.
+- GitHub Actions PHP/JavaScript validation and MySQL-backed schema, tenant isolation, authentication, commerce, wallet/referral, SEO and API integration checks.
 
-Still in progress:
-- Platform super-admin authorization and tenant/domain provisioning.
-- Wallet spending, refunds/reversals, advanced referral fraud controls and reward policy approval for each merchant.
-- Cashier assignment; courier status tracking, picker workflow, operational dashboard KPIs and operational notifications are implemented.
-- Real-store photography/onboarding and responsive image delivery.
-- Google Search Console/GA4 setup and production Core Web Vitals review.
-- Live merchant SMS/payment credentials, settlement reconciliation, refund acceptance, hosting, backups, monitoring, load/device/accessibility testing and production sign-off.
+Still in progress or requiring real-environment acceptance:
+- Cashier assignment and cashier-specific order handoff.
+- Real SMS account/template configuration, live-phone delivery and delivery-report acceptance.
+- Real ZarinPal sandbox/live transactions, settlement reconciliation and bank/gateway refund procedures.
+- Advanced referral fraud controls and merchant reward-policy approval.
+- Real-store photography, final media/CDN delivery and image-performance review.
+- Google Search Console verification, sitemap submission, GA4 event receipt and production Core Web Vitals review.
+- Production hosting, HTTPS, least-privilege database account, secret management, backups, restore drills, monitoring and alerting.
+- Independent staging penetration test, load/concurrency, accessibility, responsive-device and WebGL fallback acceptance.
+
 
 ## Architecture principles
 
