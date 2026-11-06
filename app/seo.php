@@ -80,7 +80,7 @@ function app_seo_product_list(array $context, int $limit = 45000, int $offset = 
         "SELECT p.id,p.title,p.sku,p.seo_slug,p.updated_at,p.created_at
          FROM products p
          WHERE p.tenant_id=? AND p.is_active=1 AND p.product_kind<>'variant'
-         ORDER BY COALESCE(p.updated_at,p.created_at) DESC,p.id DESC
+         ORDER BY p.id ASC
          LIMIT " . $limit . " OFFSET " . $offset
     );
     $stmt->execute([(int)$context['tenant']['id']]);
