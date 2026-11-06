@@ -157,9 +157,13 @@ function app_customer_order_detail(PDO $db, array $tenant, array $session, int $
     );
     $items->execute([$tenant['id'], $orderId]);
     $order['items'] = $items->fetchAll();
-    $order['delivery_events'] = $order['fulfillment'] === 'delivery'
+    $deliveryEvents = $order['fulfillment'] === 'delivery'
         ? app_delivery_event_list($db,(int)$tenant['id'],$orderId)
         : [];
+    $order['delivery_events'] = array_map(
+        static fn(array $event): array => ['event_type'=>$event['event_type'],'created_at'=>$event['created_at']],
+        $deliveryEvents
+    );
     app_json(['data' => $order]);
 }
 
