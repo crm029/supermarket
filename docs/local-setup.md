@@ -21,15 +21,16 @@ The root `index.php` provides a local storefront preview; live tenant catalogue,
 15. Apply `database/migrations/2026_11_06_order_assignments.sql` to enable tenant-safe picker and courier assignments.
 16. Apply `database/migrations/2026_11_06_notifications.sql` to enable customer, staff and manager notification inboxes.
 17. Apply `database/migrations/2026_11_06_order_delivery_tracking.sql` to add the out-for-delivery state, tenant-scoped courier event history and recipient-confirmed delivery workflow.
-18. Apply `database/migrations/2026_11_06_order_wallet_refunds.sql` to enable audited full-order wallet-credit refunds and referral reward reversals.
-19. Apply `database/migrations/2026_11_06_domain_verification_challenge.sql` to enable expiring DNS TXT domain ownership challenges.
-20. Apply `database/migrations/2026_11_06_platform_payment_settings.sql` to create encrypted, platform-owner-only ZarinPal settings and snapshot the selected gateway mode/credential on each payment attempt.
-21. For an existing database, review and repair inconsistent tenant references before applying migrations. Never run schema or demo seed imports over a live production database.
-22. The demo seed configures the `localhost` domain for a disposable local demo. For a new tenant, use the platform dashboard and publish its generated DNS TXT challenge before activation.
-23. Configure `DB_HOST`, `DB_DATABASE`, `DB_USERNAME` and `DB_PASSWORD` in the PHP server environment. Set a unique `APP_KEY` of at least 32 characters. Keep all secrets out of Git.
-24. For local OTP testing, set `APP_ENV=local` and `SMS_PROVIDER=log`. The one-time code is written only to the PHP error log. This development driver is forbidden in production.
-25. Optionally set `MEDIA_BASE_URL` to the HTTPS base URL of your public media storage. Without it, media metadata is returned but image URLs are `null`.
-26. Route `/api/v1/*` to `api/v1/index.php` using the web server rewrite configuration, or call the PHP entry point directly while developing.
+18. Apply `database/migrations/2026_11_06_order_cashier_assignment.sql` to enable cashier tasks for pickup orders.
+19. Apply `database/migrations/2026_11_06_order_wallet_refunds.sql` to enable audited full-order wallet-credit refunds and referral reward reversals.
+20. Apply `database/migrations/2026_11_06_domain_verification_challenge.sql` to enable expiring DNS TXT domain ownership challenges.
+21. Apply `database/migrations/2026_11_06_platform_payment_settings.sql` to create encrypted, platform-owner-only ZarinPal settings and snapshot the selected gateway mode/credential on each payment attempt.
+22. For an existing database, review and repair inconsistent tenant references before applying migrations. Never run schema or demo seed imports over a live production database.
+23. The demo seed configures the `localhost` domain for a disposable local demo. For a new tenant, use the platform dashboard and publish its generated DNS TXT challenge before activation.
+24. Configure `DB_HOST`, `DB_DATABASE`, `DB_USERNAME` and `DB_PASSWORD` in the PHP server environment. Set a unique `APP_KEY` of at least 32 characters. Keep all secrets out of Git.
+25. For local OTP testing, set `APP_ENV=local` and `SMS_PROVIDER=log`. The one-time code is written only to the PHP error log. This development driver is forbidden in production.
+26. Optionally set `MEDIA_BASE_URL` to the HTTPS base URL of your public media storage. Without it, media metadata is returned but image URLs are `null`.
+27. Route `/api/v1/*` to `api/v1/index.php` using the web server rewrite configuration, or call the PHP entry point directly while developing.
 
 ## Create a local test account
 The sample seed contains no customer accounts. In a disposable local database, create one active test user with phpMyAdmin:
