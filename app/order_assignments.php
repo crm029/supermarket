@@ -22,6 +22,7 @@ function app_admin_order_assignment_list(PDO $db, array $tenant, int $orderId): 
          ORDER BY a.id DESC"
     );
     $assignments->execute([$tenant['id'],$orderId]);
+    $deliveryEvents = app_delivery_event_list($db,(int)$tenant['id'],$orderId);
 
     $staff = [];
     foreach (['picker'=>'orders.pick','courier'=>'orders.deliver'] as $type=>$permission) {
@@ -37,7 +38,7 @@ function app_admin_order_assignment_list(PDO $db, array $tenant, int $orderId): 
         $query->execute([$permission,$tenant['id']]);
         $staff[$type]=$query->fetchAll(PDO::FETCH_ASSOC);
     }
-    app_json(['data'=>['order'=>$orderRow,'assignments'=>$assignments->fetchAll(PDO::FETCH_ASSOC),'staff'=>$staff]]);
+    app_json(['data'=>['order'=>$orderRow,'assignments'=>$assignments->fetchAll(PDO::FETCH_ASSOC),'staff'=>$staff,'delivery_events'=>$deliveryEvents]]);
 }
 
 function app_admin_order_assignment_create(PDO $db, array $tenant, array $session, int $orderId): never {
