@@ -100,6 +100,13 @@ function app_payment_start(PDO $db, array $tenant, array $session): never {
             $db->rollBack();
             app_json(['error' => 'درگاه پرداخت هنوز پیکربندی نشده است.'], 503);
         }
+        // Recover attempts left in 'created' if the web process died before contacting the gateway.
+        $expireStale = $db->prepare(
+            "UPDATE payment_attempts SET status='failed'
+             WHERE tenant_id=? AND order_id=? AND provider='zarinpal' AND status='created'
+               AND created_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 2 MINUTE)"
+        );
+        $expireStale->execute([$tenant['id'],$orderId]);
         $existing = $db->prepare(
             "SELECT authority, status FROM payment_attempts
              WHERE tenant_id = ? AND order_id = ? AND provider = 'zarinpal'
