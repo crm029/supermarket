@@ -96,7 +96,7 @@ Employees with `orders.pick` and/or `orders.deliver` permissions open `staff.php
 Managers with `orders.refund` can issue a full refund to the customer's internal wallet from the order detail panel. The API requires one verified payment attempt for the full order amount, records an append-only wallet credit, reverses any referral reward associated with the qualifying order and marks the order refunded. This is store credit, not a bank-card or ZarinPal refund. Returned goods are not automatically restocked and must be inspected and received separately.
 
 ## Not production-ready yet
-Before real customers or money are involved, configure and test the merchant's live SMS and ZarinPal credentials, HTTPS domain, least-privilege database user, media storage, scheduled reservation worker, backups and monitoring. Complete sandbox and low-value live payment acceptance, refund/reconciliation procedures, security review and desktop/mobile acceptance tests. Platform super-admin tenant provisioning, DNS TXT verification, staff task center, notifications and full wallet-credit refunds are implemented. Wallet checkout spending, automated bank/gateway refunds, returned-stock intake and optional WebGL free movement remain unfinished. Never expose database errors or provider secrets to clients.
+Before real customers or money are involved, configure and test the merchant's live SMS and ZarinPal credentials, HTTPS domain, least-privilege database user, media storage, scheduled reservation worker, backups and monitoring. Complete sandbox and low-value live payment acceptance, refund/reconciliation procedures, security review and desktop/mobile acceptance tests. Platform super-admin tenant provisioning, DNS TXT verification, staff task center, notifications, full wallet-credit refunds and full-balance wallet checkout are implemented. Automated bank/gateway refunds, returned-stock intake and optional WebGL free movement remain unfinished. Never expose database errors or provider secrets to clients.
 
 
 ## Reservation expiry worker
@@ -140,6 +140,8 @@ After applying schema.sql and every migration, edit database/bootstrap-store-own
 
 
 ## Customer wallet and referral rewards
+- Customers can pay a pending order in full from their wallet in order history; the API commits stock reservations, writes one debit ledger entry and marks the order paid in one transaction.
+- The endpoint is `POST /api/v1/me/orders/{id}/pay-wallet`; it is owner-scoped, CSRF-protected and idempotent. A bank-payment attempt already in progress blocks wallet settlement to prevent double payment.
 
 - `GET /api/v1/me/wallet` returns the signed-in customer's wallet balance, latest 50 ledger entries and referral statuses.
 - Wallet balance is calculated from append-only ledger entries; no browser endpoint can directly set a balance.

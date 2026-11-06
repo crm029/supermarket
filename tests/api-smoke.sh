@@ -197,6 +197,19 @@ assert_json() {
       if ((int)($data["data"]["balance_rial"] ?? -1) !== 0 || !is_array($data["data"]["entries"] ?? null)) exit(1);
       exit(0);
     }
+    if ($check === "wallet-payment") {
+      if (($data["data"]["status"] ?? "") !== "paid" ||
+          ($data["data"]["payment_method"] ?? "") !== "wallet" ||
+          ($data["data"]["already_paid"] ?? null) !== false ||
+          (int)($data["data"]["wallet_balance_rial"] ?? -1) !== 0) exit(1);
+      exit(0);
+    }
+    if ($check === "wallet-payment-idempotent") {
+      if (($data["data"]["status"] ?? "") !== "paid" ||
+          ($data["data"]["payment_method"] ?? "") !== "wallet" ||
+          ($data["data"]["already_paid"] ?? null) !== true) exit(1);
+      exit(0);
+    }
     if ($check === "cart-quote") {
       if ((int)($data["data"]["total_rial"] ?? 0) !== 250000 || (int)($data["data"]["items"][0]["available_quantity"] ?? 0) !== 10) exit(1);
       exit(0);
@@ -460,9 +473,24 @@ ORDER_FEE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-na
 ORDER_TOTAL="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT total_rial FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
 ORDER_ZONE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT delivery_zone_id FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
 if [[ "$ORDER_FEE" != "3000" || "$ORDER_TOTAL" != "253000" || "$ORDER_ZONE" != "$ZONE_ID" ]]; then echo "Most-specific delivery zone fee was not applied to the order."; exit 1; fi
+# Full wallet checkout: ledger debit, stock commit and paid state are one transaction.
+mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "
+  SET @customer_id=(SELECT user_id FROM orders WHERE tenant_id=1 AND id=$ORDER_ID);
+  SET @wallet_id=(SELECT id FROM wallet_accounts WHERE tenant_id=1 AND user_id=@customer_id);
+  INSERT INTO wallet_entries (tenant_id,wallet_id,entry_type,amount_rial,source_type,source_id,idempotency_key,note)
+    VALUES (1,@wallet_id,'credit',253000,'ci_funding',$ORDER_ID,CONCAT('ci-wallet-funding-',$ORDER_ID),'CI wallet funding');
+"
+request POST "/me/orders/$ORDER_ID/pay-wallet" 200 '{}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+assert_json wallet-payment
+request POST "/me/orders/$ORDER_ID/pay-wallet" 200 '{}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+assert_json wallet-payment-idempotent
+WALLET_DEBITS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM wallet_entries WHERE tenant_id=1 AND source_type='order_wallet_payment' AND source_id=$ORDER_ID")"
+WALLET_PAYMENT_ATTEMPTS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM payment_attempts WHERE tenant_id=1 AND order_id=$ORDER_ID AND provider='wallet' AND status='verified'")"
+PAID_ORDER_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
+COMMITTED_RESERVATIONS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM stock_reservations WHERE tenant_id=1 AND order_id=$ORDER_ID AND status='committed'")"
+if [[ "$WALLET_DEBITS" != "1" || "$WALLET_PAYMENT_ATTEMPTS" != "1" || "$PAID_ORDER_STATUS" != "paid" || "$COMMITTED_RESERVATIONS" != "1" ]]; then echo "Wallet payment was not settled exactly once with stock commitment."; exit 1; fi
 RESERVED="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT reserved FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID LIMIT 1")"
-if [[ "$RESERVED" != "2" ]]; then echo "Expected 2 reserved units, received $RESERVED"; exit 1; fi
-request POST "/me/orders/$ORDER_ID/cancel" 200 "" "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+if [[ "$RESERVED" != "0" ]]; then echo "Wallet-paid order still has reserved stock: $RESERVED"; exit 1; fi
 
 # Order picker/courier assignment workflow.
 request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"fulfillment":"delivery","address_id":'$ADDRESS_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
@@ -586,7 +614,7 @@ request POST /checkout 409 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}]
 request PUT /admin/settings 200 '{"profile":{"name":"فروشگاه آزمایشی","tagline":"تست تنظیمات","support_phone":"02112345678","street_address":"خیابان نمونه، پلاک ۱۰","city":"تهران","region":"تهران","postal_code":"1234567890","country_code":"IR","latitude":35.6892,"longitude":51.389,"opening_hours":"Mo-Su 08:00-22:00","google_site_verification":"testverificationtoken123","ga4_measurement_id":"G-ABC1234567","primary_color":"#173D2D","accent_color":"#E6A23C"},"checkout":{"delivery_enabled":true,"pickup_enabled":true,"delivery_fee_rial":1000,"minimum_order_rial":1,"reservation_minutes":15}}' "$TOKEN" "$CSRF"
 RESERVED="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT reserved FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID LIMIT 1")"
 ORDER_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM orders WHERE tenant_id=1 AND id=$ORDER_ID")"
-if [[ "$RESERVED" != "0" || "$ORDER_STATUS" != "cancelled" ]]; then echo "Customer cancellation did not release stock or update order"; exit 1; fi
+if [[ "$RESERVED" != "0" || "$ORDER_STATUS" != "paid" ]]; then echo "Wallet payment did not consume reserved stock or update the order"; exit 1; fi
 
 request POST /admin/pickup-slots 201 '{"title":"نوبت آزمون انقضای رزرو","starts_at":"2030-01-02T10:00","ends_at":"2030-01-02T11:00","capacity":1}' "$TOKEN" "$CSRF"
 EXPIRY_PICKUP_SLOT_ID="$(assert_json created-id)"
@@ -621,7 +649,7 @@ request POST /cart/quote 409 '{"items":[{"product_id":'$VARIANT_1L_ID',"quantity
 request PATCH "/admin/products/$VARIANT_PARENT_ID" 200 '{"is_active":true}' "$TOKEN" "$CSRF"
 request POST /admin/stock/transfers 200 '{"from_warehouse_id":1,"to_warehouse_id":'$NEW_WAREHOUSE_ID',"product_id":'$PRODUCT_ID',"quantity":2}' "$TOKEN" "$CSRF"
 TOTAL_STOCK="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT SUM(on_hand) FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID")"
-if [[ "$TOTAL_STOCK" != "12" ]]; then echo "Expected 12 total units after receipt, adjustment and transfer; received $TOTAL_STOCK"; exit 1; fi
+if [[ "$TOTAL_STOCK" != "10" ]]; then echo "Expected 10 total units after wallet sale, receipt, adjustment and transfer; received $TOTAL_STOCK"; exit 1; fi
 
 request POST /admin/scenes 201 '{"title":"راهرو تست","scene_type":"aisle_photo","is_published":false}' "$TOKEN" "$CSRF"
 SCENE_ID="$(assert_json created-id)"

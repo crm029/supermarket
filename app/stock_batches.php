@@ -126,6 +126,81 @@ function app_stock_batch_release_reservation(PDO $db, int $tenantId, int $reserv
     }
 }
 
+/**
+ * Commit all active order reservations after payment, or release the remaining
+ * reservations when any part of the order has already expired.
+ * Caller must own the surrounding transaction and lock the order row.
+ */
+function app_stock_commit_order_reservations(
+    PDO $db,
+    int $tenantId,
+    int $orderId,
+    int $actorUserId,
+    string $saleReason='پرداخت تأییدشده',
+    string $releaseReason='آزادسازی رزرو ناقص'
+): array {
+    $reservations=$db->prepare(
+        "SELECT id,warehouse_id,product_id,quantity
+         FROM stock_reservations
+         WHERE tenant_id=? AND order_id=? AND status='active' AND expires_at>UTC_TIMESTAMP()
+         ORDER BY id FOR UPDATE"
+    );
+    $reservations->execute([$tenantId,$orderId]);
+    $active=$reservations->fetchAll(PDO::FETCH_ASSOC);
+    $expiredCount=$db->prepare(
+        "SELECT COUNT(*) FROM stock_reservations
+         WHERE tenant_id=? AND order_id=?
+           AND (status='expired' OR (status='active' AND expires_at<=UTC_TIMESTAMP()))"
+    );
+    $expiredCount->execute([$tenantId,$orderId]);
+    $hasExpired=(int)$expiredCount->fetchColumn()>0;
+
+    if($active!==[]&&!$hasExpired){
+        $consume=$db->prepare(
+            'UPDATE stock_levels SET on_hand=on_hand-?,reserved=reserved-?
+             WHERE tenant_id=? AND warehouse_id=? AND product_id=? AND on_hand>=? AND reserved>=?'
+        );
+        $movement=$db->prepare(
+            "INSERT INTO stock_movements
+             (tenant_id,warehouse_id,product_id,actor_user_id,movement_type,quantity,reference_type,reference_id,reason)
+             VALUES (?,?,?,?,'sale',?,'order',?,?)"
+        );
+        $commit=$db->prepare("UPDATE stock_reservations SET status='committed' WHERE tenant_id=? AND id=? AND status='active'");
+        foreach($active as $row){
+            $qty=(int)$row['quantity'];
+            $consume->execute([$qty,$qty,$tenantId,$row['warehouse_id'],$row['product_id'],$qty,$qty]);
+            if($consume->rowCount()!==1)throw new RuntimeException('Reserved stock could not be committed.');
+            app_stock_batch_commit_reservation($db,$tenantId,(int)$row['id']);
+            $movement->execute([$tenantId,$row['warehouse_id'],$row['product_id'],$actorUserId,-$qty,$orderId,$saleReason]);
+            $commit->execute([$tenantId,$row['id']]);
+            if($commit->rowCount()!==1)throw new RuntimeException('Stock reservation state could not be committed.');
+        }
+        return ['committed'=>true,'has_expired'=>false,'released_count'=>0];
+    }
+
+    if($active!==[]){
+        $releaseStock=$db->prepare(
+            'UPDATE stock_levels SET reserved=reserved-?
+             WHERE tenant_id=? AND warehouse_id=? AND product_id=? AND reserved>=?'
+        );
+        $release=$db->prepare("UPDATE stock_reservations SET status='released' WHERE tenant_id=? AND id=? AND status='active'");
+        $movement=$db->prepare(
+            "INSERT INTO stock_movements
+             (tenant_id,warehouse_id,product_id,actor_user_id,movement_type,quantity,reference_type,reference_id,reason)
+             VALUES (?,?,?,?,'release',?,'order',?,?)"
+        );
+        foreach($active as $row){
+            $qty=(int)$row['quantity'];
+            $releaseStock->execute([$qty,$tenantId,$row['warehouse_id'],$row['product_id'],$qty]);
+            if($releaseStock->rowCount()!==1)throw new RuntimeException('Unable to release remaining stock reservation.');
+            app_stock_batch_release_reservation($db,$tenantId,(int)$row['id'],'released');
+            $release->execute([$tenantId,$row['id']]);
+            $movement->execute([$tenantId,$row['warehouse_id'],$row['product_id'],$actorUserId,-$qty,$orderId,$releaseReason]);
+        }
+    }
+    return ['committed'=>false,'has_expired'=>true,'released_count'=>count($active)];
+}
+
 function app_admin_stock_batch_list(PDO $db, array $tenant): never {
     $warehouseId = filter_input(INPUT_GET, 'warehouse_id', FILTER_VALIDATE_INT);
     $productId = filter_input(INPUT_GET, 'product_id', FILTER_VALIDATE_INT);

@@ -569,6 +569,12 @@ try {
         app_commerce_order_history($db, $tenant, $session);
     }
 
+    if (preg_match('#^/me/orders/([1-9][0-9]*)/pay-wallet$#', $path, $walletPayMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_wallet_pay_order($db, $tenant, $session, (int)$walletPayMatch[1]);
+    }
+
     if ($path === '/auth/register' && $method === 'POST') {
         app_auth_register($db, $tenant);
     }
