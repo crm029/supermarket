@@ -94,7 +94,12 @@ function app_payment_start(PDO $db, array $tenant, array $session): never {
             app_json(['error' => 'مهلت رزرو موجودی تمام شده است؛ سفارش جدید ثبت کنید.'], 409);
         }
 
-        $config = app_payment_config();
+        try {
+            $config = app_payment_config();
+        } catch (Throwable $e) {
+            $db->rollBack();
+            app_json(['error' => 'درگاه پرداخت هنوز پیکربندی نشده است.'], 503);
+        }
         $existing = $db->prepare(
             "SELECT authority, status FROM payment_attempts
              WHERE tenant_id = ? AND order_id = ? AND provider = 'zarinpal'
@@ -123,9 +128,6 @@ function app_payment_start(PDO $db, array $tenant, array $session): never {
         $db->commit();
     } catch (Throwable $e) {
         if ($db->inTransaction()) $db->rollBack();
-        if ($e instanceof RuntimeException && $e->getMessage() === 'Payment configuration is incomplete.') {
-            app_json(['error' => 'درگاه پرداخت هنوز پیکربندی نشده است.'], 503);
-        }
         throw $e;
     }
 
