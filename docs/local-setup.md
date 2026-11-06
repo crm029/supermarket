@@ -22,12 +22,13 @@ The root `index.php` provides a local storefront preview; live tenant catalogue,
 16. Apply `database/migrations/2026_11_06_notifications.sql` to enable customer, staff and manager notification inboxes.
 17. Apply `database/migrations/2026_11_06_order_wallet_refunds.sql` to enable audited full-order wallet-credit refunds and referral reward reversals.
 18. Apply `database/migrations/2026_11_06_domain_verification_challenge.sql` to enable expiring DNS TXT domain ownership challenges.
-19. For an existing database, review and repair inconsistent tenant references before applying migrations. Never run schema or demo seed imports over a live production database.
-20. The demo seed configures the `localhost` domain for a disposable local demo. For a new tenant, use the platform dashboard and publish its generated DNS TXT challenge before activation.
-21. Configure `DB_HOST`, `DB_DATABASE`, `DB_USERNAME` and `DB_PASSWORD` in the PHP server environment. Set a unique `APP_KEY` of at least 32 characters. Keep all secrets out of Git.
-22. For local OTP testing, set `APP_ENV=local` and `SMS_PROVIDER=log`. The one-time code is written only to the PHP error log. This development driver is forbidden in production.
-23. Optionally set `MEDIA_BASE_URL` to the HTTPS base URL of your public media storage. Without it, media metadata is returned but image URLs are `null`.
-24. Route `/api/v1/*` to `api/v1/index.php` using the web server rewrite configuration, or call the PHP entry point directly while developing.
+19. Apply `database/migrations/2026_11_06_platform_payment_settings.sql` to create encrypted, platform-owner-only ZarinPal settings and snapshot the selected gateway mode/credential on each payment attempt.
+20. For an existing database, review and repair inconsistent tenant references before applying migrations. Never run schema or demo seed imports over a live production database.
+21. The demo seed configures the `localhost` domain for a disposable local demo. For a new tenant, use the platform dashboard and publish its generated DNS TXT challenge before activation.
+22. Configure `DB_HOST`, `DB_DATABASE`, `DB_USERNAME` and `DB_PASSWORD` in the PHP server environment. Set a unique `APP_KEY` of at least 32 characters. Keep all secrets out of Git.
+23. For local OTP testing, set `APP_ENV=local` and `SMS_PROVIDER=log`. The one-time code is written only to the PHP error log. This development driver is forbidden in production.
+24. Optionally set `MEDIA_BASE_URL` to the HTTPS base URL of your public media storage. Without it, media metadata is returned but image URLs are `null`.
+25. Route `/api/v1/*` to `api/v1/index.php` using the web server rewrite configuration, or call the PHP entry point directly while developing.
 
 ## Create a local test account
 The sample seed contains no customer accounts. In a disposable local database, create one active test user with phpMyAdmin:
@@ -112,9 +113,9 @@ The worker releases reserved quantities and cancels pending-payment orders once 
 
 ## ZarinPal setup
 
-Set ZARINPAL_MERCHANT_ID to the merchant ID issued for the store, ZARINPAL_SANDBOX=true for sandbox testing, and APP_BASE_URL to the exact public store origin. The callback URL is generated as /api/v1/payments/zarinpal/callback; its domain must match the domain registered for the merchant terminal. Production requires HTTPS. Enable PHP's cURL extension.
+Set APP_BASE_URL to the exact public store origin and keep APP_KEY stable and private. The platform owner configures the encrypted merchant ID and chooses Sandbox or Real from platform.php; tenant store owners and staff cannot read or change these global credentials. The callback URL is generated as /api/v1/payments/zarinpal/callback. Production requires HTTPS and PHP's cURL/OpenSSL extensions.
 
-Never commit a real merchant ID or other payment credentials. Test success, cancellation, duplicate callbacks, delayed callbacks after reservation expiry, and the exact registered callback domain before enabling live payments.
+Never commit a real merchant ID or other payment credentials. Payment attempts retain an encrypted snapshot of the merchant credential and selected gateway mode, so changing the global mode cannot redirect an in-flight sandbox payment to the live verification endpoint (or vice versa). Test success, cancellation, duplicate callbacks, delayed callbacks after reservation expiry, and the exact registered callback domain before enabling live payments.
 
 
 ## Production OTP delivery (Kavenegar)
