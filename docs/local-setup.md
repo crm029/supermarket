@@ -19,11 +19,12 @@ The root `index.php` provides a local storefront preview; live tenant catalogue,
 13. Apply `database/migrations/2026_11_05_coupons.sql` to enable tenant promotion coupons and order redemption snapshots.
 14. Apply `database/migrations/2026_11_05_product_variants.sql` to enable parent/child product variants with independent stock.
 15. Apply `database/migrations/2026_11_06_order_assignments.sql` to enable tenant-safe picker and courier assignments.
-16. Apply `database/migrations/2026_11_06_notifications.sql` to enable customer, staff and manager notification inboxes.
-17. Apply `database/migrations/2026_11_06_order_delivery_tracking.sql` to add the out-for-delivery state, tenant-scoped courier event history and recipient-confirmed delivery workflow.
-18. Apply `database/migrations/2026_11_06_order_wallet_refunds.sql` to enable audited full-order wallet-credit refunds and referral reward reversals.
-19. Apply `database/migrations/2026_11_06_domain_verification_challenge.sql` to enable expiring DNS TXT domain ownership challenges.
-20. Apply `database/migrations/2026_11_06_platform_payment_settings.sql` to create encrypted, platform-owner-only ZarinPal settings and snapshot the selected gateway mode/credential on each payment attempt.
+16. Apply `database/migrations/2026_11_06_pickup_handoff.sql` to enable dedicated pickup-handoff staff permission and recipient-confirmed in-person collection.
+17. Apply `database/migrations/2026_11_06_notifications.sql` to enable customer, staff and manager notification inboxes.
+18. Apply `database/migrations/2026_11_06_order_delivery_tracking.sql` to add the out-for-delivery state, tenant-scoped courier event history and recipient-confirmed delivery workflow.
+19. Apply `database/migrations/2026_11_06_order_wallet_refunds.sql` to enable audited full-order wallet-credit refunds and referral reward reversals.
+20. Apply `database/migrations/2026_11_06_domain_verification_challenge.sql` to enable expiring DNS TXT domain ownership challenges.
+21. Apply `database/migrations/2026_11_06_platform_payment_settings.sql` to create encrypted, platform-owner-only ZarinPal settings and snapshot the selected gateway mode/credential on each payment attempt.
 21. For an existing database, review and repair inconsistent tenant references before applying migrations. Never run schema or demo seed imports over a live production database.
 22. The demo seed configures the `localhost` domain for a disposable local demo. For a new tenant, use the platform dashboard and publish its generated DNS TXT challenge before activation.
 23. Configure `DB_HOST`, `DB_DATABASE`, `DB_USERNAME` and `DB_PASSWORD` in the PHP server environment. Set a unique `APP_KEY` of at least 32 characters. Keep all secrets out of Git.
