@@ -559,6 +559,10 @@ assert_json unread-empty
 request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/assignments/$COURIER_ASSIGNMENT_ID/complete" 409 '{}' "$TOKEN" "$CSRF"
 request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/transition" 200 '{"status":"packed"}' "$TOKEN" "$CSRF"
 request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/transition" 200 '{"status":"dispatched"}' "$TOKEN" "$CSRF"
+# An administrator must not start delivery while the order has no active courier.
+mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "UPDATE order_assignments SET status='replaced' WHERE tenant_id=1 AND id=$COURIER_ASSIGNMENT_ID AND status='active'"
+request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/transition" 409 '{"status":"out_for_delivery"}' "$TOKEN" "$CSRF"
+mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "UPDATE order_assignments SET status='active' WHERE tenant_id=1 AND id=$COURIER_ASSIGNMENT_ID AND status='replaced'"
 request POST "/me/tasks/$COURIER_ASSIGNMENT_ID/start-delivery" 200 '{}' "$WORKER_TOKEN" "$WORKER_CSRF"
 request POST "/me/tasks/$COURIER_ASSIGNMENT_ID/complete" 422 '{}' "$WORKER_TOKEN" "$WORKER_CSRF"
 request POST "/me/tasks/$COURIER_ASSIGNMENT_ID/complete" 200 '{"recipient_name":"مشتری تحویل‌گیرنده","note":"تحویل سالم"}' "$WORKER_TOKEN" "$WORKER_CSRF"
