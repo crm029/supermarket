@@ -362,6 +362,14 @@ try {
         app_pos_shift_close($db, $tenant, $session, (int)$posCloseMatch[1]);
     }
 
+    if ($path === '/admin/pos/warehouses' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'pos.read');
+        $stmt = $db->prepare('SELECT id,title,warehouse_type FROM warehouses WHERE tenant_id=? AND is_active=1 ORDER BY title');
+        $stmt->execute([$tenant['id']]);
+        app_json(['data'=>$stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    }
+
     if ($path === '/admin/pos/products' && $method === 'GET') {
         $session = app_auth_require($db, $tenant);
         app_auth_require_permission($db, $tenant, $session, 'pos.read');
