@@ -72,6 +72,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Picker/courier assignments, staff task controls, guarded out-for-delivery transition, recipient confirmation and customer/admin delivery timelines (MySQL/API integration CI verified).
 - [x] Tenant-scoped operations KPIs: picker queue, packing queue, courier queue, in-transit orders, pickup-ready orders, daily deliveries and average route-to-delivery time.
 - [x] Dedicated pickup-handoff staff permission and assignment, recipient-name confirmation, staff-only completion and customer notification; manager bypass is blocked (MySQL-backed API integration coverage).
+- [ ] In-store POS cash register, cashier shifts, cash collection/reconciliation and counter-sale inventory posting.
 - [x] Seller dashboard with 30-day paid revenue, seven-day sales trend and low-stock count.
 - [x] Tenant-scoped inventory movement ledger with warehouse/product/type/date filters and signed quantities.
 - [x] Tenant-scoped CSV exports for orders and inventory movements, with date/status/warehouse/product filters, formula-injection protection and permission checks.
