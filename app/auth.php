@@ -112,8 +112,12 @@ function app_auth_request_body(): array {
     $raw = file_get_contents('php://input');
     if (!is_string($raw) || $raw === '') app_json(['error' => 'بدنه درخواست معتبر نیست.'], 400);
     if (strlen($raw) > 8192) app_json(['error' => 'حجم درخواست بیش از حد مجاز است.'], 413);
+    $decoded = json_decode($raw);
+    if (!is_object($decoded)) {
+        app_json(['error' => 'ساختار JSON درخواست معتبر نیست.'], 400);
+    }
     $body = json_decode($raw, true);
-    if (!is_array($body) || array_is_list($body)) {
+    if (!is_array($body)) {
         app_json(['error' => 'ساختار JSON درخواست معتبر نیست.'], 400);
     }
     return $body;
