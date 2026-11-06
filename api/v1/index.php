@@ -11,6 +11,7 @@ require_once dirname(__DIR__, 2) . '/app/payments.php';
 require_once dirname(__DIR__, 2) . '/app/admin_orders.php';
 require_once dirname(__DIR__, 2) . '/app/order_assignments.php';
 require_once dirname(__DIR__, 2) . '/app/staff_tasks.php';
+require_once dirname(__DIR__, 2) . '/app/delivery_tracking.php';
 require_once dirname(__DIR__, 2) . '/app/platform.php';
 require_once dirname(__DIR__, 2) . '/app/notifications.php';
 require_once dirname(__DIR__, 2) . '/app/order_refunds.php';
