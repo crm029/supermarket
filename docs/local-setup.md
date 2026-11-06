@@ -20,6 +20,7 @@ The root `index.php` provides a local storefront preview; live tenant catalogue,
 14. Apply `database/migrations/2026_11_05_product_variants.sql` to enable parent/child product variants with independent stock.
 15. Apply `database/migrations/2026_11_06_order_assignments.sql` to enable tenant-safe picker and courier assignments.
 16. Apply `database/migrations/2026_11_06_pos_cash_register.sql` after the stock-batches migration to enable POS permissions, cashier shifts and counter-sale records.
+17. Apply `database/migrations/2026_11_06_pos_refunds.sql` after the POS cash-register migration to enable audited cash refunds. Only store owners receive the refund permission by default; returned items stay pending inspection and are not automatically restocked.
 16. Apply `database/migrations/2026_11_06_pickup_handoff.sql` to enable dedicated pickup-handoff staff permission and recipient-confirmed in-person collection.
 17. Apply `database/migrations/2026_11_06_notifications.sql` to enable customer, staff and manager notification inboxes.
 18. Apply `database/migrations/2026_11_06_order_delivery_tracking.sql` to add the out-for-delivery state, tenant-scoped courier event history and recipient-confirmed delivery workflow.
