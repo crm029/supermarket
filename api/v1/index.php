@@ -571,6 +571,12 @@ try {
         app_staff_task_list($db, $tenant, $session);
     }
 
+    if (preg_match('#^/me/tasks/([1-9][0-9]*)/start-delivery$#', $path, $staffTaskStartDeliveryMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_staff_task_start_delivery($db, $tenant, $session, (int)$staffTaskStartDeliveryMatch[1]);
+    }
+
     if (preg_match('#^/me/tasks/([1-9][0-9]*)/complete$#', $path, $staffTaskCompleteMatch) && $method === 'POST') {
         $session = app_auth_require($db, $tenant);
         app_auth_require_csrf($session);
