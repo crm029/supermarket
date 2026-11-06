@@ -45,6 +45,7 @@ declare(strict_types=1);
         <article><small>در انتظار تخصیص پیک</small><strong id="statWaitingCourier">—</strong></article>
         <article><small>در مسیر ارسال</small><strong id="statInTransit">—</strong></article>
         <article><small>آماده تحویل حضوری</small><strong id="statReadyPickup">—</strong></article>
+        <article><small>در انتظار مسئول تحویل حضوری</small><strong id="statWaitingPickupHandoff">—</strong></article>
         <article><small>تحویل‌های امروز</small><strong id="statDeliveredToday">—</strong></article>
         <article><small>میانگین زمان ارسال ۳۰ روز</small><strong id="statAverageDelivery">—</strong></article>
       </div></div>
