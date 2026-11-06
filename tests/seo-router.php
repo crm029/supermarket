@@ -28,7 +28,7 @@ if ($path === '/sitemap-core.xml') {
     require __DIR__ . '/../sitemap-core.php';
     return true;
 }
-if (preg_match('#^/sitemap-products-([1-9][0-9]*)\\.xml$#',$path,$matches)) {
+if (preg_match('#^/sitemap-products-([1-9][0-9]*)\.xml$#',$path,$matches)) {
     $_GET['page'] = $matches[1];
     require __DIR__ . '/../sitemap-products.php';
     return true;
