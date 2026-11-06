@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/policies.php';
 require_once __DIR__ . '/notifications.php';
+require_once __DIR__ . '/delivery_tracking.php';
 
 function app_admin_order_assignment_list(PDO $db, array $tenant, int $orderId): never {
     $order = $db->prepare('SELECT id,fulfillment,status FROM orders WHERE tenant_id=? AND id=? LIMIT 1');
@@ -21,6 +22,7 @@ function app_admin_order_assignment_list(PDO $db, array $tenant, int $orderId): 
          ORDER BY a.id DESC"
     );
     $assignments->execute([$tenant['id'],$orderId]);
+    $deliveryEvents = app_delivery_event_list($db,(int)$tenant['id'],$orderId);
 
     $staff = [];
     foreach (['picker'=>'orders.pick','courier'=>'orders.deliver'] as $type=>$permission) {
@@ -36,7 +38,7 @@ function app_admin_order_assignment_list(PDO $db, array $tenant, int $orderId): 
         $query->execute([$permission,$tenant['id']]);
         $staff[$type]=$query->fetchAll(PDO::FETCH_ASSOC);
     }
-    app_json(['data'=>['order'=>$orderRow,'assignments'=>$assignments->fetchAll(PDO::FETCH_ASSOC),'staff'=>$staff]]);
+    app_json(['data'=>['order'=>$orderRow,'assignments'=>$assignments->fetchAll(PDO::FETCH_ASSOC),'staff'=>$staff,'delivery_events'=>$deliveryEvents]]);
 }
 
 function app_admin_order_assignment_create(PDO $db, array $tenant, array $session, int $orderId): never {
@@ -115,6 +117,9 @@ function app_admin_order_assignment_create(PDO $db, array $tenant, array $sessio
         );
         $insert->execute([$tenant['id'],$orderId,$assigneeId,$type,$session['id']]);
         $id=(int)$db->lastInsertId();
+        if ($type === 'courier') {
+            app_delivery_event_create($db,(int)$tenant['id'],$orderId,$id,(int)$session['id'],'assigned','پیک برای ارسال سفارش تعیین شد.');
+        }
         app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'order.assignment.'.$type,'order',$orderId,[
             'assignment_id'=>$id,'assignee_user_id'=>$assigneeId
         ]);
@@ -132,18 +137,45 @@ function app_admin_order_assignment_create(PDO $db, array $tenant, array $sessio
 }
 
 function app_admin_order_assignment_complete(PDO $db, array $tenant, array $session, int $orderId, int $assignmentId): never {
+    $body=app_auth_request_body();
+    $recipientValue=$body['recipient_name']??'';
+    $noteValue=$body['note']??'';
+    if(!is_string($recipientValue)||!is_string($noteValue)) app_json(['error'=>'اطلاعات تحویل معتبر نیست.'],422);
+    $recipientName=trim($recipientValue);
+    $note=trim($noteValue);
+    if (mb_strlen($note)>300) app_json(['error'=>'یادداشت تحویل بیش از حد مجاز است.'],422);
+
     $db->beginTransaction();
     try {
-        $order=$db->prepare('SELECT status FROM orders WHERE tenant_id=? AND id=? FOR UPDATE');
+        $order=$db->prepare('SELECT id,user_id,order_number,status,fulfillment FROM orders WHERE tenant_id=? AND id=? FOR UPDATE');
         $order->execute([$tenant['id'],$orderId]);
-        $orderStatus=$order->fetchColumn();
-        if($orderStatus===false){
+        $orderRow=$order->fetch(PDO::FETCH_ASSOC);
+        if(!$orderRow){
             $db->rollBack();
             app_json(['error'=>'سفارش پیدا نشد.'],404);
         }
-        if(in_array($orderStatus,['cancelled','refunded','delivered'],true)){
+        $assignment=$db->prepare(
+            "SELECT assignment_type FROM order_assignments
+             WHERE tenant_id=? AND order_id=? AND id=? AND status='active' FOR UPDATE"
+        );
+        $assignment->execute([$tenant['id'],$orderId,$assignmentId]);
+        $assignmentType=$assignment->fetchColumn();
+        if(!$assignmentType){
             $db->rollBack();
-            app_json(['error'=>'برای سفارش نهایی‌شده امکان تکمیل وظیفه وجود ندارد.'],409);
+            app_json(['error'=>'تخصیص فعال پیدا نشد.'],404);
+        }
+        if($assignmentType==='picker' && $orderRow['status']!=='picking'){
+            $db->rollBack();
+            app_json(['error'=>'وظیفه جمع‌آوری فقط در زمان آماده‌سازی قابل تکمیل است.'],409);
+        }
+        if($assignmentType==='courier' &&
+            ($orderRow['fulfillment']!=='delivery' || $orderRow['status']!=='out_for_delivery')){
+            $db->rollBack();
+            app_json(['error'=>'تکمیل وظیفه پیک پس از شروع مسیر ارسال امکان‌پذیر است.'],409);
+        }
+        if($assignmentType==='courier' && (mb_strlen($recipientName)<2 || mb_strlen($recipientName)>160)){
+            $db->rollBack();
+            app_json(['error'=>'نام تحویل‌گیرنده را وارد کنید.'],422);
         }
         $stmt=$db->prepare(
             "UPDATE order_assignments SET status='completed',completed_at=UTC_TIMESTAMP()
@@ -154,11 +186,29 @@ function app_admin_order_assignment_complete(PDO $db, array $tenant, array $sess
             $db->rollBack();
             app_json(['error'=>'تخصیص فعال پیدا نشد.'],404);
         }
+        if($assignmentType==='courier'){
+            $updateOrder=$db->prepare(
+                "UPDATE orders SET status='delivered'
+                 WHERE tenant_id=? AND id=? AND status='out_for_delivery'"
+            );
+            $updateOrder->execute([$tenant['id'],$orderId]);
+            if($updateOrder->rowCount()!==1) throw new RuntimeException('Unable to finalize courier delivery.');
+            $deliveryNote='تحویل به: '.$recipientName.($note!==''?' — '.$note:'');
+            app_delivery_event_create($db,(int)$tenant['id'],$orderId,$assignmentId,(int)$session['id'],'delivered',$deliveryNote);
+            app_notification_create($db,(int)$tenant['id'],(int)$orderRow['user_id'],
+                'order-status-'.$orderId.'-delivered','order','سفارش شما تحویل شد',
+                'سفارش '.$orderRow['order_number'].' به تحویل‌گیرنده ثبت‌شده تحویل داده شد.','order',$orderId);
+        }
         app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'order.assignment.completed','order',$orderId,[
-            'assignment_id'=>$assignmentId
+            'assignment_id'=>$assignmentId,'assignment_type'=>$assignmentType
         ]);
+        $taskLabel=$assignmentType==='picker'?'جمع‌آوری اقلام':'ارسال و تحویل';
+        app_notification_notify_permission($db,(int)$tenant['id'],'orders.assign',
+            'staff-task-completed-'.$assignmentId,'assignment','وظیفه سفارش تکمیل شد',
+            $taskLabel.' سفارش '.$orderRow['order_number'].' توسط مسئول ثبت شد.',
+            'order',$orderId,(int)$session['id']);
         $db->commit();
-        app_json(['message'=>'وظیفه تخصیص‌یافته تکمیل شد.']);
+        app_json(['message'=>$assignmentType==='courier'?'تحویل سفارش ثبت شد.':'وظیفه جمع‌آوری تکمیل شد.']);
     }catch(Throwable $e){
         if($db->inTransaction())$db->rollBack();
         throw $e;

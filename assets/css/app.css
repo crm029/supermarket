@@ -106,3 +106,15 @@
 
 .refund-warning{margin:16px 0;padding:14px 16px;border:1px solid #e5c7a5;border-radius:12px;background:#fff8ef}
 .refund-warning p{margin:0 0 10px;color:#79552a;line-height:1.8;font-size:13px}
+
+.customer-delivery-tracking{margin:18px 0;padding:16px;border:1px solid var(--line,#dfe7e0);border-radius:14px;background:#f8faf8}
+.customer-delivery-tracking h4{margin:0 0 12px;color:var(--forest,#173d2d)}
+.customer-delivery-tracking ol{display:grid;gap:12px;margin:0;padding:0 20px 0 0}
+.customer-delivery-tracking li{padding-right:4px;color:var(--forest,#173d2d)}
+.customer-delivery-tracking li small{display:block;margin-top:4px;color:#68766c}
+
+.admin-delivery-events{margin-top:16px;padding:14px;border:1px solid #dfe7e0;border-radius:12px;background:#f8faf8}
+.admin-delivery-events h5{margin:0 0 10px;color:#244b37}
+.admin-delivery-events ol{display:grid;gap:10px;margin:0;padding:0 20px 0 0}
+.admin-delivery-events li{color:#344c3b}
+.admin-delivery-events small{display:block;margin-top:4px;color:#66776b;overflow-wrap:anywhere}

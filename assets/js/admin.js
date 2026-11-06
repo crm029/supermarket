@@ -920,13 +920,13 @@ async function loadOrders() {
   }
 }
 function renderOrders() {
-  const labels={pending_payment:"در انتظار پرداخت",paid:"پرداخت‌شده",accepted:"پذیرفته‌شده",picking:"در حال جمع‌آوری",packed:"بسته‌بندی‌شده",ready_pickup:"آماده تحویل",dispatched:"ارسال‌شده",delivered:"تحویل‌شده",cancelled:"لغوشده",refunded:"مستردشده"};
-  const next={paid:"accepted",accepted:"picking",picking:"packed",packed:"dispatched",ready_pickup:"delivered",dispatched:"delivered"};
+  const labels={pending_payment:"در انتظار پرداخت",paid:"پرداخت‌شده",accepted:"پذیرفته‌شده",picking:"در حال جمع‌آوری",packed:"بسته‌بندی‌شده",ready_pickup:"آماده تحویل",dispatched:"آماده ارسال",out_for_delivery:"در مسیر ارسال",delivered:"تحویل‌شده",cancelled:"لغوشده",refunded:"مستردشده"};
+  const next={paid:"accepted",accepted:"picking",picking:"packed",packed:"dispatched",ready_pickup:"delivered",dispatched:"out_for_delivery",out_for_delivery:"delivered"};
   document.getElementById("orderRows").innerHTML=orders.map(o=>{
     let nextStatus=next[o.status];
     if(o.status==="packed"&&o.fulfillment==="pickup")nextStatus="ready_pickup";
     const action='<button class="admin-row-action" data-admin-order-detail="'+Number(o.id)+'">جزئیات</button>'+(nextStatus?'<button class="admin-row-action" data-next-order="'+Number(o.id)+'" data-next-status="'+nextStatus+'">مرحله بعد</button>':"");
-    return '<tr><td><strong>'+escapeText(o.order_number)+'</strong><small>'+escapeText(o.created_at||"")+'</small></td><td>'+escapeText(o.customer_name)+'<small>'+escapeText(o.customer_mobile)+'</small></td><td>'+new Intl.NumberFormat("fa-IR").format(Number(o.item_count)||0)+'</td><td>'+money(Number(o.total_rial)/10)+'</td><td><span class="admin-status '+(o.status==="delivered"?"active":"inactive")+'">'+(labels[o.status]||escapeText(o.status))+'</span></td><td>'+action+'</td></tr>';
+    return '<tr><td><strong>'+escapeText(o.order_number)+'</strong><small>'+escapeText(o.created_at||"")+'</small></td><td>'+escapeText(o.customer_name)+'<small>'+escapeText(o.customer_mobile)+'</small></td><td>'+new Intl.NumberFormat("fa-IR").format(Number(o.item_count)||0)+'</td><td>'+money(Number(o.total_rial)/10)+'</td><td><span class="admin-status '+(["delivered","out_for_delivery"].includes(o.status)?"active":"inactive")+'">'+(labels[o.status]||escapeText(o.status))+'</span></td><td>'+action+'</td></tr>';
   }).join("")||'<tr><td colspan="6">هنوز سفارشی ثبت نشده است.</td></tr>';
 }
 function renderOrderAssignments(order,data) {
@@ -938,15 +938,22 @@ function renderOrderAssignments(order,data) {
   const renderHistory=assignments.map(item=>{
     const type=item.assignment_type==="picker"?"جمع‌آوری":"پیک";
     const status={active:"فعال",completed:"تکمیل‌شده",cancelled:"لغوشده",replaced:"جایگزین‌شده"}[item.status]||item.status;
-    return '<li><strong>'+type+': '+escapeText(item.full_name)+'</strong> · '+status+' · '+escapeText(item.assigned_at||"")+
-      (item.status==="active"?'<button class="admin-row-action" data-complete-assignment="'+Number(item.id)+'">ثبت تکمیل وظیفه</button>':"")+'</li>';
+    const canComplete=item.status==="active"&&(item.assignment_type==="picker"?order.status==="picking":order.status==="out_for_delivery");
+    const action=canComplete?'<button class="admin-row-action" data-complete-assignment="'+Number(item.id)+'" data-assignment-type="'+escapeText(item.assignment_type)+'">ثبت تکمیل وظیفه</button>':
+      (item.status==="active"?"<small>در انتظار مرحله بعدی سفارش</small>":"");
+    return '<li><strong>'+type+': '+escapeText(item.full_name)+'</strong> · '+status+' · '+escapeText(item.assigned_at||"")+action+'</li>';
   }).join("")||"<li>هنوز نیرویی به این سفارش تخصیص داده نشده است.</li>";
   const canAssign=!["pending_payment","cancelled","refunded","delivered"].includes(order.status);
   const picker=canAssign&&["paid","accepted","picking"].includes(order.status)
     ?'<label>مسئول جمع‌آوری<select id="orderPickerSelect">'+renderOptions(staff.picker)+'</select></label><button class="admin-row-action" data-assign-type="picker">تخصیص جمع‌آورنده</button>':"";
   const courier=canAssign&&order.fulfillment==="delivery"&&["paid","accepted","picking","packed","dispatched"].includes(order.status)
     ?'<label>پیک سفارش<select id="orderCourierSelect">'+renderOptions(staff.courier)+'</select></label><button class="admin-row-action" data-assign-type="courier">تخصیص پیک</button>':"";
-  panel.innerHTML='<h4>تخصیص نیرو و تحویل</h4><ul>'+renderHistory+'</ul><div class="admin-form-grid">'+picker+courier+'</div><p class="admin-hint">فقط کارکنان فعال دارای مجوز جمع‌آوری یا ارسال در همین فروشگاه نمایش داده می‌شوند.</p>';
+  const deliveryLabels={assigned:"پیک تخصیص یافت",out_for_delivery:"شروع مسیر ارسال",delivered:"تحویل سفارش"};
+  const deliveryEvents=data.delivery_events||[];
+  const tracking=deliveryEvents.length
+    ?'<div class="admin-delivery-events"><h5>تاریخچه ارسال</h5><ol>'+deliveryEvents.map(event=>'<li><strong>'+escapeText(deliveryLabels[event.event_type]||event.event_type)+'</strong><small>'+escapeText(event.created_at||"")+'</small>'+(event.note?'<small>'+escapeText(event.note)+'</small>':"")+'</li>').join("")+'</ol></div>'
+    :'';
+  panel.innerHTML='<h4>تخصیص نیرو و تحویل</h4><ul>'+renderHistory+'</ul><div class="admin-form-grid">'+picker+courier+'</div>'+tracking+'<p class="admin-hint">فقط کارکنان فعال دارای مجوز جمع‌آوری یا ارسال در همین فروشگاه نمایش داده می‌شوند.</p>';
 }
 function renderProducts() {
   const query=document.getElementById("productSearch").value.trim().toLocaleLowerCase();
@@ -1248,11 +1255,20 @@ document.getElementById("adminOrderDetail").addEventListener("click",async e=>{
       if(order)renderOrderAssignments(order,refreshed.data||{});
       message("مسئول سفارش تخصیص یافت.","success");
     }else if(complete){
-      await request("admin/orders/"+orderId+"/assignments/"+Number(complete.dataset.completeAssignment)+"/complete",{method:"POST",body:"{}",csrf:true});
+      let body={};
+      if(complete.dataset.assignmentType==="courier"){
+        const recipientName=window.prompt("نام تحویل‌گیرنده را وارد کنید:");
+        if(recipientName===null)return;
+        if(recipientName.trim().length<2){message("نام تحویل‌گیرنده معتبر نیست.","error");return;}
+        const note=window.prompt("یادداشت اختیاری تحویل (در صورت نیاز):")||"";
+        body={recipient_name:recipientName.trim(),note:note.trim()};
+      }
+      await request("admin/orders/"+orderId+"/assignments/"+Number(complete.dataset.completeAssignment)+"/complete",{method:"POST",body:JSON.stringify(body),csrf:true});
+      await loadOrders();
       const refreshed=await request("admin/orders/"+orderId+"/assignments");
       const order=orders.find(o=>Number(o.id)===orderId);
       if(order)renderOrderAssignments(order,refreshed.data||{});
-      message("تکمیل وظیفه ثبت شد.","success");
+      message(complete.dataset.assignmentType==="courier"?"تحویل سفارش ثبت شد.":"تکمیل وظیفه ثبت شد.","success");
     }
   }catch(error){message(error.message,"error");}
 });
@@ -1267,7 +1283,7 @@ document.getElementById("orderRows").addEventListener("click",async e=>{
       const couponInfo=Number(order.discount_rial)>0?'<p>کد تخفیف: '+escapeText(order.coupon_code||"—")+' · مبلغ تخفیف: '+money(Number(order.discount_rial)/10)+'</p>':"";
       box.hidden=false;
       box.dataset.orderId=String(order.id);
-      const refundable=["paid","accepted","picking","packed","ready_pickup","dispatched","delivered"].includes(order.status);
+      const refundable=["paid","accepted","picking","packed","ready_pickup","dispatched","out_for_delivery","delivered"].includes(order.status);
       const refundControl=refundable?'<div class="refund-warning"><p>بازپرداخت فقط به اعتبار کیف پول انجام می‌شود؛ تراکنش بانکی به‌صورت خودکار برگشت نمی‌خورد و موجودی کالا نیز خودکار به انبار برنمی‌گردد.</p><button class="admin-row-action" data-refund-order="'+Number(order.id)+'">بازپرداخت کامل به کیف پول</button></div>':"";
       box.innerHTML='<h3>سفارش '+escapeText(order.order_number)+'</h3><p>مشتری: '+escapeText(order.customer_name)+' · '+escapeText(order.customer_mobile)+'</p><p>نشانی / روش دریافت: '+escapeText(address)+'</p>'+couponInfo+'<p>توضیحات: '+escapeText(order.customer_note||"—")+'</p>'+refundControl+'<section id="orderAssignmentPanel"><p>در حال دریافت مسئولیت‌های سفارش...</p></section>';
       try{

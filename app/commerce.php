@@ -291,7 +291,7 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
                 "SELECT COUNT(*) FROM orders o
                  WHERE o.tenant_id=? AND o.pickup_slot_id=?
                    AND (
-                     o.status IN ('paid','accepted','picking','packed','ready_pickup','dispatched','delivered')
+                     o.status IN ('paid','accepted','picking','packed','ready_pickup','dispatched','out_for_delivery','delivered')
                      OR (o.status='pending_payment' AND EXISTS (
                        SELECT 1 FROM stock_reservations sr
                        WHERE sr.tenant_id=o.tenant_id AND sr.order_id=o.id

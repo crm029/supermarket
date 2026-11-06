@@ -306,6 +306,16 @@ assert_json() {
       if (!$picker || !$courier) exit(1);
       exit(0);
     }
+    if ($check === "delivery-timeline") {
+      $events = $data["data"]["delivery_events"] ?? [];
+      $types = array_column($events,"event_type");
+      $assigned = array_search("assigned",$types,true);
+      $started = array_search("out_for_delivery",$types,true);
+      $delivered = array_search("delivered",$types,true);
+      if ($assigned === false || $started === false || $delivered === false ||
+          !($assigned < $started && $started < $delivered)) exit(1);
+      exit(0);
+    }
     exit(0);
   ' "$OUT" "$1"
 }
@@ -523,14 +533,23 @@ assert_json order-status-notification
 request GET /me/tasks 200 "" "$WORKER_TOKEN"
 assert_json worker-tasks
 request POST "/me/tasks/$PICKER_ASSIGNMENT_ID/complete" 404 '{}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+request POST "/me/tasks/$PICKER_ASSIGNMENT_ID/complete" 409 '{}' "$WORKER_TOKEN" "$WORKER_CSRF"
+request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/transition" 200 '{"status":"picking"}' "$TOKEN" "$CSRF"
 request POST "/me/tasks/$PICKER_ASSIGNMENT_ID/complete" 200 '{}' "$WORKER_TOKEN" "$WORKER_CSRF"
 request GET /me/notifications 200 "" "$TOKEN"
 assert_json manager-task-notification
 request POST /me/notifications/read-all 200 '{}' "$TOKEN" "$CSRF"
 request GET "/me/notifications?unread=1" 200 "" "$TOKEN"
 assert_json unread-empty
-request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/assignments/$COURIER_ASSIGNMENT_ID/complete" 200 '{}' "$TOKEN" "$CSRF"
-request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/assignments" 422 '{"assignment_type":"courier","assignee_user_id":999999999}' "$TOKEN" "$CSRF"
+request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/assignments/$COURIER_ASSIGNMENT_ID/complete" 409 '{}' "$TOKEN" "$CSRF"
+request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/transition" 200 '{"status":"packed"}' "$TOKEN" "$CSRF"
+request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/transition" 200 '{"status":"dispatched"}' "$TOKEN" "$CSRF"
+request POST "/me/tasks/$COURIER_ASSIGNMENT_ID/start-delivery" 200 '{}' "$WORKER_TOKEN" "$WORKER_CSRF"
+request POST "/me/tasks/$COURIER_ASSIGNMENT_ID/complete" 422 '{}' "$WORKER_TOKEN" "$WORKER_CSRF"
+request POST "/me/tasks/$COURIER_ASSIGNMENT_ID/complete" 200 '{"recipient_name":"مشتری تحویل‌گیرنده","note":"تحویل سالم"}' "$WORKER_TOKEN" "$WORKER_CSRF"
+request GET "/me/orders/$ASSIGNMENT_ORDER_ID" 200 "" "$CUSTOMER_TOKEN"
+assert_json delivery-timeline
+request POST "/admin/orders/$ASSIGNMENT_ORDER_ID/assignments" 409 '{"assignment_type":"courier","assignee_user_id":999999999}' "$TOKEN" "$CSRF"
 mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "UPDATE orders SET status='pending_payment' WHERE tenant_id=1 AND id=$ASSIGNMENT_ORDER_ID; UPDATE stock_reservations SET expires_at=DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 MINUTE) WHERE tenant_id=1 AND order_id=$ASSIGNMENT_ORDER_ID AND status='active'"
 php bin/expire-reservations.php
 

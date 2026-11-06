@@ -37,6 +37,7 @@ The application code includes customer registration, catalogue management, inven
 ## Notifications
 
 - [ ] Apply database/migrations/2026_11_06_notifications.sql after tenant isolation and verify customer, staff and manager inbox permissions on the real tenant.
+- [ ] Apply database/migrations/2026_11_06_order_delivery_tracking.sql after assignments/notifications; test picker completion, courier start, recipient-confirmed delivery and the customer order timeline on staging.
 - [ ] Configure and test the production SMS provider; in-app notifications do not replace SMS delivery or operational escalation.
 
 ## Media and operations

@@ -3,12 +3,13 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/notifications.php';
+require_once __DIR__ . '/delivery_tracking.php';
 require_once __DIR__ . '/policies.php';
 require_once __DIR__ . '/stock_batches.php';
 
 function app_admin_orders_list(PDO $db, array $tenant): never {
     $status = trim((string)($_GET['status'] ?? ''));
-    $allowed = ['pending_payment','paid','accepted','picking','packed','ready_pickup','dispatched','delivered','cancelled','refunded'];
+    $allowed = ['pending_payment','paid','accepted','picking','packed','ready_pickup','dispatched','out_for_delivery','delivered','cancelled','refunded'];
     $where = 'o.tenant_id = ?';
     $params = [$tenant['id']];
     if ($status !== '') {
@@ -67,14 +68,46 @@ function app_admin_order_transition(PDO $db, array $tenant, array $session, int 
             'picking' => ['packed'],
             'packed' => [$order['fulfillment'] === 'pickup' ? 'ready_pickup' : 'dispatched'],
             'ready_pickup' => ['delivered'],
-            'dispatched' => ['delivered'],
+            'dispatched' => ['out_for_delivery'],
+            'out_for_delivery' => ['delivered'],
         ];
         if (!in_array($next, $transitions[$order['status']] ?? [], true)) {
             $db->rollBack();
             app_json(['error' => 'این تغییر وضعیت در گردش کار سفارش مجاز نیست.'], 409);
         }
+        if ($order['status'] === 'picking' && $next === 'packed') {
+            $activePicker=$db->prepare(
+                "SELECT COUNT(*) FROM order_assignments
+                 WHERE tenant_id=? AND order_id=? AND assignment_type='picker' AND status='active'"
+            );
+            $activePicker->execute([$tenant['id'],$orderId]);
+            if ((int)$activePicker->fetchColumn() > 0) {
+                $db->rollBack();
+                app_json(['error'=>'ابتدا نیروی جمع‌آوری باید پایان کار خود را ثبت کند.'],409);
+            }
+        }
         $update = $db->prepare('UPDATE orders SET status = ? WHERE tenant_id = ? AND id = ?');
         $update->execute([$next, $tenant['id'], $orderId]);
+        if ($order['fulfillment'] === 'delivery' && in_array($next,['out_for_delivery','delivered'],true)) {
+            $assignmentQuery=$db->prepare(
+                "SELECT id FROM order_assignments
+                 WHERE tenant_id=? AND order_id=? AND assignment_type='courier' AND status='active'
+                 ORDER BY id DESC LIMIT 1 FOR UPDATE"
+            );
+            $assignmentQuery->execute([$tenant['id'],$orderId]);
+            $assignmentId=$assignmentQuery->fetchColumn();
+            if ($next === 'delivered' && $assignmentId) {
+                $completeAssignment=$db->prepare(
+                    "UPDATE order_assignments SET status='completed',completed_at=UTC_TIMESTAMP()
+                     WHERE tenant_id=? AND order_id=? AND id=? AND status='active'"
+                );
+                $completeAssignment->execute([$tenant['id'],$orderId,$assignmentId]);
+            }
+            app_delivery_event_create(
+                $db,(int)$tenant['id'],$orderId,$assignmentId?(int)$assignmentId:null,(int)$session['id'],
+                $next,$next==='delivered'?'تحویل توسط مدیر فروشگاه ثبت شد.':'شروع ارسال توسط مدیر فروشگاه ثبت شد.'
+            );
+        }
         app_audit_log($db, (int)$tenant['id'], (int)$session['id'], 'order.status.' . $next, 'order', $orderId, [
             'previous_status' => $order['status'],
             'next_status' => $next,
@@ -84,7 +117,8 @@ function app_admin_order_transition(PDO $db, array $tenant, array $session, int 
             'picking'=>'در حال جمع‌آوری',
             'packed'=>'بسته‌بندی‌شده',
             'ready_pickup'=>'آماده تحویل حضوری',
-            'dispatched'=>'ارسال‌شده',
+            'dispatched'=>'آماده ارسال',
+            'out_for_delivery'=>'در مسیر ارسال',
             'delivered'=>'تحویل‌شده',
         ];
         $statusLabel=$statusLabels[$next]??$next;
@@ -123,6 +157,13 @@ function app_customer_order_detail(PDO $db, array $tenant, array $session, int $
     );
     $items->execute([$tenant['id'], $orderId]);
     $order['items'] = $items->fetchAll();
+    $deliveryEvents = $order['fulfillment'] === 'delivery'
+        ? app_delivery_event_list($db,(int)$tenant['id'],$orderId)
+        : [];
+    $order['delivery_events'] = array_map(
+        static fn(array $event): array => ['event_type'=>$event['event_type'],'created_at'=>$event['created_at']],
+        $deliveryEvents
+    );
     app_json(['data' => $order]);
 }
 

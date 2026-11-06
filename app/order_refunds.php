@@ -23,7 +23,7 @@ function app_admin_order_refund_wallet(PDO $db, array $tenant, array $session, i
             $db->rollBack();
             app_json(['error'=>'سفارش پیدا نشد.'],404);
         }
-        $eligible=['paid','accepted','picking','packed','ready_pickup','dispatched','delivered'];
+        $eligible=['paid','accepted','picking','packed','ready_pickup','dispatched','out_for_delivery','delivered'];
         if(!in_array($order['status'],$eligible,true)){
             $db->rollBack();
             app_json(['error'=>'این سفارش در وضعیت قابل بازپرداخت نیست یا قبلاً بازپرداخت شده است.'],409);
@@ -76,10 +76,27 @@ function app_admin_order_refund_wallet(PDO $db, array $tenant, array $session, i
 
         $update=$db->prepare(
             "UPDATE orders SET status='refunded'
-             WHERE tenant_id=? AND id=? AND status IN ('paid','accepted','picking','packed','ready_pickup','dispatched','delivered')"
+             WHERE tenant_id=? AND id=? AND status IN ('paid','accepted','picking','packed','ready_pickup','dispatched','out_for_delivery','delivered')"
         );
         $update->execute([$tenant['id'],$orderId]);
         if($update->rowCount()!==1)throw new RuntimeException('Order refund state could not be finalized.');
+
+        $activeAssignments=$db->prepare(
+            "SELECT id,assignee_user_id FROM order_assignments
+             WHERE tenant_id=? AND order_id=? AND status='active' FOR UPDATE"
+        );
+        $activeAssignments->execute([$tenant['id'],$orderId]);
+        $cancelledAssignments=$activeAssignments->fetchAll(PDO::FETCH_ASSOC);
+        $cancelAssignments=$db->prepare(
+            "UPDATE order_assignments SET status='cancelled',completed_at=UTC_TIMESTAMP()
+             WHERE tenant_id=? AND order_id=? AND status='active'"
+        );
+        $cancelAssignments->execute([$tenant['id'],$orderId]);
+        foreach($cancelledAssignments as $assignment){
+            app_notification_create($db,(int)$tenant['id'],(int)$assignment['assignee_user_id'],
+                'assignment-cancelled-refund-'.$assignment['id'],'assignment','وظیفه سفارش لغو شد',
+                'سفارش '.$order['order_number'].' بازپرداخت شد و وظیفه عملیاتی شما لغو گردید.','order',$orderId);
+        }
 
         $referralQuery=$db->prepare(
             "SELECT id,referrer_user_id,reward_rial FROM referral_events

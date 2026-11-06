@@ -218,7 +218,7 @@ CREATE TABLE orders (
   user_id BIGINT UNSIGNED NOT NULL,
   address_id BIGINT UNSIGNED NULL,
   order_number VARCHAR(32) NOT NULL,
-  status ENUM('pending_payment','paid','accepted','picking','packed','ready_pickup','dispatched','delivered','cancelled','refunded') NOT NULL DEFAULT 'pending_payment',
+  status ENUM('pending_payment','paid','accepted','picking','packed','ready_pickup','dispatched','out_for_delivery','delivered','cancelled','refunded') NOT NULL DEFAULT 'pending_payment',
   fulfillment ENUM('delivery','pickup') NOT NULL,
   subtotal_rial BIGINT UNSIGNED NOT NULL,
   discount_rial BIGINT UNSIGNED NOT NULL DEFAULT 0,
