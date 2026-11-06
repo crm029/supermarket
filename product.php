@@ -66,6 +66,21 @@ $schema = [
 if (!empty($product['brand'])) $schema['brand']=['@type'=>'Brand','name'=>(string)$product['brand']];
 if (!empty($image['url'])) $schema['image']=[$image['url']];
 $jsonLd = json_encode($schema,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT);
+$breadcrumbItems = [[
+    '@type'=>'ListItem','position'=>1,'name'=>$storeName,'item'=>app_seo_url($seo),
+]];
+if (!empty($product['category_slug'])) {
+    $breadcrumbItems[] = [
+        '@type'=>'ListItem','position'=>2,'name'=>(string)$product['category_title'],
+        'item'=>app_seo_url($seo,'category/'.rawurlencode((string)$product['category_slug'])),
+    ];
+}
+$breadcrumbItems[] = [
+    '@type'=>'ListItem','position'=>count($breadcrumbItems)+1,'name'=>(string)$product['title'],'item'=>$canonical,
+];
+$breadcrumbSchema = json_encode([
+    '@context'=>'https://schema.org','@type'=>'BreadcrumbList','itemListElement'=>$breadcrumbItems,
+],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT);
 $analyticsViewItem = [
     'currency'=>'IRR',
     'value'=>$priceRial,
@@ -98,10 +113,14 @@ $compareToman = $product['compare_at_rial'] === null ? null : number_format((int
   <meta property="og:title" content="<?= $e($title) ?>">
   <meta property="og:description" content="<?= $e($description) ?>">
   <meta property="og:url" content="<?= $e($canonical) ?>">
-  <?php if (!empty($image['url'])): ?><meta property="og:image" content="<?= $e($image['url']) ?>"><?php endif; ?>
+  <?php if (!empty($image['url'])): ?><meta property="og:image" content="<?= $e($image['url']) ?>"><meta property="og:image:alt" content="<?= $e($image['alt_text'] ?: $product['title']) ?>"><?php endif; ?>
   <meta name="twitter:card" content="<?= !empty($image['url'])?'summary_large_image':'summary' ?>">
+  <meta name="twitter:title" content="<?= $e($title) ?>">
+  <meta name="twitter:description" content="<?= $e($description) ?>">
+  <?php if (!empty($image['url'])): ?><meta name="twitter:image" content="<?= $e($image['url']) ?>"><?php endif; ?>
   <link rel="stylesheet" href="/assets/css/app.css">
   <script type="application/ld+json"><?= $jsonLd ?: '{}' ?></script>
+  <script type="application/ld+json"><?= $breadcrumbSchema ?: '{}' ?></script>
   <script>
     document.addEventListener('sm360:analytics-ready',function(){
       window.sm360Track('view_item',<?= $analyticsViewItemJson ?: '{}' ?>);
