@@ -343,7 +343,7 @@ assert_json() {
       exit(0);
     }
     exit(0);
-  ' "$OUT" "$1"
+  ' "$OUT" "$1" || { echo "JSON assertion failed: $1"; cat "$OUT"; exit 1; }
 }
 
 for _ in $(seq 1 20); do
