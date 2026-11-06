@@ -46,6 +46,8 @@ check_page "/product/1/test-product" "شیر پرچرب یک لیتری"
 check_page "/product/1/test-product" "عنوان سئو محصول تست"
 check_page "/product/1/test-product" "توضیحات متا محصول تست"
 check_page "/product/1/test-product" 'application/ld+json'
+check_page "/product/1/test-product" 'BreadcrumbList'
+check_page "/product/1/test-product" 'twitter:title'
 check_page "/product/1/test-product" 'rel="canonical" href="http://localhost/product/1/test-product"'
 check_redirect "/product/1" "/product/1/test-product"
 check_redirect "/product/1/old-product-slug" "/product/1/test-product"
@@ -57,6 +59,7 @@ check_redirect "/category/api-created-category" "/category/api-updated-category"
 check_page "/category/api-updated-category" "دسته ویرایش‌شده"
 check_page "/index.php" 'rel="canonical" href="http://localhost/"'
 check_page "/index.php" 'application/ld+json'
+check_page "/index.php" 'twitter:title'
 check_page "/index.php" 'name="google-site-verification" content="testverificationtoken123"'
 check_page "/index.php" 'data-ga4-measurement="G-ABC1234567"'
 check_page "/product/1/test-product" 'data-ga4-measurement="G-ABC1234567"'
@@ -71,6 +74,8 @@ check_page "/index.php" 'خیابان نمونه، پلاک ۱۰'
 check_page "/index.php" 'GeoCoordinates'
 check_page "/index.php" 'openingHours'
 check_page "/category.php?slug=dairy" 'application/ld+json'
+check_page "/category.php?slug=dairy" 'BreadcrumbList'
+check_page "/category.php?slug=dairy" 'twitter:description'
 grep -Fq 'RewriteRule ^robots\.txt$ robots.php' .htaccess
 grep -Fq 'RewriteRule ^sitemap\.xml$ sitemap.php' .htaccess
 grep -Fq 'RewriteRule ^sitemap-core\.xml$ sitemap-core.php' .htaccess
