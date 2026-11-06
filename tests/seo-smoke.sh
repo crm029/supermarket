@@ -62,9 +62,10 @@ check_page "/product/1/test-product" 'rel="canonical" href="http://localhost/pro
 check_redirect "/product/1" "/product/1/test-product"
 check_redirect "/product/1/old-product-slug" "/product/1/test-product"
 check_redirect "/product.php?id=1" "/product/1/test-product"
-check_page "/category.php?slug=dairy" "/product/1/test-product"
-check_page "/category.php?slug=dairy" "عنوان سئو دسته تست"
-check_page "/category.php?slug=dairy" "توضیحات متا دسته تست"
+check_page "/category/dairy" "/product/1/test-product"
+check_page "/category/dairy" "عنوان سئو دسته تست"
+check_page "/category/dairy" "توضیحات متا دسته تست"
+check_redirect "/category.php?slug=dairy" "/category/dairy"
 check_redirect "/category/api-created-category" "/category/api-updated-category"
 check_page "/category/api-updated-category" "دسته ویرایش‌شده"
 check_page "/index.php" 'rel="canonical" href="http://localhost/"'
@@ -73,7 +74,7 @@ check_page "/index.php" 'twitter:title'
 check_page "/index.php" 'name="google-site-verification" content="testverificationtoken123"'
 check_page "/index.php" 'data-ga4-measurement="G-ABC1234567"'
 check_page "/product/1/test-product" 'data-ga4-measurement="G-ABC1234567"'
-check_page "/category.php?slug=dairy" 'data-ga4-measurement="G-ABC1234567"'
+check_page "/category/dairy" 'data-ga4-measurement="G-ABC1234567"'
 check_page "/payment-result.php?status=success&order=999999" 'data-ga4-measurement="G-ABC1234567"'
 if grep -Fq "sm360Track('purchase'" "$OUT"; then
   echo "Unverified payment result must not emit a purchase event"
@@ -83,9 +84,9 @@ check_page "/index.php" 'PostalAddress'
 check_page "/index.php" 'خیابان نمونه، پلاک ۱۰'
 check_page "/index.php" 'GeoCoordinates'
 check_page "/index.php" 'openingHours'
-check_page "/category.php?slug=dairy" 'application/ld+json'
-check_page "/category.php?slug=dairy" 'BreadcrumbList'
-check_page "/category.php?slug=dairy" 'twitter:description'
+check_page "/category/dairy" 'application/ld+json'
+check_page "/category/dairy" 'BreadcrumbList'
+check_page "/category/dairy" 'twitter:description'
 grep -Fq 'RewriteRule ^robots\.txt$ robots.php' .htaccess
 grep -Fq 'RewriteRule ^sitemap\.xml$ sitemap.php' .htaccess
 grep -Fq 'RewriteRule ^sitemap-core\.xml$ sitemap-core.php' .htaccess
