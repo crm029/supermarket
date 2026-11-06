@@ -26,6 +26,13 @@ function app_staff_task_list(PDO $db, array $tenant, array $session): never {
          LEFT JOIN order_items oi ON oi.tenant_id=o.tenant_id AND oi.order_id=o.id
          WHERE a.tenant_id=? AND a.assignee_user_id=? AND a.status='active'
            AND o.status NOT IN ('cancelled','refunded','delivered')
+           AND EXISTS (
+             SELECT 1 FROM user_roles ur
+             JOIN role_permissions rp ON rp.role_scope_id=ur.role_scope_id AND rp.role_id=ur.role_id
+             JOIN permissions p ON p.id=rp.permission_id AND p.scope='tenant'
+             WHERE ur.tenant_id=a.tenant_id AND ur.user_id=a.assignee_user_id
+               AND p.permission_key=CASE WHEN a.assignment_type='picker' THEN 'orders.pick' ELSE 'orders.deliver' END
+           )
          GROUP BY a.id,a.assignment_type,a.assigned_at,o.id,o.order_number,o.status,o.fulfillment,o.created_at,
                   ca.recipient,ca.mobile,ca.province,ca.city,ca.address,ca.postal_code,u.full_name,u.mobile
          ORDER BY a.assigned_at DESC,a.id DESC LIMIT 100"
@@ -68,7 +75,9 @@ function app_staff_task_start_delivery(PDO $db, array $tenant, array $session, i
     $latitude=($latRaw===null||$latRaw==='')?null:filter_var($latRaw,FILTER_VALIDATE_FLOAT);
     $longitude=($lngRaw===null||$lngRaw==='')?null:filter_var($lngRaw,FILTER_VALIDATE_FLOAT);
     if(mb_strlen($note)>500 || $latitude===false || $longitude===false ||
-        (($latitude===null)!==($longitude===null))) {
+        (($latitude===null)!==($longitude===null)) ||
+        ($latitude!==null && ((float)$latitude < -90 || (float)$latitude > 90)) ||
+        ($longitude!==null && ((float)$longitude < -180 || (float)$longitude > 180))) {
         app_json(['error'=>'یادداشت یا موقعیت ارسال معتبر نیست.'],422);
     }
 
