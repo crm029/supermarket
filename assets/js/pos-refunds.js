@@ -4,6 +4,7 @@ let refundCsrf="";
 let refundShift=null;
 let refundSale=null;
 let refundItems=[];
+let refundHistory=[];
 function refundEscape(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function refundMoney(rial){return new Intl.NumberFormat("fa-IR").format(Math.round(Number(rial||0)/10))+" تومان";}
 function refundMessage(message,type=""){const el=document.getElementById("refundMessage");el.textContent=message;el.className="refund-message "+type;}
@@ -23,7 +24,7 @@ function refundRenderSales(rows){
 }
 async function refundLoadSale(id,button){
   try{
-    const result=await refundRequest("admin/pos/sales/"+id);refundSale=result.data.sale;refundItems=result.data.items||[];
+    const result=await refundRequest("admin/pos/sales/"+id);refundSale=result.data.sale;refundItems=result.data.items||[];refundHistory=result.data.refunds||[];
     document.querySelectorAll(".refund-sale").forEach(b=>b.setAttribute("aria-pressed",b===button?"true":"false"));
     refundRenderDetail();document.getElementById("refundForm").hidden=false;
   }catch(error){refundMessage(error.message,"error");}
@@ -32,6 +33,7 @@ function refundRenderDetail(){
   const target=document.getElementById("refundDetail");
   target.innerHTML='<p><strong>فاکتور '+refundEscape(refundSale.sale_number)+'</strong> · مبلغ '+refundMoney(refundSale.total_rial)+'</p>'+
     refundItems.map(i=>'<div class="refund-line"><div><strong>'+refundEscape(i.title)+'</strong><div class="refund-hint">'+refundEscape(i.sku)+' · قیمت واحد '+refundMoney(i.unit_price_rial)+' · باقی‌مانده قابل بازپرداخت: '+Number(i.refundable_quantity)+'</div></div><input type="number" min="0" max="'+Number(i.refundable_quantity)+'" step="1" value="0" data-item="'+Number(i.sale_item_id)+'" data-price="'+Number(i.unit_price_rial)+'" aria-label="تعداد مرجوعی '+refundEscape(i.title)+'" '+(Number(i.refundable_quantity)<1?"disabled":"")+'></div>').join("");
+  if(refundHistory.length){target.innerHTML+='<h3>سوابق بازپرداخت</h3>'+refundHistory.map(r=>'<div class="refund-hint">بازپرداخت #'+Number(r.id)+' · '+refundMoney(r.amount_rial)+' · '+refundEscape(r.created_at)+' · '+refundEscape(r.stock_status)+'<br>'+refundEscape(r.reason)+'</div>').join("");}
   target.querySelectorAll("[data-item]").forEach(input=>input.addEventListener("input",refundUpdateTotal));
   refundUpdateTotal();
 }
