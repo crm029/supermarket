@@ -13,6 +13,10 @@ BEGIN
   DECLARE refund_permission_count INT DEFAULT 0;
   DECLARE refund_idempotency_count INT DEFAULT 0;
   DECLARE refund_tenant_fk_count INT DEFAULT 0;
+  DECLARE inspection_table_count INT DEFAULT 0;
+  DECLARE inspection_permission_count INT DEFAULT 0;
+  DECLARE inspection_unique_count INT DEFAULT 0;
+  DECLARE inspection_status_count INT DEFAULT 0;
 
   SELECT COUNT(*) INTO table_count
   FROM information_schema.tables
@@ -97,6 +101,37 @@ BEGIN
     AND constraint_name IN ('fk_pos_refund_item_refund_tenant','fk_pos_refund_item_sale_item_tenant','fk_pos_refund_item_product_tenant');
   IF refund_tenant_fk_count <> 3 THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='POS refund items must enforce tenant-safe references';
+  END IF;
+
+  SELECT COUNT(*) INTO inspection_table_count
+  FROM information_schema.tables
+  WHERE table_schema=DATABASE() AND table_name='pos_refund_inspections';
+  IF inspection_table_count <> 1 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='POS returned-item inspection ledger must exist';
+  END IF;
+
+  SELECT COUNT(*) INTO inspection_permission_count
+  FROM permissions WHERE scope='tenant' AND permission_key='pos.refund.inspect';
+  IF inspection_permission_count <> 1 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='POS inspection permission must be tenant-scoped';
+  END IF;
+
+  SELECT COUNT(*) INTO inspection_unique_count
+  FROM information_schema.statistics
+  WHERE table_schema=DATABASE() AND table_name='pos_refund_inspections'
+    AND index_name='uq_pos_refund_inspection_item';
+  IF inspection_unique_count <> 2 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='A returned item may only be inspected once';
+  END IF;
+
+  SELECT COUNT(*) INTO inspection_status_count
+  FROM information_schema.columns
+  WHERE table_schema=DATABASE() AND table_name='pos_refund_items'
+    AND column_name='stock_status'
+    AND column_type LIKE '%restocked%'
+    AND column_type LIKE '%rejected%';
+  IF inspection_status_count <> 1 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Returned items must retain inspected and rejected states';
   END IF;
 END//
 DELIMITER ;
