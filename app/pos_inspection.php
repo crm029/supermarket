@@ -96,6 +96,11 @@ function app_pos_inspection_decide(PDO $db,array $tenant,array $session,int $ref
         $update=$db->prepare("UPDATE pos_refund_items SET stock_status=? WHERE tenant_id=? AND id=? AND stock_status='pending_inspection'");
         $update->execute([$status,$tenantId,$refundItemId]);
         if($update->rowCount()!==1)throw new RuntimeException('Refund inspection state changed concurrently.');
+        $pending=$db->prepare("SELECT COUNT(*) FROM pos_refund_items WHERE tenant_id=? AND refund_id=? AND stock_status='pending_inspection'");
+        $pending->execute([$tenantId,(int)$item['refund_id']]);
+        $refundStatus=(int)$pending->fetchColumn()>0?'partially_inspected':'inspected';
+        $refundUpdate=$db->prepare('UPDATE pos_refunds SET stock_status=? WHERE tenant_id=? AND id=?');
+        $refundUpdate->execute([$refundStatus,$tenantId,(int)$item['refund_id']]);
         app_audit_log($db,$tenantId,$actorId,'pos.refund.item.inspected','pos_refund_item',$refundItemId,[
             'refund_id'=>(int)$item['refund_id'],'inspection_id'=>$inspectionId,'decision'=>$decision,
             'quantity'=>(int)$item['quantity'],'warehouse_id'=>$warehouseId,
