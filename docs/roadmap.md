@@ -73,7 +73,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Tenant-scoped operations KPIs: picker queue, packing queue, courier queue, in-transit orders, pickup-ready orders, pickup-handoff backlog, daily deliveries and average route-to-delivery time.
 - [x] Dedicated pickup-handoff staff permission and assignment, recipient-name confirmation, staff-only completion and customer notification; manager bypass is blocked (MySQL-backed API integration coverage).
 - [x] POS manager reports: date-filtered in-person sales, shift/cash variance summaries, cashier performance, top in-person items and online-vs-in-person comparison (permission-guarded API and seller-admin report page; automated API permission checks).
-- [ ] Complete POS release: cashier page/API, shift lifecycle, FEFO cash sales, idempotency, cash reconciliation, manager reporting and audited cash refunds are implemented; refund items remain held for inspection rather than being silently restocked. Bank card terminals, inspected-return stock posting, thermal printing and mixed tender remain.
+- [ ] Complete POS release: cashier page/API, shift lifecycle, FEFO cash sales, idempotency, cash reconciliation, manager reporting, audited cash refunds and the returned-item inspection/restock-or-reject workflow are implemented. Bank card terminals, thermal printing and mixed tender remain.
 - [x] Seller dashboard with 30-day paid revenue, seven-day sales trend and low-stock count.
 - [x] Tenant-scoped inventory movement ledger with warehouse/product/type/date filters and signed quantities.
 - [x] Tenant-scoped CSV exports for orders and inventory movements, with date/status/warehouse/product filters, formula-injection protection and permission checks.
