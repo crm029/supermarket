@@ -389,6 +389,13 @@ assert_json() {
           (int)($report["refund_count"]??-1)!==1 ||
           (int)($report["refund_total_rial"]??-1)!==125000 ||
           (int)($report["net_sales_total_rial"]??-1)!==0) exit(1);
+      $cashierGross=0; $cashierRefunds=0; $cashierNet=0;
+      foreach (($data["data"]["cashiers"]??[]) as $cashier) {
+        $cashierGross+=(int)($cashier["sales_total_rial"]??0);
+        $cashierRefunds+=(int)($cashier["refund_total_rial"]??-1000000000000);
+        $cashierNet+=(int)($cashier["net_sales_total_rial"]??-1000000000000);
+      }
+      if ($cashierGross!==125000 || $cashierRefunds!==125000 || $cashierNet!==0) exit(1);
       exit(0);
     }
     if ($check === "pos-refund-idempotent") {
