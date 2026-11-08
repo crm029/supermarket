@@ -863,6 +863,22 @@ POS_INSPECTION_LEDGER="$(mysql --host=127.0.0.1 --user=root --password=root --sk
 POS_REFUND_AGGREGATE_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT stock_status FROM pos_refunds WHERE tenant_id=1 AND id=$POS_REFUND_ID")"
 POS_RETURN_MOVEMENT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM stock_movements WHERE tenant_id=1 AND reference_type='pos_refund_inspection' AND movement_type='return' AND reference_id=(SELECT id FROM pos_refund_inspections WHERE tenant_id=1 AND refund_item_id=$POS_REFUND_ITEM_ID)")"
 if [[ "$POS_STOCK_AFTER_INSPECTION" -ne "$((POS_STOCK_BEFORE_INSPECTION+1))" || "$POS_INSPECTION_LEDGER" != "1" || "$POS_REFUND_AGGREGATE_STATUS" != "inspected" || "$POS_RETURN_MOVEMENT" != "1" ]]; then echo "POS returned-item inspection did not create exactly one auditable stock receipt."; exit 1; fi
+
+# A rejected return is recorded but must never increase sellable stock.
+request POST /admin/pos/sales 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"cash_received_rial":150000,"idempotency_key":"ci-pos-reject-sale-0001"}' "$POS_TOKEN" "$POS_CSRF"
+POS_REJECT_SALE_ID="$(assert_json pos-sale)"
+POS_REJECT_SALE_ITEM_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM pos_sale_items WHERE tenant_id=1 AND sale_id=$POS_REJECT_SALE_ID LIMIT 1")"
+request POST /admin/pos/shifts 201 '{"warehouse_id":1,"opening_float_rial":200000,"note":"صندوق بررسی کالای ردشده"}' "$POS_MANAGER_TOKEN" "$POS_MANAGER_CSRF"
+POS_REJECT_SHIFT_ID="$(assert_json created-id)"
+request POST "/admin/pos/sales/$POS_REJECT_SALE_ID/refunds" 201 '{"reason":"مرجوعی برای آزمون رد کالا","idempotency_key":"ci-pos-reject-refund-01","items":[{"sale_item_id":'$POS_REJECT_SALE_ITEM_ID',"quantity":1}]}' "$POS_MANAGER_TOKEN" "$POS_MANAGER_CSRF"
+POS_REJECT_REFUND_ID="$(assert_json created-id)"
+POS_REJECT_ITEM_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM pos_refund_items WHERE tenant_id=1 AND refund_id=$POS_REJECT_REFUND_ID LIMIT 1")"
+POS_STOCK_BEFORE_REJECT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT on_hand FROM stock_levels WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
+request POST "/admin/pos/refund-items/$POS_REJECT_ITEM_ID/inspection" 200 '{"decision":"reject","inspection_note":"بسته‌بندی باز و سلامت کالا قابل تأیید نیست"}' "$POS_MANAGER_TOKEN" "$POS_MANAGER_CSRF"
+POS_STOCK_AFTER_REJECT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT on_hand FROM stock_levels WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
+POS_REJECT_STATE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT CONCAT(ri.stock_status,':',r.stock_status,':',pi.decision) FROM pos_refund_items ri JOIN pos_refunds r ON r.tenant_id=ri.tenant_id AND r.id=ri.refund_id JOIN pos_refund_inspections pi ON pi.tenant_id=ri.tenant_id AND pi.refund_item_id=ri.id WHERE ri.tenant_id=1 AND ri.id=$POS_REJECT_ITEM_ID")"
+if [[ "$POS_STOCK_AFTER_REJECT" != "$POS_STOCK_BEFORE_REJECT" || "$POS_REJECT_STATE" != "rejected:inspected:reject" ]]; then echo "Rejected POS return incorrectly affected sellable stock or inspection status."; exit 1; fi
+request POST "/admin/pos/shifts/$POS_REJECT_SHIFT_ID/close" 200 '{"counted_cash_rial":75000,"note":"تطبیق صندوق کالای ردشده"}' "$POS_MANAGER_TOKEN" "$POS_MANAGER_CSRF"
 request GET "/admin/pos/sales/$POS_SALE_ID" 200 "" "$POS_MANAGER_TOKEN"
 assert_json pos-sale-detail-refunded
 request GET /admin/pos/reports 200 "" "$TOKEN"
