@@ -207,6 +207,8 @@ function app_pos_management_report(PDO $db,array $tenant): never {
                 (SELECT COUNT(*) FROM pos_shifts os WHERE os.tenant_id=s.tenant_id AND os.cashier_user_id=s.cashier_user_id
                    AND os.status='open' AND os.opened_at>=? AND os.opened_at<?) open_shift_count,
                 COUNT(DISTINCT ps.id) sale_count,COALESCE(SUM(ps.total_rial),0) sales_total_rial,
+                COALESCE(pr.refund_total_rial,0) refund_total_rial,
+                COALESCE(SUM(ps.total_rial),0)-COALESCE(pr.refund_total_rial,0) net_sales_total_rial,
                 (SELECT COUNT(*) FROM pos_shifts vs WHERE vs.tenant_id=s.tenant_id AND vs.cashier_user_id=s.cashier_user_id
                    AND vs.status='closed' AND vs.cash_variance_rial<>0 AND vs.opened_at>=? AND vs.opened_at<?) variance_shift_count,
                 (SELECT COALESCE(SUM(vs.cash_variance_rial),0) FROM pos_shifts vs WHERE vs.tenant_id=s.tenant_id
@@ -214,10 +216,16 @@ function app_pos_management_report(PDO $db,array $tenant): never {
          FROM pos_shifts s JOIN users u ON u.tenant_id=s.tenant_id AND u.id=s.cashier_user_id
          LEFT JOIN pos_sales ps ON ps.tenant_id=s.tenant_id AND ps.shift_id=s.id
              AND ps.created_at>=? AND ps.created_at<?
+         LEFT JOIN (
+             SELECT tenant_id,cashier_user_id,SUM(amount_rial) refund_total_rial
+             FROM pos_refunds WHERE tenant_id=? AND created_at>=? AND created_at<?
+             GROUP BY tenant_id,cashier_user_id
+         ) pr ON pr.tenant_id=s.tenant_id AND pr.cashier_user_id=s.cashier_user_id
          WHERE s.tenant_id=? AND s.opened_at>=? AND s.opened_at<?
-         GROUP BY s.cashier_user_id,u.full_name ORDER BY sales_total_rial DESC,u.full_name"
+         GROUP BY s.cashier_user_id,u.full_name,pr.refund_total_rial
+         ORDER BY net_sales_total_rial DESC,u.full_name"
     );
-    $cashiers->execute([$fromUtc,$toUtc,$fromUtc,$toUtc,$fromUtc,$toUtc,$fromUtc,$toUtc,$tenantId,$fromUtc,$toUtc]);
+    $cashiers->execute([$fromUtc,$toUtc,$fromUtc,$toUtc,$fromUtc,$toUtc,$fromUtc,$toUtc,$tenantId,$fromUtc,$toUtc,$tenantId,$fromUtc,$toUtc]);
     $topItems=$db->prepare(
         "SELECT i.product_id,i.product_title_snapshot title,i.sku_snapshot sku,
                 SUM(i.quantity) quantity_sold,SUM(i.line_total_rial) revenue_rial
