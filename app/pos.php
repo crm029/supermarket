@@ -286,8 +286,6 @@ function app_pos_create_refund(PDO $db,array $tenant,array $session,int $saleId)
     $tenantId=(int)$tenant['id'];$actorId=(int)$session['id'];
     $db->beginTransaction();
     try{
-        $shift=app_pos_active_shift($db,$tenantId,$actorId,true);
-        if(!$shift){$db->rollBack();app_json(['error'=>'برای ثبت بازپرداخت، صندوق‌دار باید شیفت باز داشته باشد.'],409);}
         $saleQuery=$db->prepare('SELECT id,sale_number,shift_id,total_rial FROM pos_sales WHERE tenant_id=? AND id=? FOR UPDATE');
         $saleQuery->execute([$tenantId,$saleId]);$sale=$saleQuery->fetch(PDO::FETCH_ASSOC);
         if(!$sale){$db->rollBack();app_json(['error'=>'فروش حضوری پیدا نشد.'],404);}
@@ -297,6 +295,8 @@ function app_pos_create_refund(PDO $db,array $tenant,array $session,int $saleId)
             if(!hash_equals((string)$existing['request_hash'],$hash)){$db->rollBack();app_json(['error'=>'کلید بازپرداخت قبلاً با اطلاعات متفاوت استفاده شده است.'],409);}
             $db->commit();app_json(['data'=>['id'=>(int)$existing['id'],'amount_rial'=>(int)$existing['amount_rial'],'idempotent'=>true],'message'=>'این بازپرداخت قبلاً ثبت شده است.']);
         }
+        $shift=app_pos_active_shift($db,$tenantId,$actorId,true);
+        if(!$shift){$db->rollBack();app_json(['error'=>'برای ثبت بازپرداخت، صندوق‌دار باید شیفت باز داشته باشد.'],409);}
         $shiftSummary=app_pos_summary($db,$tenantId,(int)$shift['id']);
         $availableCash=(int)$shift['opening_float_rial']+(int)$shiftSummary['sales_total_rial']-(int)$shiftSummary['refund_total_rial'];
         $lineQuery=$db->prepare('SELECT id,product_id,product_title_snapshot,sku_snapshot,unit_price_rial,quantity FROM pos_sale_items WHERE tenant_id=? AND sale_id=? AND id=? FOR UPDATE');
