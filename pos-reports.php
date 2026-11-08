@@ -21,7 +21,8 @@ $tenant = app_tenant();
 <form class="filters" id="filters"><label>از تاریخ<input type="date" id="from" required></label><label>تا تاریخ<input type="date" id="to" required></label><button class="btn">اعمال بازه</button></form>
 <p id="status" role="status">در حال بررسی دسترسی و دریافت گزارش...</p>
 <section class="grid">
-<article class="card"><small>مبلغ فروش حضوری</small><strong id="posRevenue">—</strong></article>
+<article class="card"><small>خالص فروش حضوری پس از بازپرداخت</small><strong id="posRevenue">—</strong></article>
+<article class="card"><small>بازپرداخت نقدی</small><strong id="posRefundTotal">—</strong></article>
 <article class="card"><small>تعداد فروش حضوری</small><strong id="posCount">—</strong></article>
 <article class="card"><small>شیفت‌های باز</small><strong id="openShifts">—</strong></article>
 <article class="card"><small>شیفت دارای مغایرت</small><strong id="varianceCount">—</strong></article>
@@ -42,8 +43,8 @@ const me=await fetch(api+'me',{credentials:'same-origin',headers:{Accept:'applic
 const url=new URL(api+'admin/pos/reports',location.href);url.searchParams.set('from',document.getElementById('from').value);url.searchParams.set('to',document.getElementById('to').value);
 const response=await fetch(url,{credentials:'same-origin',headers:{Accept:'application/json'}});const payload=await response.json();if(!response.ok)throw new Error(payload.error||'دریافت گزارش ناموفق بود.');
 const d=payload.data,p=d.in_person,s=d.shifts,o=d.online;
-document.getElementById('posRevenue').textContent=money(p.sales_total_rial);document.getElementById('posCount').textContent=num(p.sale_count);document.getElementById('openShifts').textContent=num(s.open_shift_count);document.getElementById('varianceCount').textContent=num(s.variance_shift_count);
-document.getElementById('channels').innerHTML='<tr><td>حضوری</td><td>'+num(p.sale_count)+'</td><td>'+money(p.sales_total_rial)+'</td></tr><tr><td>اینترنتی</td><td>'+num(o.order_count)+'</td><td>'+money(o.revenue_rial)+'</td></tr>';
+document.getElementById('posRevenue').textContent=money(p.net_sales_total_rial);document.getElementById('posRefundTotal').textContent=money(p.refund_total_rial);document.getElementById('posCount').textContent=num(p.sale_count);document.getElementById('openShifts').textContent=num(s.open_shift_count);document.getElementById('varianceCount').textContent=num(s.variance_shift_count);
+document.getElementById('channels').innerHTML='<tr><td>حضوری (خالص)</td><td>'+num(p.sale_count)+'</td><td>'+money(p.net_sales_total_rial)+'</td></tr><tr><td>اینترنتی</td><td>'+num(o.order_count)+'</td><td>'+money(o.revenue_rial)+'</td></tr>';
 document.getElementById('shiftSummary').innerHTML='<tr><td>'+num(s.shift_count)+'</td><td>'+num(s.closed_shift_count)+'</td><td>'+num(s.open_shift_count)+'</td><td>'+num(s.variance_shift_count)+'</td><td>'+money(s.net_variance_rial)+'</td></tr>';
 document.getElementById('cashiers').innerHTML=d.cashiers.map(x=>'<tr><td>'+esc(x.full_name||'بدون نام')+'</td><td>'+num(x.shift_count)+'</td><td>'+num(x.sale_count)+'</td><td>'+money(x.sales_total_rial)+'</td><td>'+num(x.variance_shift_count)+'</td></tr>').join('')||'<tr><td colspan="5">داده‌ای برای این بازه وجود ندارد.</td></tr>';
 document.getElementById('items').innerHTML=d.top_items.map(x=>'<tr><td>'+esc(x.title)+'</td><td>'+esc(x.sku)+'</td><td>'+num(x.quantity_sold)+'</td><td>'+money(x.revenue_rial)+'</td></tr>').join('')||'<tr><td colspan="4">داده‌ای برای این بازه وجود ندارد.</td></tr>';
