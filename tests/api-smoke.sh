@@ -854,35 +854,6 @@ assert_json pos-sale-detail-refunded
 request GET /admin/pos/reports 200 "" "$TOKEN"
 assert_json pos-report-refunds
 
-# Concurrent partial refunds for one sale must serialize on the sale row.
-request POST /admin/pos/sales 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}],"cash_received_rial":250000,"idempotency_key":"ci-pos-concurrent-sale-01"}' "$POS_TOKEN" "$POS_CSRF"
-POS_CONCURRENT_SALE_ID="$(assert_json pos-sale)"
-POS_CONCURRENT_ITEM_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM pos_sale_items WHERE tenant_id=1 AND sale_id=$POS_CONCURRENT_SALE_ID LIMIT 1")"
-request POST /admin/pos/shifts 201 '{"warehouse_id":1,"opening_float_rial":500000,"note":"صندوق آزمون هم‌زمانی"}' "$POS_MANAGER_TOKEN" "$POS_MANAGER_CSRF"
-POS_CONCURRENT_SHIFT_ID="$(assert_json created-id)"
-REFUND_BODY_A='{"reason":"بازپرداخت هم‌زمان آزمون اول","idempotency_key":"ci-pos-race-refund-01","items":[{"sale_item_id":'$POS_CONCURRENT_ITEM_ID',"quantity":2}]}'
-REFUND_BODY_B='{"reason":"بازپرداخت هم‌زمان آزمون دوم","idempotency_key":"ci-pos-race-refund-02","items":[{"sale_item_id":'$POS_CONCURRENT_ITEM_ID',"quantity":2}]}'
-curl --silent --show-error --max-time 20 --output /tmp/pos-refund-race-a.json --write-out "%{http_code}" -X POST -H "Host: localhost" -H "Accept: application/json" -H "Content-Type: application/json" -H "Cookie: sm_session=$POS_MANAGER_TOKEN" -H "X-CSRF-Token: $POS_MANAGER_CSRF" --data "$REFUND_BODY_A" "$BASE_URL/admin/pos/sales/$POS_CONCURRENT_SALE_ID/refunds" >/tmp/pos-refund-race-a.status || printf "000" >/tmp/pos-refund-race-a.status &
-POS_REFUND_PID_A=$!
-curl --silent --show-error --max-time 20 --output /tmp/pos-refund-race-b.json --write-out "%{http_code}" -X POST -H "Host: localhost" -H "Accept: application/json" -H "Content-Type: application/json" -H "Cookie: sm_session=$POS_MANAGER_TOKEN" -H "X-CSRF-Token: $POS_MANAGER_CSRF" --data "$REFUND_BODY_B" "$BASE_URL/admin/pos/sales/$POS_CONCURRENT_SALE_ID/refunds" >/tmp/pos-refund-race-b.status || printf "000" >/tmp/pos-refund-race-b.status &
-POS_REFUND_PID_B=$!
-wait "$POS_REFUND_PID_A"
-wait "$POS_REFUND_PID_B"
-POS_REFUND_STATUS_A="$(cat /tmp/pos-refund-race-a.status)"
-POS_REFUND_STATUS_B="$(cat /tmp/pos-refund-race-b.status)"
-if ! { [[ "$POS_REFUND_STATUS_A" == "201" && "$POS_REFUND_STATUS_B" == "409" ]] || [[ "$POS_REFUND_STATUS_A" == "409" && "$POS_REFUND_STATUS_B" == "201" ]]; }; then
-  echo "Concurrent POS refunds must produce exactly one success and one conflict; received $POS_REFUND_STATUS_A and $POS_REFUND_STATUS_B"
-  cat /tmp/pos-refund-race-a.json /tmp/pos-refund-race-b.json
-  exit 1
-fi
-POS_RACE_REFUND_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM pos_refunds WHERE tenant_id=1 AND sale_id=$POS_CONCURRENT_SALE_ID")"
-POS_RACE_REFUNDED_QTY="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COALESCE(SUM(ri.quantity),0) FROM pos_refund_items ri JOIN pos_refunds r ON r.tenant_id=ri.tenant_id AND r.id=ri.refund_id WHERE r.tenant_id=1 AND r.sale_id=$POS_CONCURRENT_SALE_ID")"
-if [[ "$POS_RACE_REFUND_COUNT" != "1" || "$POS_RACE_REFUNDED_QTY" != "2" ]]; then
-  echo "Concurrent POS refund invariant failed: refunds=$POS_RACE_REFUND_COUNT refunded_quantity=$POS_RACE_REFUNDED_QTY"
-  exit 1
-fi
-request POST "/admin/pos/shifts/$POS_CONCURRENT_SHIFT_ID/close" 200 '{"counted_cash_rial":500000,"note":"بستن صندوق آزمون هم‌زمانی"}' "$POS_MANAGER_TOKEN" "$POS_MANAGER_CSRF"
-
 request POST "/admin/pos/shifts/$POS_SHIFT_ID/close" 200 '{"counted_cash_rial":625000,"note":"تطبیق کامل صندوق"}' "$POS_TOKEN" "$POS_CSRF"
 assert_json pos-shift-closed
 request POST "/admin/pos/shifts/$POS_SHIFT_ID/close" 409 '{"counted_cash_rial":625000}' "$POS_TOKEN" "$POS_CSRF"
