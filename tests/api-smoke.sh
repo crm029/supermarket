@@ -383,6 +383,14 @@ assert_json() {
           (int)($items[0]["refundable_quantity"]??-1)!==$expectedRemaining) exit(1);
       exit(0);
     }
+    if ($check === "pos-report-refunds") {
+      $report=$data["data"]["in_person"]??[];
+      if ((int)($report["sales_total_rial"]??-1)!==125000 ||
+          (int)($report["refund_count"]??-1)!==1 ||
+          (int)($report["refund_total_rial"]??-1)!==125000 ||
+          (int)($report["net_sales_total_rial"]??-1)!==0) exit(1);
+      exit(0);
+    }
     if ($check === "pos-shift-closed") {
       $shift=$data["data"]??[];
       if (($shift["status"]??"")!=="closed" || (int)($shift["expected_cash_rial"]??-1)!==625000 ||
@@ -830,6 +838,8 @@ POS_REFUND_CHECK="$(mysql --host=127.0.0.1 --user=root --password=root --skip-co
 if [[ "$POS_REFUND_CHECK" != "1" ]]; then echo "POS refund ledger or inspection hold was not recorded."; exit 1; fi
 request GET "/admin/pos/sales/$POS_SALE_ID" 200 "" "$POS_MANAGER_TOKEN"
 assert_json pos-sale-detail-refunded
+request GET /admin/pos/reports 200 "" "$TOKEN"
+assert_json pos-report-refunds
 
 request POST "/admin/pos/shifts/$POS_SHIFT_ID/close" 200 '{"counted_cash_rial":625000,"note":"تطبیق کامل صندوق"}' "$POS_TOKEN" "$POS_CSRF"
 assert_json pos-shift-closed
