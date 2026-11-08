@@ -385,9 +385,9 @@ assert_json() {
     }
     if ($check === "pos-report-refunds") {
       $report=$data["data"]["in_person"]??[];
-      if ((int)($report["sales_total_rial"]??-1)!==125000 ||
-          (int)($report["refund_count"]??-1)!==1 ||
-          (int)($report["refund_total_rial"]??-1)!==125000 ||
+      if ((int)($report["sales_total_rial"]??-1)!==250000 ||
+          (int)($report["refund_count"]??-1)!==2 ||
+          (int)($report["refund_total_rial"]??-1)!==250000 ||
           (int)($report["net_sales_total_rial"]??-1)!==0) exit(1);
       $cashierGross=0; $cashierRefunds=0; $cashierNet=0;
       foreach (($data["data"]["cashiers"]??[]) as $cashier) {
@@ -395,7 +395,7 @@ assert_json() {
         $cashierRefunds+=(int)($cashier["refund_total_rial"]??-1000000000000);
         $cashierNet+=(int)($cashier["net_sales_total_rial"]??-1000000000000);
       }
-      if ($cashierGross!==125000 || $cashierRefunds!==125000 || $cashierNet!==0) exit(1);
+      if ($cashierGross!==250000 || $cashierRefunds!==250000 || $cashierNet!==0) exit(1);
       exit(0);
     }
     if ($check === "pos-refund-idempotent") {
