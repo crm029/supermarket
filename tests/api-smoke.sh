@@ -849,6 +849,17 @@ request POST "/admin/pos/sales/$POS_SALE_ID/refunds" 200 '{"reason":"مرجوع�
 assert_json pos-refund-idempotent
 POS_REFUND_CHECK="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM pos_refunds r JOIN pos_refund_items i ON i.tenant_id=r.tenant_id AND i.refund_id=r.id WHERE r.tenant_id=1 AND r.id=$POS_REFUND_ID AND r.stock_status='pending_inspection' AND i.stock_status='pending_inspection' AND r.amount_rial=125000")"
 if [[ "$POS_REFUND_CHECK" != "1" ]]; then echo "POS refund ledger or inspection hold was not recorded."; exit 1; fi
+POS_REFUND_ITEM_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM pos_refund_items WHERE tenant_id=1 AND refund_id=$POS_REFUND_ID LIMIT 1")"
+POS_STOCK_BEFORE_INSPECTION="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT on_hand FROM stock_levels WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
+request GET /admin/pos/refund-items/pending-inspection 200 "" "$POS_MANAGER_TOKEN"
+request POST "/admin/pos/refund-items/$POS_REFUND_ITEM_ID/inspection" 403 '{"decision":"restock","inspection_note":"تست دسترسی بدون مجوز بازرسی","batch_number":"CI-UNAUTH-01","expiry_date":"2030-12-31"}' "$POS_TOKEN" "$POS_CSRF"
+POS_RETURN_EXPIRY="$(date -u -d '+365 days' +%F)"
+request POST "/admin/pos/refund-items/$POS_REFUND_ITEM_ID/inspection" 200 '{"decision":"restock","inspection_note":"بسته‌بندی پلمب و سلامت ظاهری تأیید شد","batch_number":"CI-RETURN-'$POS_REFUND_ITEM_ID'","expiry_date":"'$POS_RETURN_EXPIRY'"}' "$POS_MANAGER_TOKEN" "$POS_MANAGER_CSRF"
+request POST "/admin/pos/refund-items/$POS_REFUND_ITEM_ID/inspection" 409 '{"decision":"restock","inspection_note":"درخواست تکراری بازرسی نباید دوباره موجودی بسازد","batch_number":"CI-RETURN-DUP","expiry_date":"'$POS_RETURN_EXPIRY'"}' "$POS_MANAGER_TOKEN" "$POS_MANAGER_CSRF"
+POS_STOCK_AFTER_INSPECTION="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT on_hand FROM stock_levels WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
+POS_INSPECTION_LEDGER="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM pos_refund_inspections pi JOIN pos_refund_items ri ON ri.tenant_id=pi.tenant_id AND ri.id=pi.refund_item_id WHERE pi.tenant_id=1 AND pi.refund_item_id=$POS_REFUND_ITEM_ID AND pi.decision='restock' AND ri.stock_status='restocked'")"
+POS_RETURN_MOVEMENT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM stock_movements WHERE tenant_id=1 AND reference_type='pos_refund_inspection' AND movement_type='return' AND reference_id=(SELECT id FROM pos_refund_inspections WHERE tenant_id=1 AND refund_item_id=$POS_REFUND_ITEM_ID)")"
+if [[ "$POS_STOCK_AFTER_INSPECTION" -ne "$((POS_STOCK_BEFORE_INSPECTION+1))" || "$POS_INSPECTION_LEDGER" != "1" || "$POS_RETURN_MOVEMENT" != "1" ]]; then echo "POS returned-item inspection did not create exactly one auditable stock receipt."; exit 1; fi
 request GET "/admin/pos/sales/$POS_SALE_ID" 200 "" "$POS_MANAGER_TOKEN"
 assert_json pos-sale-detail-refunded
 request GET /admin/pos/reports 200 "" "$TOKEN"
