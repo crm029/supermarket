@@ -404,8 +404,8 @@ assert_json() {
     }
     if ($check === "pos-shift-closed") {
       $shift=$data["data"]??[];
-      if (($shift["status"]??"")!=="closed" || (int)($shift["expected_cash_rial"]??-1)!==625000 ||
-          (int)($shift["counted_cash_rial"]??-1)!==625000 || (int)($shift["cash_variance_rial"]??-1)!==0) exit(1);
+      if (($shift["status"]??"")!=="closed" || (int)($shift["expected_cash_rial"]??-1)!==750000 ||
+          (int)($shift["counted_cash_rial"]??-1)!==750000 || (int)($shift["cash_variance_rial"]??-1)!==0) exit(1);
       exit(0);
     }
     exit(0);
@@ -884,9 +884,9 @@ assert_json pos-sale-detail-refunded
 request GET /admin/pos/reports 200 "" "$TOKEN"
 assert_json pos-report-refunds
 
-request POST "/admin/pos/shifts/$POS_SHIFT_ID/close" 200 '{"counted_cash_rial":625000,"note":"تطبیق کامل صندوق"}' "$POS_TOKEN" "$POS_CSRF"
+request POST "/admin/pos/shifts/$POS_SHIFT_ID/close" 200 '{"counted_cash_rial":750000,"note":"تطبیق کامل صندوق"}' "$POS_TOKEN" "$POS_CSRF"
 assert_json pos-shift-closed
-request POST "/admin/pos/shifts/$POS_SHIFT_ID/close" 409 '{"counted_cash_rial":625000}' "$POS_TOKEN" "$POS_CSRF"
+request POST "/admin/pos/shifts/$POS_SHIFT_ID/close" 409 '{"counted_cash_rial":750000}' "$POS_TOKEN" "$POS_CSRF"
 POS_SALE_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM pos_sales WHERE tenant_id=1 AND id=$POS_SALE_ID AND request_hash IS NOT NULL")"
 POS_MOVEMENT_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM stock_movements WHERE tenant_id=1 AND reference_type='pos_sale' AND reference_id=$POS_SALE_ID AND movement_type='sale' AND quantity=-1")"
 if [[ "$POS_SALE_COUNT" != "1" || "$POS_MOVEMENT_COUNT" != "1" ]]; then echo "POS sale ledger or stock movement was not recorded exactly once."; exit 1; fi
