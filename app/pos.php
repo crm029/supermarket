@@ -191,7 +191,7 @@ function app_pos_management_report(PDO $db,array $tenant): never {
     $refunds=$refundSummary->fetch(PDO::FETCH_ASSOC)?:[];
     $grossSales=(int)($sales['sales_total_rial']??0);
     $refundTotal=(int)($refunds['refund_total_rial']??0);
-    $netSales=max(0,$grossSales-$refundTotal);
+    $netSales=$grossSales-$refundTotal;
     $shifts=$db->prepare(
         "SELECT COUNT(*) shift_count,
                 SUM(CASE WHEN status='open' THEN 1 ELSE 0 END) open_shift_count,
