@@ -852,6 +852,8 @@ if [[ "$POS_REFUND_CHECK" != "1" ]]; then echo "POS refund ledger or inspection 
 POS_REFUND_ITEM_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM pos_refund_items WHERE tenant_id=1 AND refund_id=$POS_REFUND_ID LIMIT 1")"
 POS_STOCK_BEFORE_INSPECTION="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT on_hand FROM stock_levels WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
 request GET /admin/pos/refund-items/pending-inspection 200 "" "$POS_MANAGER_TOKEN"
+POS_EXPIRED_DATE="$(date -u -d '-1 day' +%F)"
+request POST "/admin/pos/refund-items/$POS_REFUND_ITEM_ID/inspection" 422 '{"decision":"restock","inspection_note":"تست جلوگیری از ورود کالای منقضی به موجودی","batch_number":"CI-EXPIRED-01","expiry_date":"'$POS_EXPIRED_DATE'"}' "$POS_MANAGER_TOKEN" "$POS_MANAGER_CSRF"
 request POST "/admin/pos/refund-items/$POS_REFUND_ITEM_ID/inspection" 403 '{"decision":"restock","inspection_note":"تست دسترسی بدون مجوز بازرسی","batch_number":"CI-UNAUTH-01","expiry_date":"2030-12-31"}' "$POS_TOKEN" "$POS_CSRF"
 POS_RETURN_EXPIRY="$(date -u -d '+365 days' +%F)"
 request POST "/admin/pos/refund-items/$POS_REFUND_ITEM_ID/inspection" 200 '{"decision":"restock","inspection_note":"بسته‌بندی پلمب و سلامت ظاهری تأیید شد","batch_number":"CI-RETURN-'$POS_REFUND_ITEM_ID'","expiry_date":"'$POS_RETURN_EXPIRY'"}' "$POS_MANAGER_TOKEN" "$POS_MANAGER_CSRF"
