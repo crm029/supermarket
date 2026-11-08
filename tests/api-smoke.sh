@@ -391,6 +391,10 @@ assert_json() {
           (int)($report["net_sales_total_rial"]??-1)!==0) exit(1);
       exit(0);
     }
+    if ($check === "pos-refund-idempotent") {
+      if (empty($data["data"]["idempotent"]) || (int)($data["data"]["amount_rial"]??0)!==125000) exit(1);
+      exit(0);
+    }
     if ($check === "pos-shift-closed") {
       $shift=$data["data"]??[];
       if (($shift["status"]??"")!=="closed" || (int)($shift["expected_cash_rial"]??-1)!==625000 ||
@@ -834,6 +838,8 @@ POS_REFUND_ID="$(assert_json created-id)"
 request POST "/admin/pos/sales/$POS_SALE_ID/refunds" 200 '{"reason":"مرجوعی کالای بازنشده توسط مشتری","idempotency_key":"ci-pos-refund-00001","items":[{"sale_item_id":'$POS_SALE_ITEM_ID',"quantity":1}]}' "$POS_MANAGER_TOKEN" "$POS_MANAGER_CSRF"
 request POST "/admin/pos/sales/$POS_SALE_ID/refunds" 409 '{"reason":"مرجوعی کالای بازنشده توسط مشتری","idempotency_key":"ci-pos-refund-00002","items":[{"sale_item_id":'$POS_SALE_ITEM_ID',"quantity":1}]}' "$POS_MANAGER_TOKEN" "$POS_MANAGER_CSRF"
 request POST "/admin/pos/shifts/$OWNER_REFUND_SHIFT_ID/close" 200 '{"counted_cash_rial":75000,"note":"تطبیق پس از بازپرداخت"}' "$POS_MANAGER_TOKEN" "$POS_MANAGER_CSRF"
+request POST "/admin/pos/sales/$POS_SALE_ID/refunds" 200 '{"reason":"مرجوعی کالای بازنشده توسط مشتری","idempotency_key":"ci-pos-refund-00001","items":[{"sale_item_id":'$POS_SALE_ITEM_ID',"quantity":1}]}' "$POS_MANAGER_TOKEN" "$POS_MANAGER_CSRF"
+assert_json pos-refund-idempotent
 POS_REFUND_CHECK="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM pos_refunds r JOIN pos_refund_items i ON i.tenant_id=r.tenant_id AND i.refund_id=r.id WHERE r.tenant_id=1 AND r.id=$POS_REFUND_ID AND r.stock_status='pending_inspection' AND i.stock_status='pending_inspection' AND r.amount_rial=125000")"
 if [[ "$POS_REFUND_CHECK" != "1" ]]; then echo "POS refund ledger or inspection hold was not recorded."; exit 1; fi
 request GET "/admin/pos/sales/$POS_SALE_ID" 200 "" "$POS_MANAGER_TOKEN"
