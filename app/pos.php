@@ -183,6 +183,15 @@ function app_pos_management_report(PDO $db,array $tenant): never {
     );
     $summary->execute([$tenantId,$fromUtc,$toUtc]);
     $sales=$summary->fetch(PDO::FETCH_ASSOC)?:[];
+    $refundSummary=$db->prepare(
+        "SELECT COUNT(*) refund_count,COALESCE(SUM(amount_rial),0) refund_total_rial
+         FROM pos_refunds WHERE tenant_id=? AND created_at>=? AND created_at<?"
+    );
+    $refundSummary->execute([$tenantId,$fromUtc,$toUtc]);
+    $refunds=$refundSummary->fetch(PDO::FETCH_ASSOC)?:[];
+    $grossSales=(int)($sales['sales_total_rial']??0);
+    $refundTotal=(int)($refunds['refund_total_rial']??0);
+    $netSales=max(0,$grossSales-$refundTotal);
     $shifts=$db->prepare(
         "SELECT COUNT(*) shift_count,
                 SUM(CASE WHEN status='open' THEN 1 ELSE 0 END) open_shift_count,
@@ -229,7 +238,10 @@ function app_pos_management_report(PDO $db,array $tenant): never {
         'period'=>['from'=>substr($fromKey,0,4).'-'.substr($fromKey,4,2).'-'.substr($fromKey,6,2),'to'=>substr($toKey,0,4).'-'.substr($toKey,4,2).'-'.substr($toKey,6,2),'timezone'=>(string)($tenant['timezone']??'Asia/Tehran')],
         'in_person'=>[
             'sale_count'=>(int)($sales['sale_count']??0),
-            'sales_total_rial'=>(int)($sales['sales_total_rial']??0),
+            'sales_total_rial'=>$grossSales,
+            'refund_count'=>(int)($refunds['refund_count']??0),
+            'refund_total_rial'=>$refundTotal,
+            'net_sales_total_rial'=>$netSales,
             'cash_received_rial'=>(int)($sales['cash_received_rial']??0),
             'change_rial'=>(int)($sales['change_rial']??0),
         ],
