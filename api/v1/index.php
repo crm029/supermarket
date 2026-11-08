@@ -29,6 +29,7 @@ require_once dirname(__DIR__, 2) . '/app/purchasing.php';
 require_once dirname(__DIR__, 2) . '/app/supplier_returns.php';
 require_once dirname(__DIR__, 2) . '/app/stock_batches.php';
 require_once dirname(__DIR__, 2) . '/app/pos.php';
+require_once dirname(__DIR__, 2) . '/app/pos_inspection.php';
 
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
@@ -372,6 +373,19 @@ try {
         app_auth_require_csrf($session);
         app_auth_require_permission($db, $tenant, $session, 'pos.refund.create');
         app_pos_create_refund($db, $tenant, $session, (int)$posRefundMatch[1]);
+    }
+
+    if ($path === '/admin/pos/refund-items/pending-inspection' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'pos.refund.inspect');
+        app_pos_inspection_list($db, $tenant);
+    }
+
+    if (preg_match('#^/admin/pos/refund-items/([1-9][0-9]*)/inspection$#', $path, $posInspectionMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_permission($db, $tenant, $session, 'pos.refund.inspect');
+        app_pos_inspection_decide($db, $tenant, $session, (int)$posInspectionMatch[1]);
     }
 
     if (preg_match('#^/admin/pos/shifts/([1-9][0-9]*)/close$#', $path, $posCloseMatch) && $method === 'POST') {
