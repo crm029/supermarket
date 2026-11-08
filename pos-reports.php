@@ -30,7 +30,7 @@ $tenant = app_tenant();
 <section class="panels">
 <article class="panel"><h2>مقایسه فروش اینترنتی و حضوری</h2><div class="tablewrap"><table><thead><tr><th>کانال</th><th>تعداد</th><th>مبلغ (تومان)</th></tr></thead><tbody id="channels"></tbody></table></div></article>
 <article class="panel"><h2>خلاصه شیفت‌ها</h2><div class="tablewrap"><table><thead><tr><th>کل شیفت</th><th>بسته</th><th>باز</th><th>مغایرت</th><th>خالص مغایرت (تومان)</th></tr></thead><tbody id="shiftSummary"></tbody></table></div></article>
-<article class="panel"><h2>عملکرد صندوق‌داران</h2><div class="tablewrap"><table><thead><tr><th>صندوق‌دار</th><th>شیفت</th><th>فروش</th><th>مبلغ (تومان)</th><th>مغایرت</th></tr></thead><tbody id="cashiers"></tbody></table></div></article>
+<article class="panel"><h2>عملکرد صندوق‌داران</h2><div class="tablewrap"><table><thead><tr><th>صندوق‌دار</th><th>شیفت</th><th>فروش</th><th>فروش ناخالص</th><th>بازپرداخت</th><th>فروش خالص (تومان)</th><th>مغایرت</th></tr></thead><tbody id="cashiers"></tbody></table></div></article>
 <article class="panel"><h2>۱۰ کالای پرفروش حضوری</h2><div class="tablewrap"><table><thead><tr><th>کالا</th><th>کد</th><th>تعداد</th><th>فروش (تومان)</th></tr></thead><tbody id="items"></tbody></table></div></article>
 </section>
 </main>
@@ -46,7 +46,7 @@ const d=payload.data,p=d.in_person,s=d.shifts,o=d.online;
 document.getElementById('posRevenue').textContent=money(p.net_sales_total_rial);document.getElementById('posRefundTotal').textContent=money(p.refund_total_rial);document.getElementById('posCount').textContent=num(p.sale_count);document.getElementById('openShifts').textContent=num(s.open_shift_count);document.getElementById('varianceCount').textContent=num(s.variance_shift_count);
 document.getElementById('channels').innerHTML='<tr><td>حضوری (خالص)</td><td>'+num(p.sale_count)+'</td><td>'+money(p.net_sales_total_rial)+'</td></tr><tr><td>اینترنتی</td><td>'+num(o.order_count)+'</td><td>'+money(o.revenue_rial)+'</td></tr>';
 document.getElementById('shiftSummary').innerHTML='<tr><td>'+num(s.shift_count)+'</td><td>'+num(s.closed_shift_count)+'</td><td>'+num(s.open_shift_count)+'</td><td>'+num(s.variance_shift_count)+'</td><td>'+money(s.net_variance_rial)+'</td></tr>';
-document.getElementById('cashiers').innerHTML=d.cashiers.map(x=>'<tr><td>'+esc(x.full_name||'بدون نام')+'</td><td>'+num(x.shift_count)+'</td><td>'+num(x.sale_count)+'</td><td>'+money(x.sales_total_rial)+'</td><td>'+num(x.variance_shift_count)+'</td></tr>').join('')||'<tr><td colspan="5">داده‌ای برای این بازه وجود ندارد.</td></tr>';
+document.getElementById('cashiers').innerHTML=d.cashiers.map(x=>'<tr><td>'+esc(x.full_name||'بدون نام')+'</td><td>'+num(x.shift_count)+'</td><td>'+num(x.sale_count)+'</td><td>'+money(x.sales_total_rial)+'</td><td>'+num(x.variance_shift_count)+'</td></tr>').join('')||'<tr><td colspan="7">داده‌ای برای این بازه وجود ندارد.</td></tr>';
 document.getElementById('items').innerHTML=d.top_items.map(x=>'<tr><td>'+esc(x.title)+'</td><td>'+esc(x.sku)+'</td><td>'+num(x.quantity_sold)+'</td><td>'+money(x.revenue_rial)+'</td></tr>').join('')||'<tr><td colspan="4">داده‌ای برای این بازه وجود ندارد.</td></tr>';
 status.textContent='گزارش بازه '+d.period.from+' تا '+d.period.to+' · مبالغ به تومان نمایش داده شده‌اند.';
 }catch(e){status.textContent=e.message;}}
