@@ -133,6 +133,16 @@ BEGIN
   IF inspection_status_count <> 1 THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Returned items must retain inspected and rejected states';
   END IF;
+
+  SELECT COUNT(*) INTO inspection_status_count
+  FROM information_schema.columns
+  WHERE table_schema=DATABASE() AND table_name='pos_refunds'
+    AND column_name='stock_status'
+    AND column_type LIKE '%partially_inspected%'
+    AND column_type LIKE '%inspected%';
+  IF inspection_status_count <> 1 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Refund header must track aggregate inspection completion';
+  END IF;
 END//
 DELIMITER ;
 
