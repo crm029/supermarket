@@ -862,9 +862,9 @@ request POST /admin/pos/shifts 201 '{"warehouse_id":1,"opening_float_rial":50000
 POS_CONCURRENT_SHIFT_ID="$(assert_json created-id)"
 REFUND_BODY_A='{"reason":"بازپرداخت هم‌زمان آزمون اول","idempotency_key":"ci-pos-race-refund-01","items":[{"sale_item_id":'$POS_CONCURRENT_ITEM_ID',"quantity":2}]}'
 REFUND_BODY_B='{"reason":"بازپرداخت هم‌زمان آزمون دوم","idempotency_key":"ci-pos-race-refund-02","items":[{"sale_item_id":'$POS_CONCURRENT_ITEM_ID',"quantity":2}]}'
-curl --silent --show-error --output /tmp/pos-refund-race-a.json --write-out "%{http_code}" -X POST -H "Host: localhost" -H "Accept: application/json" -H "Content-Type: application/json" -H "Cookie: sm_session=$POS_MANAGER_TOKEN" -H "X-CSRF-Token: $POS_MANAGER_CSRF" --data "$REFUND_BODY_A" "$BASE_URL/admin/pos/sales/$POS_CONCURRENT_SALE_ID/refunds" >/tmp/pos-refund-race-a.status &
+curl --silent --show-error --max-time 20 --output /tmp/pos-refund-race-a.json --write-out "%{http_code}" -X POST -H "Host: localhost" -H "Accept: application/json" -H "Content-Type: application/json" -H "Cookie: sm_session=$POS_MANAGER_TOKEN" -H "X-CSRF-Token: $POS_MANAGER_CSRF" --data "$REFUND_BODY_A" "$BASE_URL/admin/pos/sales/$POS_CONCURRENT_SALE_ID/refunds" >/tmp/pos-refund-race-a.status || printf "000" >/tmp/pos-refund-race-a.status &
 POS_REFUND_PID_A=$!
-curl --silent --show-error --output /tmp/pos-refund-race-b.json --write-out "%{http_code}" -X POST -H "Host: localhost" -H "Accept: application/json" -H "Content-Type: application/json" -H "Cookie: sm_session=$POS_MANAGER_TOKEN" -H "X-CSRF-Token: $POS_MANAGER_CSRF" --data "$REFUND_BODY_B" "$BASE_URL/admin/pos/sales/$POS_CONCURRENT_SALE_ID/refunds" >/tmp/pos-refund-race-b.status &
+curl --silent --show-error --max-time 20 --output /tmp/pos-refund-race-b.json --write-out "%{http_code}" -X POST -H "Host: localhost" -H "Accept: application/json" -H "Content-Type: application/json" -H "Cookie: sm_session=$POS_MANAGER_TOKEN" -H "X-CSRF-Token: $POS_MANAGER_CSRF" --data "$REFUND_BODY_B" "$BASE_URL/admin/pos/sales/$POS_CONCURRENT_SALE_ID/refunds" >/tmp/pos-refund-race-b.status || printf "000" >/tmp/pos-refund-race-b.status &
 POS_REFUND_PID_B=$!
 wait "$POS_REFUND_PID_A"
 wait "$POS_REFUND_PID_B"
