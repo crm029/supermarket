@@ -181,6 +181,8 @@ jobs:
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_06_pos_refunds.sql
       - name: Apply POS returned-item inspection migration
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_08_pos_return_inspection.sql
+      - name: Apply POS refund inspection status migration
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_08_pos_return_inspection_status.sql
 
       - name: Verify POS cash register and refund schema
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/pos-cash-register.sql
