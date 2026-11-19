@@ -21,7 +21,7 @@ Implemented and covered by repository tests:
 - Tenant-aware product/category SEO, canonical URLs, structured data, paginated category pages, sitemap index/product shards, robots rules and private-source path protection.
 - OTP registration/login foundation, rate limiting, hashed challenges, database-backed sessions, HttpOnly cookies and CSRF protection; Kavenegar Verify Lookup adapter is available when real credentials are configured.
 - Deny-by-default tenant permissions, seller dashboard, staff roles, permission management and audited catalogue operations.
-- Tenant media library, scene/hotspot authoring, multi-warehouse inventory, transfers/adjustments, supplier purchasing and returns, FEFO batch/expiry tracking, low-stock alerts and stock reservation workers.
+- Tenant media library, scene/hotspot authoring, read-only storage reconciliation (orphan/missing-file detection with CI coverage), multi-warehouse inventory, transfers/adjustments, supplier purchasing and returns, FEFO batch/expiry tracking, low-stock alerts and stock reservation workers.
 - Server-validated persistent carts, customer addresses, delivery zones, scheduled pickup, coupons, transactional checkout, order history/cancellation and guarded fulfilment transitions.
 - Picker/courier/pickup-handoff assignments, recipient-confirmed delivery and in-person pickup, customer shipment timeline, operational dashboard KPIs and in-app notifications.
 - ZarinPal v4 adapter with idempotent server-side verification, encrypted platform-owner-only merchant credentials and Sandbox/Real controls.
@@ -33,7 +33,7 @@ Still in progress or requiring real-environment acceptance:
 - Real SMS account/template configuration, live-phone delivery and delivery-report acceptance.
 - Real ZarinPal sandbox/live transactions, settlement reconciliation and bank/gateway refund procedures.
 - Advanced referral fraud controls and merchant reward-policy approval.
-- Real-store photography, final media/CDN delivery and image-performance review.
+- Real-store photography, final media/CDN delivery and image-performance review; schedule `php scripts/reconcile-media.php` daily and alert on exit code 2 to detect storage/database drift.
 - Google Search Console verification, sitemap submission, GA4 event receipt and production Core Web Vitals review.
 - Production hosting, HTTPS, least-privilege database account, secret management, backups, restore drills, monitoring and alerting.
 - Independent staging penetration test, load/concurrency, accessibility, responsive-device and WebGL fallback acceptance.
