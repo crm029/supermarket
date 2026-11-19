@@ -958,6 +958,24 @@ if [[ "$WRITEOFF_STOCK_AFTER" != "$WRITEOFF_STOCK_BEFORE" || "$WRITEOFF_BATCH_RE
   echo "Expired stock write-off did not reconcile the batch, stock balance and movement ledger exactly once."; exit 1
 fi
 
+# Supplier returns must consume the exact received lot, even when that lot is expired.
+request POST /admin/suppliers 201 '{"name":"تأمین‌کننده تست مرجوعی CI","contact_person":"آزمون یکپارچگی"}' "$TOKEN" "$CSRF"
+RETURN_SUPPLIER_ID="$(assert_json created-id)"
+request POST /admin/purchase-orders 201 '{"supplier_id":'$RETURN_SUPPLIER_ID',"items":[{"product_id":'$PRODUCT_ID',"quantity":1,"unit_cost_rial":100000}]}' "$TOKEN" "$CSRF"
+RETURN_PO_ID="$(assert_json created-id)"
+RETURN_PO_ITEM_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM purchase_order_items WHERE tenant_id=1 AND purchase_order_id=$RETURN_PO_ID LIMIT 1")"
+RETURN_EXPIRED_DATE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT DATE_SUB(UTC_DATE(),INTERVAL 30 DAY)")"
+request POST "/admin/purchase-orders/$RETURN_PO_ID/receive" 201 '{"warehouse_id":1,"items":[{"item_id":'$RETURN_PO_ITEM_ID',"quantity":1,"batch_number":"CI-SUPPLIER-EXPIRED-'$RETURN_PO_ID'","expiry_date":"'$RETURN_EXPIRED_DATE'"}]}' "$TOKEN" "$CSRF"
+RETURN_RECEIPT_ITEM_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT pri.id FROM purchase_order_receipt_items pri JOIN purchase_order_receipts por ON por.tenant_id=pri.tenant_id AND por.id=pri.receipt_id WHERE por.tenant_id=1 AND por.purchase_order_id=$RETURN_PO_ID LIMIT 1")"
+RETURN_STOCK_BEFORE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT on_hand FROM stock_levels WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
+request POST /admin/supplier-returns 201 '{"supplier_id":'$RETURN_SUPPLIER_ID',"warehouse_id":1,"reason":"مرجوعی بچ منقضی در آزمون یکپارچگی","items":[{"receipt_item_id":'$RETURN_RECEIPT_ITEM_ID',"quantity":1}]}' "$TOKEN" "$CSRF"
+RETURN_STOCK_AFTER="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT on_hand FROM stock_levels WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
+RETURN_BATCH_REMAINING="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT on_hand FROM stock_batches WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID AND receipt_item_id=$RETURN_RECEIPT_ITEM_ID")"
+RETURN_MOVEMENT_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM stock_movements WHERE tenant_id=1 AND movement_type='supplier_return' AND reference_type='supplier_return' AND quantity=-1")"
+if [[ "$RETURN_STOCK_AFTER" != "$((RETURN_STOCK_BEFORE-1))" || "$RETURN_BATCH_REMAINING" != "0" || "$RETURN_MOVEMENT_COUNT" != "1" ]]; then
+  echo "Expired supplier return did not consume its exact original receipt lot and reconcile the ledger."; exit 1
+fi
+
 # Concurrent negative adjustments must not overdraw free stock or desynchronize lots.
 ADJUST_SOURCE_BEFORE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT on_hand FROM stock_levels WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
 parallel_adjustment() {
