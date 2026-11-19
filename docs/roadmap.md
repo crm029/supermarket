@@ -101,7 +101,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Qualifying-order referral reward: only the referred customer's first verified paid order; tenant-scoped attribution, self-referral rejection and idempotent wallet credit. Advanced fraud scoring remains future work.
 
 ## Phase 6 — SaaS launch
-- [x] Platform plan catalog, configurable product/staff/media quotas, tenant subscriptions, 1/3/12-month invoices, renewal invoices, partial/manual receipt ledger, idempotency, tenant-safe foreign keys and platform audit events (MySQL/API CI coverage).\n- [ ] Add monthly order/storage-byte quotas and usage metering, automated recurring collection, payment reminders, dunning/grace-period enforcement, self-service plan changes and platform finance exports.
+- [x] Platform plan catalog, configurable product/staff/media quotas, tenant subscriptions, 1/3/12-month invoices, scheduled renewal invoices, grace-period past-due state, partial/manual receipt ledger, idempotency, tenant-safe foreign keys and platform audit events (MySQL/API CI coverage).\n- [ ] Add monthly order/storage-byte quotas and usage metering, automated recurring collection, payment reminders, self-service plan changes and platform finance exports.
 - [x] Custom-domain ownership verification and tenant provisioning workflow.
 - [ ] Production DNS/HTTPS deployment, backups, monitoring and disaster recovery.
 - [x] Source-level security review and automated PHP/JavaScript/MySQL/API/tenant-isolation checks.
