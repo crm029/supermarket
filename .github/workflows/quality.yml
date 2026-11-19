@@ -232,7 +232,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/supermarket-media
-          php -S 127.0.0.1:8099 tests/php-router.php >/tmp/supermarket-api.log 2>&1 &
+          PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:8099 tests/php-router.php >/tmp/supermarket-api.log 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true' EXIT
           bash tests/api-smoke.sh
