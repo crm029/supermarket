@@ -162,6 +162,15 @@ try{
     $reminderCandidates=$db->query(
         "SELECT i.id,i.tenant_id,i.due_at FROM platform_invoices i
          WHERE i.status='issued' AND i.due_at<=DATE_ADD(UTC_TIMESTAMP(),INTERVAL {$reminderDays} DAY)
+           AND (
+             (i.due_at>=UTC_TIMESTAMP() AND NOT EXISTS(
+               SELECT 1 FROM notifications n WHERE n.tenant_id=i.tenant_id
+                 AND n.event_key=CONCAT('platform-invoice-due-',i.id)))
+             OR
+             (i.due_at<UTC_TIMESTAMP() AND NOT EXISTS(
+               SELECT 1 FROM notifications n WHERE n.tenant_id=i.tenant_id
+                 AND n.event_key=CONCAT('platform-invoice-overdue-',i.id,'-',DATE_FORMAT(UTC_DATE(),'%x-%v'))))
+           )
          ORDER BY i.due_at,i.id LIMIT {$batchSize}"
     )->fetchAll(PDO::FETCH_ASSOC);
     $upcomingReminders=0;
@@ -221,7 +230,12 @@ try{
         "SELECT EXISTS(SELECT 1 FROM platform_invoices i WHERE i.status='issued'
           AND i.due_at<=DATE_ADD(UTC_TIMESTAMP(),INTERVAL {$reminderDays} DAY)
           AND i.amount_rial>COALESCE((SELECT SUM(p.amount_rial) FROM platform_invoice_payments p
-            WHERE p.tenant_id=i.tenant_id AND p.invoice_id=i.id),0) LIMIT 1)"
+            WHERE p.tenant_id=i.tenant_id AND p.invoice_id=i.id),0)
+          AND (
+            (i.due_at>=UTC_TIMESTAMP() AND NOT EXISTS(SELECT 1 FROM notifications n WHERE n.tenant_id=i.tenant_id AND n.event_key=CONCAT('platform-invoice-due-',i.id)))
+            OR
+            (i.due_at<UTC_TIMESTAMP() AND NOT EXISTS(SELECT 1 FROM notifications n WHERE n.tenant_id=i.tenant_id AND n.event_key=CONCAT('platform-invoice-overdue-',i.id,'-',DATE_FORMAT(UTC_DATE(),'%x-%v'))))
+          ) LIMIT 1)"
     )->fetchColumn();
     $moreOverdue=$db->query(
         "SELECT EXISTS(SELECT 1 FROM tenant_subscriptions
