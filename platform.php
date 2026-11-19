@@ -91,7 +91,7 @@ declare(strict_types=1);
         <div class="platform-form-grid">
           <label>کد انگلیسی پلن<input id="platformPlanCode" required maxlength="40" pattern="[a-z0-9][a-z0-9_-]{1,39}" placeholder="basic"></label>
           <label>نام پلن<input id="platformPlanName" required maxlength="120" placeholder="پایه"></label>
-          <label>قیمت ماهانه (تومان)<input id="platformPlanPrice" type="number" min="0" max="100000000000" step="1" required></label>
+          <label>قیمت ماهانه (تومان)<input id="platformPlanPrice" type="number" min="1" max="100000000000" step="1" required></label>
           <label>توضیحات<input id="platformPlanDescription" maxlength="500" placeholder="مناسب فروشگاه‌های کوچک"></label>
           <label>محدودیت‌های پلن (JSON)<textarea id="platformPlanLimits" rows="3" dir="ltr">{"products":100,"staff":5,"media_assets":100}</textarea></label>
         </div>
