@@ -1,0 +1,37 @@
+*{box-sizing:border-box}
+body{margin:0;background:#eef2ee;color:#17231d;font-family:Tahoma,Vazirmatn,sans-serif}
+.receipt-toolbar{display:flex;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap;padding:14px;background:#10251d;color:#fff}
+.receipt-toolbar a{color:#e8d3a4;text-decoration:none}
+.receipt-toolbar label{display:flex;align-items:center;gap:7px;font-size:13px}
+.receipt-toolbar select,.receipt-toolbar button{font:inherit;border:0;border-radius:8px;padding:9px 12px}
+.receipt-toolbar button{background:#e5c98a;color:#17231d;font-weight:700;cursor:pointer}
+.receipt-toolbar button:disabled{opacity:.5;cursor:wait}
+.receipt-page{padding:24px 12px}
+#receiptMessage{text-align:center;color:#53645a}
+.receipt-paper{width:80mm;max-width:100%;margin:0 auto;padding:5mm;background:#fff;color:#111;box-shadow:0 4px 22px #00000012;font-size:12px;line-height:1.65}
+.receipt-58{width:58mm;padding:3mm;font-size:10px}
+.receipt-brand{text-align:center;border-bottom:1px dashed #555;padding-bottom:10px;margin-bottom:10px}
+.receipt-brand h1{font-size:18px;margin:0 0 4px}
+.receipt-brand p{margin:0;color:#555}
+.receipt-meta{display:grid;gap:3px;margin-bottom:10px}
+.receipt-meta div{display:flex;justify-content:space-between;gap:8px}
+.receipt-items{width:100%;border-collapse:collapse}
+.receipt-items th,.receipt-items td{padding:5px 1px;border-bottom:1px dashed #bbb;text-align:right;vertical-align:top}
+.receipt-items th:last-child,.receipt-items td:last-child{text-align:left;white-space:nowrap}
+.receipt-item-name{font-weight:700}
+.receipt-item-sub{display:block;color:#555;font-size:.9em}
+.receipt-totals{margin-top:10px;padding-top:8px;border-top:1px dashed #555;display:grid;gap:5px}
+.receipt-totals div{display:flex;justify-content:space-between;gap:8px}
+.receipt-grand{font-weight:800;font-size:1.15em}
+.receipt-note{margin-top:10px;padding-top:8px;border-top:1px dashed #aaa;overflow-wrap:anywhere}
+.receipt-footer{text-align:center;margin-top:15px;padding-top:9px;border-top:1px dashed #555}
+.receipt-footer p{margin:2px}
+.receipt-refunds{margin-top:10px;padding-top:8px;border-top:1px dashed #555}
+@media print{
+  @page{size:auto;margin:3mm}
+  body{background:#fff}
+  .receipt-toolbar,#receiptMessage{display:none!important}
+  .receipt-page{padding:0}
+  .receipt-paper{width:80mm;max-width:none;margin:0;padding:2mm;box-shadow:none}
+  .receipt-paper.receipt-58{width:58mm;padding:2mm}
+}
