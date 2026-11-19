@@ -12,6 +12,7 @@ if (PHP_SAPI !== 'cli') {
 }
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
+require_once dirname(__DIR__) . '/app/stock_batches.php';
 
 $db = app_db();
 $batchSize = 100;
@@ -71,6 +72,14 @@ try {
             if ($release->rowCount() !== 1) {
                 throw new RuntimeException('Reservation stock counter is inconsistent; refusing partial release.');
             }
+            // Keep the lot-level reservation counter and allocation ledger in sync
+            // with the aggregate stock_levels counter within this same transaction.
+            app_stock_batch_release_reservation(
+                $db,
+                (int)$candidate['tenant_id'],
+                (int)$row['id'],
+                'expired'
+            );
             $expire->execute([$row['id']]);
             if ($expire->rowCount() !== 1) {
                 throw new RuntimeException('Reservation state changed while processing expiry.');
