@@ -39,9 +39,9 @@ function app_tenant_limit_guard(PDO $db, array $tenant, string $key, int $increm
              FROM users u
              JOIN user_roles ur ON ur.tenant_id=u.tenant_id AND ur.user_id=u.id
              JOIN roles r ON r.role_scope_id=ur.role_scope_id AND r.id=ur.role_id
-             WHERE u.tenant_id=? AND u.status='active' AND r.role_key<>'customer'"
+             WHERE u.tenant_id=? AND r.tenant_id=? AND u.status='active' AND r.role_key<>'customer'"
         );
-        $usage->execute([$tenantId]);
+        $usage->execute([$tenantId,$tenantId]);
     }elseif($key==='media_assets'){
         $usage=$db->prepare('SELECT COUNT(*) FROM media_assets WHERE tenant_id=?');
         $usage->execute([$tenantId]);
