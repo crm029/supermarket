@@ -72,11 +72,42 @@
       await loadAudit();
     }catch(error){box.innerHTML='<div class="platform-empty">'+escapeText(error.message)+'</div>';}
   }
+
+  const moneyToman=value=>new Intl.NumberFormat("fa-IR").format(Math.floor(Number(value||0)/10));
+  function billingStatus(value){return ({pending_payment:"در انتظار پرداخت",active:"فعال",past_due:"سررسید گذشته",cancelled:"لغوشده",expired:"منقضی"})[value]||value;}
+  async function loadBilling(){
+    const section=$("platformBillingSection");
+    try{
+      const result=await api("platform/billing");
+      const data=result.data||{};
+      section.hidden=false;
+      const totals=data.totals||{};
+      $("platformInvoiceCount").textContent=new Intl.NumberFormat("fa-IR").format(totals.invoice_count||0);
+      $("platformCollected").textContent=moneyToman(totals.collected_rial);
+      $("platformOutstanding").textContent=moneyToman(totals.outstanding_rial);
+      const plans=data.plans||[];
+      $("platformPlanList").innerHTML=plans.length?plans.map(p=>'<article class="platform-tenant"><div class="platform-tenant-head"><div><strong>'+escapeText(p.name)+' · '+escapeText(p.code)+'</strong><p>'+moneyToman(p.monthly_price_rial)+' تومان در ماه</p><small>'+escapeText(p.description||"")+'</small></div><span class="platform-status '+(p.is_active?"":"suspended")+'">'+(p.is_active?"فعال":"غیرفعال")+'</span></div><button class="secondary-button" data-toggle-plan="'+Number(p.id)+'" data-active="'+(p.is_active?"1":"0")+'">'+(p.is_active?"غیرفعال‌کردن":"فعال‌کردن")+'</button></article>').join(""):'<div class="platform-empty">هنوز پلنی تعریف نشده است.</div>';
+      const activePlans=plans.filter(p=>p.is_active);
+      $("platformBillingTenantList").innerHTML=(data.tenants||[]).map(t=>{
+        const active=["pending_payment","active","past_due"].includes(t.subscription_status);
+        const sub=t.subscription_id?'<p>اشتراک: '+escapeText(t.plan_name||"پلن")+' · '+escapeText(billingStatus(t.subscription_status))+' · '+Number(t.billing_period_months||1)+' ماه</p><small>پایان دوره: '+escapeText(t.current_period_end||"پس از پرداخت تعیین می‌شود")+'</small>':"<p>اشتراکی ثبت نشده است.</p>";
+        const select=activePlans.length?'<div class="platform-form-grid"><label>پلن<select data-plan-select="'+Number(t.id)+'">'+activePlans.map(p=>'<option value="'+Number(p.id)+'">'+escapeText(p.name)+' · '+moneyToman(p.monthly_price_rial)+' تومان/ماه</option>').join("")+'</select></label><label>دوره<select data-month-select="'+Number(t.id)+'"><option value="1">۱ ماه</option><option value="3">۳ ماه</option><option value="12">۱۲ ماه</option></select></label></div><button class="primary-button" data-assign-subscription="'+Number(t.id)+'" '+(active?"disabled":"")+'>صدور اشتراک و فاکتور</button>':"";
+        const renew=t.subscription_id&&["active","past_due"].includes(t.subscription_status)?'<button class="secondary-button" data-renew-subscription="'+Number(t.subscription_id)+'">صدور فاکتور تمدید</button>':"";
+        return '<article class="platform-tenant"><div class="platform-tenant-head"><div><strong>'+escapeText(t.name)+'</strong><small>'+escapeText(t.slug)+'</small>'+sub+'</div><span class="platform-status">'+escapeText(t.status)+'</span></div>'+select+renew+'</article>';
+      }).join("")||'<div class="platform-empty">فروشگاهی ثبت نشده است.</div>';
+      const invoices=data.invoices||[];
+      $("platformInvoiceList").innerHTML=invoices.length?invoices.map(i=>{
+        const due=Math.max(0,Number(i.amount_rial)-Number(i.paid_rial));
+        const pay=i.status==="issued"&&due>0?'<button class="primary-button" data-record-payment="'+Number(i.id)+'" data-due="'+due+'">ثبت دریافت وجه</button>':"";
+        return '<article class="platform-tenant"><div class="platform-tenant-head"><div><strong>'+escapeText(i.invoice_number)+' · '+escapeText(i.tenant_name)+'</strong><p>مبلغ: '+moneyToman(i.amount_rial)+' تومان · دریافت: '+moneyToman(i.paid_rial)+' تومان</p><small>'+escapeText(i.period_start)+' تا '+escapeText(i.period_end)+' · سررسید '+escapeText(i.due_at)+'</small></div><span class="platform-status '+(i.status==="paid"?"":"pending")+'">'+(i.status==="paid"?"پرداخت‌شده":i.status==="issued"?"باز":"باطل")+'</span></div>'+pay+'</article>';
+      }).join(""):'<div class="platform-empty">هنوز فاکتوری صادر نشده است.</div>';
+    }catch(error){section.hidden=true;if(error.message!=="برای مدیریت پلتفرم دسترسی کافی ندارید.")message("platformBillingMessage",error.message,true);}
+  }
   async function init(){
     try{
       const me=await api("me");currentUser=me.data;
       const csrf=await api("auth/csrf");csrfToken=csrf.data.csrf_token;
-      showDashboard();await Promise.all([loadTenants(),loadPaymentSettings()]);
+      showDashboard();await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling()]);
     }catch(error){
       showLogin();
       if(error.message!=="برای ادامه وارد حساب کاربری شوید.")message("platformLoginMessage",error.message,true);
