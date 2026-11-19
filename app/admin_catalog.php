@@ -161,6 +161,7 @@ function app_admin_product_create(PDO $db, array $tenant, array $session): never
     $data = app_admin_product_payload(app_auth_request_body());
     $db->beginTransaction();
     try {
+        app_tenant_limit_guard($db,$tenant,'products',!empty($data['is_active'])?1:0);
         app_admin_validate_product_category($db, (int)$tenant['id'], $data);
         $stmt = $db->prepare(
             "INSERT INTO products
@@ -367,6 +368,7 @@ function app_admin_product_variant_create(PDO $db,array $tenant,array $session,i
     try{
         $parent=app_admin_variant_parent($db,$tenant,$parentId,true);
         if(!(bool)$parent['is_active']){$db->rollBack();app_json(['error'=>'ابتدا محصول مادر را فعال کنید.'],409);}
+        app_tenant_limit_guard($db,$tenant,'products',!empty($data['is_active'])?1:0);
         $stmt=$db->prepare(
             "INSERT INTO products
              (tenant_id,category_id,sku,barcode,title,brand,description,unit_label,price_rial,compare_at_rial,
