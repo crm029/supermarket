@@ -249,7 +249,7 @@
       message("platformBillingMessage",result.message);await loadBilling();
     }catch(error){message("platformBillingMessage",error.message,true);}
   });
-  $("platformReload").addEventListener("click",loadTenants);
+  $("platformReload").addEventListener("click",async()=>{await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling()]);});
   $("platformLogout").addEventListener("click",async()=>{
     try{await api("auth/logout",{method:"POST",body:"{}",csrf:true});}catch(_){}
     currentUser=null;csrfToken="";showLogin();
