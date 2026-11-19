@@ -54,3 +54,12 @@ The application code includes customer registration, catalogue management, inven
 - [ ] Run a full end-to-end acceptance test on desktop and mobile using the real domain, inventory, SMS and payment credentials.
 
 Do not enable live checkout until all relevant boxes have been completed. No merchant credentials, live hosting, store photographs or customer contact details are included in this repository.
+
+## SaaS subscription billing
+
+- [ ] Apply `2026_11_19_platform_subscriptions.sql` after the platform payment settings and permissions migrations.
+- [ ] Grant `platform.billing.manage` only to trusted platform finance administrators; the migration grants it to the existing global platform_admin role.
+- [ ] Configure and review plan prices/limits in toman; the database stores all monetary amounts as integer rial.
+- [ ] Record bank/cash receipts only after checking the actual bank statement or receipt. Enter the bank reference; partial payments remain outstanding until the invoice is fully settled.
+- [ ] Review open invoices and issue renewal invoices before each period ends. The current ledger does not automatically debit merchants or suspend overdue stores.
+- [ ] Configure a separate provider contract and verified webhook flow before enabling automated SaaS subscription payments.
