@@ -555,7 +555,7 @@ function app_platform_invoice_record_payment(PDO $db,array $actorTenant,array $s
                     "SELECT requested_plan_id,requested_billing_period_months,approved_price_monthly_rial,status
                      FROM platform_subscription_change_requests WHERE tenant_id=? AND id=? FOR UPDATE"
                 );
-                $change->execute([(int)$invoice['tenant_id'],(int)$invoice['subscription_change_request_id']);
+                $change->execute([(int)$invoice['tenant_id'],(int)$invoice['subscription_change_request_id']]);
                 $changeData=$change->fetch(PDO::FETCH_ASSOC);
                 if(!$changeData||$changeData['status']!=='invoiced'||empty($changeData['approved_price_monthly_rial'])){
                     throw new RuntimeException('Paid plan-change invoice has no valid approved request.');
