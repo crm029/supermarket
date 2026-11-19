@@ -410,6 +410,10 @@ assert_json() {
       if (empty($data["data"]["idempotent"]) || (int)($data["data"]["amount_rial"]??0)!==125000) exit(1);
       exit(0);
     }
+    if ($check === "subscription-cancelled") {
+      if(($data["data"]["subscription"]["status"]??"")!=="cancelled") exit(1);
+      exit(0);
+    }
     if ($check === "subscription-usage") {
       $usage=$data["data"]["usage"]??[];
       $limits=$data["data"]["subscription"]["limits"]??[];
@@ -578,6 +582,8 @@ request POST /admin/subscription/resume 409 '{}' "$TOKEN" "$CSRF"
 
 # A cancelled subscription must not silently fall back to the legacy unlimited quota path.
 mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "UPDATE tenant_subscriptions SET status='cancelled',cancel_at_period_end=0 WHERE tenant_id=1 AND id=$MAIN_SUBSCRIPTION_ID"
+request GET /admin/subscription 200 "" "$TOKEN"
+assert_json "subscription-cancelled"
 request POST /admin/products 403 '{"sku":"CANCELLED-SUB-001","title":"محصول پس از لغو اشتراک","price_rial":1000,"is_active":true}' "$TOKEN" "$CSRF"
 mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "UPDATE tenant_subscriptions SET status='active' WHERE tenant_id=1 AND id=$MAIN_SUBSCRIPTION_ID"
 request POST "/platform/tenants/$NEW_TENANT_ID/suspend" 200 '{"reason":"تعلیق آزمایشی برای تست گردش مدیریت پلتفرم"}' "$TOKEN" "$CSRF"
