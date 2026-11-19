@@ -792,6 +792,9 @@ php bin/expire-reservations.php
 EXPIRED_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM orders WHERE tenant_id=1 AND id=$EXPIRING_ORDER_ID")"
 RESERVED="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT reserved FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID LIMIT 1")"
 if [[ "$EXPIRED_STATUS" != "cancelled" || "$RESERVED" != "0" ]]; then echo "Reservation expiry worker failed to cancel order and release stock"; exit 1; fi
+EXPIRED_BATCH_RESERVED="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COALESCE(SUM(b.reserved),0) FROM stock_batches b JOIN stock_reservations r ON r.tenant_id=b.tenant_id AND r.warehouse_id=b.warehouse_id AND r.product_id=b.product_id WHERE r.tenant_id=1 AND r.id IN (SELECT id FROM stock_reservations WHERE tenant_id=1 AND order_id=$EXPIRING_ORDER_ID)")"
+EXPIRED_ALLOCATION_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM stock_reservation_batches rb JOIN stock_reservations r ON r.tenant_id=rb.tenant_id AND r.id=rb.reservation_id WHERE r.tenant_id=1 AND r.order_id=$EXPIRING_ORDER_ID AND rb.status='active'")"
+if [[ "$EXPIRED_BATCH_RESERVED" != "0" || "$EXPIRED_ALLOCATION_COUNT" != "0" ]]; then echo "Reservation expiry worker did not release batch-level allocations"; exit 1; fi
 
 request POST /admin/stock/receipts 200 '{"warehouse_id":1,"product_id":'$PRODUCT_ID',"quantity":3,"reason":"رسید تست"}' "$TOKEN" "$CSRF"
 request POST /admin/stock/adjustments 200 '{"warehouse_id":1,"product_id":'$PRODUCT_ID',"quantity":-1,"reason":"اصلاح تست"}' "$TOKEN" "$CSRF"
