@@ -73,6 +73,18 @@ try {
         app_tenant_subscription_overview($db, $tenant, $session);
     }
 
+    if ($path === '/admin/subscription/cancel' && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_tenant_subscription_cancel($db, $tenant, $session);
+    }
+
+    if ($path === '/admin/subscription/resume' && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_tenant_subscription_resume($db, $tenant, $session);
+    }
+
     if ($path === '/admin/subscription/change-requests' && $method === 'POST') {
         $session = app_auth_require($db, $tenant);
         app_auth_require_csrf($session);
