@@ -8,6 +8,39 @@ declare(strict_types=1);
 define('APP_ROOT', dirname(__DIR__));
 date_default_timezone_set('Asia/Tehran');
 
+/**
+ * Load a simple KEY=VALUE .env file without overriding process-level settings.
+ * Values are literal; shell interpolation and command execution are never performed.
+ */
+function app_load_env_file(?string $path = null): void {
+    $path ??= APP_ROOT . '/.env';
+    if (!is_file($path) || !is_readable($path) || is_link($path)) return;
+
+    $lines = file($path, FILE_IGNORE_NEW_LINES);
+    if (!is_array($lines)) return;
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#') || !str_contains($line, '=')) continue;
+        [$key, $value] = explode('=', $line, 2);
+        $key = trim($key);
+        if (!preg_match('/^[A-Z_][A-Z0-9_]*$/', $key)) continue;
+        if (array_key_exists($key, $_ENV) || array_key_exists($key, $_SERVER) || getenv($key) !== false) continue;
+
+        $value = trim($value);
+        if (strlen($value) >= 2) {
+            $first = $value[0];
+            $last = $value[strlen($value) - 1];
+            if (($first === '"' && $last === '"') || ($first === "'" && $last === "'")) {
+                $value = substr($value, 1, -1);
+            }
+        }
+        $_ENV[$key] = $value;
+        putenv($key . '=' . $value);
+    }
+}
+
+app_load_env_file();
+
 function app_env(string $key, ?string $default = null): ?string {
     $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
     return ($value === false || $value === null || $value === '') ? $default : (string)$value;
