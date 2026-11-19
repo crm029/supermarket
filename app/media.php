@@ -213,6 +213,7 @@ function app_admin_media_delete(PDO $db, array $tenant, array $session, int $med
 }
 
 function app_media_ensure_child_directory(string $root, string $child): ?string {
+    if (is_link($root) || (rtrim($root, "/\\") !== '' && is_link(rtrim($root, "/\\")))) return null;
     $rootReal = realpath($root);
     if ($rootReal === false || !is_dir($rootReal) || $child === '' ||
         $child === '.' || $child === '..' || basename($child) !== $child ||
