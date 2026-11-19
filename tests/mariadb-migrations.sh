@@ -10,6 +10,7 @@ migrations=(
   2026_11_05_permissions.sql
   2026_11_06_platform_payment_settings.sql
   2026_11_19_platform_subscriptions.sql
+  2026_11_19_subscription_plan_changes.sql
   2026_11_06_order_assignments.sql
   2026_11_06_pickup_handoff.sql
   2026_11_06_notifications.sql
