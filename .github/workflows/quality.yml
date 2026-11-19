@@ -244,6 +244,32 @@ jobs:
           php scripts/reconcile-media.php >/tmp/media-reconcile-clean.json
           php -r '$r=json_decode(file_get_contents("/tmp/media-reconcile-clean.json"),true,512,JSON_THROW_ON_ERROR); if (($r["status"]??"")!=="ok" || ($r["counts"]["files_scanned"]??-1)!==0) { fwrite(STDERR,"Clean media reconciliation did not return an empty healthy report\n"); exit(1); }'
 
+      - name: Verify bounded notification retention
+        env:
+          APP_ENV: testing
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: supermarket360
+          DB_USERNAME: root
+          DB_PASSWORD: root
+          NOTIFICATION_READ_RETENTION_DAYS: "180"
+        run: |
+          set -euo pipefail
+          mysql --host=127.0.0.1 --user=root --password=root supermarket360 <<'SQL'
+          SET @user_one=(SELECT id FROM users WHERE tenant_id=1 AND mobile='09120000001' LIMIT 1);
+          SET @user_two=(SELECT id FROM users WHERE tenant_id=2 AND mobile='09120000002' LIMIT 1);
+          INSERT INTO notifications (tenant_id,user_id,event_key,notification_type,title,body,created_at,read_at)
+          VALUES
+            (1,@user_one,'ci-old-read-one','system','Old read','Retention fixture',DATE_SUB(UTC_TIMESTAMP(),INTERVAL 200 DAY),DATE_SUB(UTC_TIMESTAMP(),INTERVAL 190 DAY)),
+            (1,@user_one,'ci-old-unread','system','Old unread','Must remain',DATE_SUB(UTC_TIMESTAMP(),INTERVAL 200 DAY),NULL),
+            (1,@user_one,'ci-recent-read','system','Recent read','Must remain',DATE_SUB(UTC_TIMESTAMP(),INTERVAL 5 DAY),DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 DAY)),
+            (2,@user_two,'ci-old-read-two','system','Other tenant old read','Tenant scoped row',DATE_SUB(UTC_TIMESTAMP(),INTERVAL 200 DAY),DATE_SUB(UTC_TIMESTAMP(),INTERVAL 190 DAY));
+          SQL
+          php bin/prune-notifications.php >/tmp/notification-prune.json
+          php -r '$r=json_decode(file_get_contents("/tmp/notification-prune.json"),true,512,JSON_THROW_ON_ERROR); if (($r["status"]??"")!=="ok" || ($r["deleted"]??-1)!==2 || ($r["retention_days"]??-1)!==180) { fwrite(STDERR,"Unexpected notification retention report\\n"); exit(1); }'
+          mysql --host=127.0.0.1 --user=root --password=root supermarket360 -N -e "SELECT COUNT(*) FROM notifications WHERE event_key IN ('ci-old-read-one','ci-old-read-two')" | grep -qx '0'
+          mysql --host=127.0.0.1 --user=root --password=root supermarket360 -N -e "SELECT COUNT(*) FROM notifications WHERE event_key IN ('ci-old-unread','ci-recent-read')" | grep -qx '2'
+          mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "DELETE FROM notifications WHERE event_key LIKE 'ci-%'"
+
       - name: Create public API smoke fixtures
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/api-smoke-fixtures.sql
 
