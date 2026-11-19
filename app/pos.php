@@ -140,9 +140,10 @@ function app_pos_sales_list(PDO $db,array $tenant,array $session): never {
 
 function app_pos_sale_detail(PDO $db,array $tenant,array $session,int $saleId): never {
     $saleQuery=$db->prepare(
-        'SELECT id,sale_number,shift_id,cashier_user_id,subtotal_rial,discount_rial,total_rial,
-                cash_received_rial,change_rial,note,created_at
-         FROM pos_sales WHERE tenant_id=? AND id=? LIMIT 1'
+        'SELECT ps.id,ps.sale_number,ps.shift_id,ps.cashier_user_id,ps.subtotal_rial,ps.discount_rial,ps.total_rial,
+                ps.cash_received_rial,ps.change_rial,ps.note,ps.created_at,u.full_name AS cashier_name
+         FROM pos_sales ps JOIN users u ON u.tenant_id=ps.tenant_id AND u.id=ps.cashier_user_id
+         WHERE ps.tenant_id=? AND ps.id=? LIMIT 1'
     );
     $saleQuery->execute([(int)$tenant['id'],$saleId]);
     $sale=$saleQuery->fetch(PDO::FETCH_ASSOC);
