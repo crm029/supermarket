@@ -103,11 +103,53 @@
       }).join(""):'<div class="platform-empty">هنوز فاکتوری صادر نشده است.</div>';
     }catch(error){section.hidden=true;if(error.message!=="برای مدیریت پلتفرم دسترسی کافی ندارید.")message("platformBillingMessage",error.message,true);}
   }
+
+  function usageNumber(value){return new Intl.NumberFormat("fa-IR").format(Number(value||0));}
+  function usageBytes(value){
+    const n=Number(value||0);
+    if(n<1024)return usageNumber(n)+" بایت";
+    if(n<1024*1024)return (n/1024).toLocaleString("fa-IR",{maximumFractionDigits:1})+" کیلوبایت";
+    if(n<1024*1024*1024)return (n/1024/1024).toLocaleString("fa-IR",{maximumFractionDigits:1})+" مگابایت";
+    return (n/1024/1024/1024).toLocaleString("fa-IR",{maximumFractionDigits:2})+" گیگابایت";
+  }
+  async function loadUsage(){
+    const list=$("platformUsageList"),totalsBox=$("platformUsageTotals");
+    if(!list||!totalsBox)return;
+    list.innerHTML="<p>در حال محاسبه مصرف...</p>";
+    try{
+      const result=await api("platform/usage");
+      const data=result.data||{},summary=data.totals||{},tenants=data.tenants||[];
+      $("platformUsagePeriod").textContent="ماه جاری UTC · "+escapeText(data.month_utc||"");
+      const totalCards=[
+        ["فروشگاه‌ها",summary.tenants],["اشتراک فعال",summary.active_subscriptions],
+        ["اشتراک سررسیدگذشته",summary.past_due_subscriptions],["سفارش ماهانه",summary.monthly_orders],
+        ["محصول فعال",summary.products],["حجم رسانه",usageBytes(summary.storage_bytes)]
+      ];
+      totalsBox.innerHTML=totalCards.map(([label,value])=>'<article><span>'+escapeText(label)+'</span><strong>'+escapeText(typeof value==="number"?usageNumber(value):value)+'</strong></article>').join("");
+      const metrics=[
+        ["products","محصول فعال",usageNumber],["staff","کارمند",usageNumber],
+        ["media_assets","فایل رسانه",usageNumber],["storage_bytes","حجم رسانه",usageBytes],
+        ["monthly_orders","سفارش این ماه",usageNumber]
+      ];
+      list.innerHTML=tenants.map(t=>{
+        const usage=t.usage||{},limits=t.limits||{};
+        const rows=metrics.map(([key,label,format])=>{
+          const current=Number(usage[key]||0),raw=limits[key];
+          const hasLimit=raw!==undefined&&raw!==null&&Number.isFinite(Number(raw))&&Number(raw)>=0;
+          const cap=hasLimit?Number(raw):null;
+          const pct=hasLimit&&cap>0?Math.min(100,Math.round(current/cap*100)):hasLimit?100:0;
+          const detail=hasLimit?format(current)+" / "+format(cap):format(current)+" / بدون سقف";
+          return '<div class="platform-usage-metric"><div><span>'+escapeText(label)+'</span><strong>'+escapeText(detail)+'</strong></div>'+(hasLimit?'<div class="platform-usage-track"><i style="width:'+pct+'%"></i></div>':'<div class="platform-usage-unlimited">بدون محدودیت تعریف‌شده</div>')+'</div>';
+        }).join("");
+        return '<article class="platform-usage-tenant"><div class="platform-tenant-head"><div><strong>'+escapeText(t.name)+'</strong><small>'+escapeText(t.plan_name||"بدون پلن")+' · '+escapeText(t.subscription_status||"بدون اشتراک")+'</small></div><span class="platform-status">'+escapeText(t.tenant_status||"")+'</span></div><div class="platform-usage-metrics">'+rows+'</div></article>';
+      }).join("")||'<div class="platform-empty">فروشگاهی برای گزارش مصرف وجود ندارد.</div>';
+    }catch(error){list.innerHTML='<div class="platform-empty">'+escapeText(error.message)+'</div>';totalsBox.innerHTML="";}
+  }
   async function init(){
     try{
       const me=await api("me");currentUser=me.data;
       const csrf=await api("auth/csrf");csrfToken=csrf.data.csrf_token;
-      showDashboard();await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling()]);
+      showDashboard();await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling(),loadUsage()]);
     }catch(error){
       showLogin();
       if(error.message!=="برای ادامه وارد حساب کاربری شوید.")message("platformLoginMessage",error.message,true);
