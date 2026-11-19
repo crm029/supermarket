@@ -94,6 +94,12 @@ function app_media_cleanup_process_one(PDO $db, array $item): bool {
     $queueId = (int)$item['id'];
     $tenantId = (int)$item['tenant_id'];
     $key = (string)$item['storage_key'];
+    $registered = $db->prepare('SELECT id FROM media_assets WHERE tenant_id=? AND storage_key=? LIMIT 1');
+    $registered->execute([$tenantId,$key]);
+    if ($registered->fetchColumn()) {
+        app_media_cleanup_mark($db,$queueId,false,'storage_key_registered');
+        return false;
+    }
     $root = trim((string)(app_env('MEDIA_STORAGE_PATH') ?? ''));
     $isWindowsDrive = preg_match('/^[A-Za-z]:/', $root) === 1 &&
         in_array(substr($root, 2, 1), ['/', '\\'], true);
