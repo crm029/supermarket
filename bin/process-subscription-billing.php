@@ -43,7 +43,7 @@ try{
     $due=$db->query(
         "SELECT id,tenant_id FROM tenant_subscriptions
          WHERE status='active' AND current_period_end IS NOT NULL
-           AND current_period_end>=UTC_TIMESTAMP()
+           AND current_period_end>=DATE_SUB(UTC_TIMESTAMP(),INTERVAL {$graceDays} DAY)
            AND current_period_end<=DATE_ADD(UTC_TIMESTAMP(),INTERVAL {$leadDays} DAY)
          ORDER BY current_period_end,id LIMIT {$batchSize}"
     )->fetchAll(PDO::FETCH_ASSOC);
@@ -62,7 +62,7 @@ try{
             $lock->execute([(int)$candidate['tenant_id'],(int)$candidate['id']]);
             $sub=$lock->fetch(PDO::FETCH_ASSOC);
             if(!$sub||$sub['status']!=='active'||empty($sub['current_period_end'])||
-               strtotime($sub['current_period_end'].' UTC')<time()||
+               strtotime($sub['current_period_end'].' UTC')<time()-($graceDays*86400)||
                strtotime($sub['current_period_end'].' UTC')>time()+($leadDays*86400)){
                 $db->commit();continue;
             }
@@ -141,7 +141,7 @@ try{
 
     $moreRenewals=$db->query(
         "SELECT EXISTS(SELECT 1 FROM tenant_subscriptions s
-          WHERE s.status='active' AND s.current_period_end>=UTC_TIMESTAMP()
+          WHERE s.status='active' AND s.current_period_end>=DATE_SUB(UTC_TIMESTAMP(),INTERVAL {$graceDays} DAY)
             AND s.current_period_end<=DATE_ADD(UTC_TIMESTAMP(),INTERVAL {$leadDays} DAY)
             AND NOT EXISTS(SELECT 1 FROM platform_invoices i WHERE i.subscription_id=s.id AND i.period_start=s.current_period_end)
           LIMIT 1)"
