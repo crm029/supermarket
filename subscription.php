@@ -37,6 +37,10 @@ declare(strict_types=1);
     <button class="primary-button" type="submit">ارسال درخواست برای بررسی</button>
   </form>
   <section class="subscription-history">
+    <div class="subscription-section-heading"><h2>فاکتورها و سوابق پرداخت</h2><span>آخرین ۵۰ فاکتور</span></div>
+    <div id="subscriptionInvoices" class="subscription-request-list"></div>
+  </section>
+  <section class="subscription-history">
     <div class="subscription-section-heading"><h2>درخواست‌های تغییر پلن</h2><span>آخرین ۲۰ درخواست</span></div>
     <div id="subscriptionRequests" class="subscription-request-list"></div>
   </section>
