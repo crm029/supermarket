@@ -34,6 +34,9 @@ try {
         if (app_media_ensure_child_directory($rootLink, 'tenant-44') !== null) {
             throw new RuntimeException('A symlinked media storage root was accepted.');
         }
+        if (app_media_ensure_child_directory($rootLink . DIRECTORY_SEPARATOR, 'tenant-45') !== null) {
+            throw new RuntimeException('A trailing-slash symlinked media root was accepted.');
+        }
     }
     $safeTenant = app_media_ensure_child_directory($root, 'tenant-42');
     if ($safeTenant === null || !is_dir($safeTenant)) {
