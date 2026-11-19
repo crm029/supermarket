@@ -48,6 +48,19 @@
       box.innerHTML='<div class="platform-empty">'+escapeText(error.message)+'</div>';
     }
   }
+  async function loadSmsSettings(){
+    const section=$("platformSmsSection");
+    try{
+      const result=await api("platform/sms-settings");const d=result.data||{};
+      $("platformSmsProvider").value=d.provider||"disabled";
+      $("platformSmsSender").value=d.sender_number||"30005883803803";
+      $("platformSmsDomain").value=d.domain||"0098";
+      $("platformSmsUsername").value="";
+      $("platformSmsPassword").value="";
+      $("platformSmsStatus").textContent="نام کاربری: "+(d.username_configured?"ثبت شده":"ثبت نشده")+" · رمز عبور: "+(d.password_configured?"ثبت شده":"ثبت نشده")+(d.updated_at?" · آخرین تغییر: "+d.updated_at:"");
+      section.hidden=false;
+    }catch(error){section.hidden=true;if(error.message!=="برای مدیریت پلتفرم دسترسی کافی ندارید.")message("platformMessage",error.message,true);}
+  }
   async function loadPaymentSettings(){
     const section=$("platformPaymentSection");
     try{
@@ -196,7 +209,7 @@
     try{
       const me=await api("me");currentUser=me.data;
       const csrf=await api("auth/csrf");csrfToken=csrf.data.csrf_token;
-      showDashboard();await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling(),loadUsage(),loadReconciliation(),loadChangeRequests(),loadOrphanReviews()]);
+      showDashboard();await Promise.all([loadTenants(),loadPaymentSettings(),loadSmsSettings(),loadBilling(),loadUsage(),loadReconciliation(),loadChangeRequests(),loadOrphanReviews()]);
     }catch(error){
       showLogin();
       if(error.message!=="برای ادامه وارد حساب کاربری شوید.")message("platformLoginMessage",error.message,true);
@@ -214,6 +227,20 @@
       const result=await api("auth/verify-otp",{method:"POST",body:JSON.stringify({mobile:$("platformMobile").value.trim(),code:$("platformOtpCode").value.trim()})});
       currentUser=result.data.user;csrfToken=result.data.csrf_token;showDashboard();await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling(),loadUsage(),loadReconciliation(),loadChangeRequests()]);
     }catch(error){message("platformLoginMessage",error.message,true);}
+  });
+  $("platformSmsForm").addEventListener("submit",async event=>{
+    event.preventDefault();
+    try{
+      const result=await api("platform/sms-settings",{method:"PUT",csrf:true,body:JSON.stringify({
+        provider:$("platformSmsProvider").value,
+        sender_number:$("platformSmsSender").value.trim(),
+        username:$("platformSmsUsername").value.trim(),
+        password:$("platformSmsPassword").value,
+        domain:"0098"
+      })});
+      $("platformSmsUsername").value="";$("platformSmsPassword").value="";
+      message("platformSmsMessage",result.message||"تنظیمات ذخیره شد.");await loadSmsSettings();
+    }catch(error){message("platformSmsMessage",error.message,true);}
   });
   $("platformPaymentForm").addEventListener("submit",async event=>{
     event.preventDefault();
