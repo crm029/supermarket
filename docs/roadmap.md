@@ -105,7 +105,8 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Platform-wide tenant usage dashboard for active products, staff, media count, storage bytes and combined online/POS monthly orders, with plan-cap progress and platform permission checks (MySQL/API CI coverage).
 - [x] Idempotent in-app invoice reminders before due date and weekly while overdue, with bounded daily processing and MySQL worker integration tests.
 - [x] Platform finance reconciliation totals and anomaly detection for overpayments, paid/open status mismatches, missing/unexpected paid timestamps and void invoices with receipts (platform permission checks and API CI coverage).
-- [ ] Add automated recurring collection and self-service plan changes (requires a separate SaaS payment provider and an approved change-request workflow).
+- [x] Store-owner self-service plan-change requests, platform approval/rejection, next-period invoice issuance and apply-only-after-full-payment workflow (MySQL/API CI coverage).
+- [ ] Automated recurring SaaS payment collection through a separate provider and verified webhook.
 - [x] Custom-domain ownership verification and tenant provisioning workflow.
 - [ ] Production DNS/HTTPS deployment, backups, monitoring and disaster recovery.
 - [x] Source-level security review and automated PHP/JavaScript/MySQL/API/tenant-isolation checks.
