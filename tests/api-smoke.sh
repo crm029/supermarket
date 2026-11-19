@@ -71,6 +71,14 @@ assert_json() {
       }
       exit(1);
     }
+    if ($check === "inventory-reconciliation") {
+      $row = $data["data"] ?? [];
+      if (($row["consistent"] ?? null) !== true ||
+          (int)($row["discrepancy_count"] ?? -1) !== 0 ||
+          (int)($row["stock_on_hand"] ?? -1) !== (int)($row["batch_on_hand"] ?? -2) ||
+          (int)($row["stock_reserved"] ?? -1) !== (int)($row["batch_reserved"] ?? -2)) exit(1);
+      exit(0);
+    }
     if ($check === "low-stock-zero") {
       foreach (($data["data"] ?? []) as $row) {
         if (($row["sku"] ?? "") === "API-SMOKE-LOW-001") {
@@ -807,6 +815,10 @@ request DELETE "/admin/products/$VARIANT_PARENT_ID" 200 "" "$TOKEN" "$CSRF"
 request POST /cart/quote 409 '{"items":[{"product_id":'$VARIANT_1L_ID',"quantity":1}]}'
 request PATCH "/admin/products/$VARIANT_PARENT_ID" 200 '{"is_active":true}' "$TOKEN" "$CSRF"
 request POST /admin/stock/transfers 200 '{"from_warehouse_id":1,"to_warehouse_id":'$NEW_WAREHOUSE_ID',"product_id":'$PRODUCT_ID',"quantity":2}' "$TOKEN" "$CSRF"
+request GET /admin/stock/reconciliation 200 "" "$TOKEN"
+assert_json inventory-reconciliation
+request GET /admin/stock/reconciliation 403 "" "$POS_TOKEN"
+
 TOTAL_STOCK="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT SUM(on_hand) FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID")"
 if [[ "$TOTAL_STOCK" != "8" ]]; then echo "Expected 8 total units after wallet and pickup sales, receipt, adjustment and transfer; received $TOTAL_STOCK"; exit 1; fi
 
