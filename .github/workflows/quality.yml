@@ -120,6 +120,9 @@ jobs:
       - name: Apply in-app notifications migration
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_06_notifications.sql
 
+      - name: Apply notification retention index migration
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_19_notification_retention_index.sql
+
       - name: Apply courier delivery tracking migration
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_06_order_delivery_tracking.sql
 
