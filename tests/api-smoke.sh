@@ -914,6 +914,35 @@ FEFO_ALLOCATED_BATCH="$(mysql --host=127.0.0.1 --user=root --password=root --ski
 if [[ "$FEFO_ALLOCATED_BATCH" != "FEFO-EARLY-CI" ]]; then echo "FEFO reservation did not allocate the earliest-expiring valid batch first; received $FEFO_ALLOCATED_BATCH"; exit 1; fi
 request POST "/me/orders/$FEFO_ORDER_ID/cancel" 200 "" "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 
+# Normal stock consumption must skip expired lots; a supplier return may explicitly
+# consume the exact original receipt lot even after its expiry date.
+php -r '
+require "app/bootstrap.php";
+require "app/stock_batches.php";
+$db=app_db();
+$db->beginTransaction();
+try {
+  $productId=(int)$argv[1];
+  $expired=gmdate("Y-m-d",time()-86400);
+  app_stock_batch_add($db,1,1,$productId,1,"EXPIRED-POLICY-CI",$expired);
+  try {
+    app_stock_batch_consume($db,1,1,$productId,1);
+    throw new RuntimeException("Normal stock consumption accepted an expired lot.");
+  } catch (RuntimeException $e) {
+    if ($e->getMessage()!=="Insufficient unreserved batch stock for this operation.") throw $e;
+  }
+  $taken=app_stock_batch_consume($db,1,1,$productId,1,null,true);
+  if (count($taken)!==1 || $taken[0]["batch_number"]!=="EXPIRED-POLICY-CI") {
+    throw new RuntimeException("Explicit expired-lot return did not select its original lot.");
+  }
+  $db->rollBack();
+} catch (Throwable $e) {
+  if ($db->inTransaction()) $db->rollBack();
+  fwrite(STDERR,$e->getMessage().PHP_EOL);
+  exit(1);
+}
+' "$PRODUCT_ID"
+
 # Concurrent negative adjustments must not overdraw free stock or desynchronize lots.
 ADJUST_SOURCE_BEFORE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT on_hand FROM stock_levels WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
 parallel_adjustment() {
