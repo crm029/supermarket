@@ -260,7 +260,7 @@ assert_json() {
     }
     if ($check === "platform-audit-events") {
       $actions = array_column($data["data"] ?? [], "action");
-      foreach (["platform.tenant.created","platform.tenant.domain_challenge_issued","platform.tenant.domain_verified","platform.tenant.suspended"] as $expected) {
+      foreach (["platform.tenant.created","platform.tenant.domain_challenge_issued","platform.tenant.domain_verified","platform.tenant.suspended","platform.plan.created","platform.subscription.created","platform.invoice.payment_recorded","platform.subscription.renewal_invoiced"] as $expected) {
         if (!in_array($expected, $actions, true)) exit(1);
       }
       exit(0);
@@ -475,6 +475,27 @@ request POST "/platform/tenants/$NEW_TENANT_ID/verify-domain" 200 '{}' "$TOKEN" 
 TENANT_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM tenants WHERE id=$NEW_TENANT_ID")"
 DOMAIN_VERIFIED="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM tenant_domains WHERE tenant_id=$NEW_TENANT_ID AND verified_at IS NOT NULL")"
 if [[ "$TENANT_STATUS" != "active" || "$DOMAIN_VERIFIED" != "1" ]]; then echo "Verified domain did not activate the tenant."; exit 1; fi
+
+# SaaS plan, subscription, invoice, partial payment and renewal lifecycle.
+request GET /platform/billing 200 "" "$TOKEN"
+request GET /platform/billing 403 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
+request POST /platform/plans 201 '{"code":"api-ci-basic","name":"پلن پایه تست","description":"پلن آزمایشی API","monthly_price_rial":120000,"limits":{"products":100,"staff":5}}' "$TOKEN" "$CSRF"
+PLAN_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM platform_plans WHERE code='api-ci-basic' LIMIT 1")"
+request POST "/platform/tenants/$NEW_TENANT_ID/subscription" 201 '{"plan_id":'$PLAN_ID',"billing_period_months":1}' "$TOKEN" "$CSRF"
+SUBSCRIPTION_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM tenant_subscriptions WHERE tenant_id=$NEW_TENANT_ID ORDER BY id DESC LIMIT 1")"
+INVOICE_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM platform_invoices WHERE tenant_id=$NEW_TENANT_ID AND subscription_id=$SUBSCRIPTION_ID ORDER BY id DESC LIMIT 1")"
+request POST "/platform/invoices/$INVOICE_ID/payments" 200 '{"amount_rial":40000,"method":"bank_transfer","reference":"API-CI-FIRST","idempotency_key":"api-ci-payment-first-0001"}' "$TOKEN" "$CSRF"
+request POST "/platform/invoices/$INVOICE_ID/payments" 200 '{"amount_rial":40000,"method":"bank_transfer","reference":"API-CI-FIRST","idempotency_key":"api-ci-payment-first-0001"}' "$TOKEN" "$CSRF"
+request POST "/platform/invoices/$INVOICE_ID/payments" 422 '{"amount_rial":90000,"method":"bank_transfer","reference":"API-CI-OVER","idempotency_key":"api-ci-payment-over-0001"}' "$TOKEN" "$CSRF"
+PARTIAL_TOTAL="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COALESCE(SUM(amount_rial),0) FROM platform_invoice_payments WHERE tenant_id=$NEW_TENANT_ID AND invoice_id=$INVOICE_ID")"
+if [[ "$PARTIAL_TOTAL" != "40000" ]]; then echo "Idempotent partial SaaS payment was duplicated or not recorded."; exit 1; fi
+request POST "/platform/invoices/$INVOICE_ID/payments" 200 '{"amount_rial":80000,"method":"bank_transfer","reference":"API-CI-FINAL","idempotency_key":"api-ci-payment-final-0002"}' "$TOKEN" "$CSRF"
+request POST "/platform/invoices/$INVOICE_ID/payments" 200 '{"amount_rial":80000,"method":"bank_transfer","reference":"API-CI-FINAL","idempotency_key":"api-ci-payment-final-0002"}' "$TOKEN" "$CSRF"
+BILLING_STATE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT CONCAT(i.status,'|',s.status,'|',COALESCE(s.current_period_end,'NULL'),'|',(SELECT COUNT(*) FROM platform_invoice_payments p WHERE p.invoice_id=i.id)) FROM platform_invoices i JOIN tenant_subscriptions s ON s.id=i.subscription_id WHERE i.id=$INVOICE_ID")"
+if [[ "$BILLING_STATE" != paid\|active\|*\|2 ]]; then echo "SaaS invoice settlement did not activate subscription exactly once: $BILLING_STATE"; exit 1; fi
+request POST "/platform/tenants/$NEW_TENANT_ID/subscription" 409 '{"plan_id":'$PLAN_ID',"billing_period_months":1}' "$TOKEN" "$CSRF"
+request POST "/platform/subscriptions/$SUBSCRIPTION_ID/renew" 201 '{}' "$TOKEN" "$CSRF"
+request POST "/platform/subscriptions/$SUBSCRIPTION_ID/renew" 409 '{}' "$TOKEN" "$CSRF"
 request POST "/platform/tenants/$NEW_TENANT_ID/suspend" 200 '{"reason":"تعلیق آزمایشی برای تست گردش مدیریت پلتفرم"}' "$TOKEN" "$CSRF"
 request POST /platform/tenants/1/suspend 409 '{"reason":"نباید فروشگاه میزبان تعلیق شود"}' "$TOKEN" "$CSRF"
 TENANT_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM tenants WHERE id=$NEW_TENANT_ID")"
