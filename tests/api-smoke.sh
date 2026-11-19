@@ -945,6 +945,19 @@ try {
 }
 ' "$PRODUCT_ID"
 
+# Expired-stock write-off must reduce the exact batch and aggregate balance once,
+# create an auditable movement, and reject a repeated disposal request.
+WRITEOFF_STOCK_BEFORE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT on_hand FROM stock_levels WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
+WRITEOFF_BATCH_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "UPDATE stock_levels SET on_hand=on_hand+1 WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID; INSERT INTO stock_batches (tenant_id,warehouse_id,product_id,batch_number,expiry_date,received_quantity,on_hand,reserved,unit_cost_rial) VALUES (1,1,$PRODUCT_ID,'EXPIRED-WRITEOFF-CI',DATE_SUB(UTC_DATE(),INTERVAL 30 DAY),1,1,0,0); SELECT LAST_INSERT_ID();")"
+request POST /admin/stock-batches/writeoff 200 '{"batch_id":'$WRITEOFF_BATCH_ID',"quantity":1,"reason":"امحای بچ منقضی در آزمون یکپارچگی"}' "$TOKEN" "$CSRF"
+request POST /admin/stock-batches/writeoff 409 '{"batch_id":'$WRITEOFF_BATCH_ID',"quantity":1,"reason":"تلاش تکراری امحا"}' "$TOKEN" "$CSRF"
+WRITEOFF_STOCK_AFTER="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT on_hand FROM stock_levels WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
+WRITEOFF_BATCH_REMAINING="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT on_hand FROM stock_batches WHERE tenant_id=1 AND id=$WRITEOFF_BATCH_ID")"
+WRITEOFF_MOVEMENT_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM stock_movements WHERE tenant_id=1 AND movement_type='expiry_writeoff' AND reference_type='stock_batch' AND reference_id=$WRITEOFF_BATCH_ID AND quantity=-1")"
+if [[ "$WRITEOFF_STOCK_AFTER" != "$WRITEOFF_STOCK_BEFORE" || "$WRITEOFF_BATCH_REMAINING" != "0" || "$WRITEOFF_MOVEMENT_COUNT" != "1" ]]; then
+  echo "Expired stock write-off did not reconcile the batch, stock balance and movement ledger exactly once."; exit 1
+fi
+
 # Concurrent negative adjustments must not overdraw free stock or desynchronize lots.
 ADJUST_SOURCE_BEFORE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT on_hand FROM stock_levels WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
 parallel_adjustment() {
