@@ -21,6 +21,21 @@
     box.hidden=false;
     box.innerHTML='<h2>وضعیت فعلی</h2><div class="subscription-current-grid"><article><span>پلن</span><strong>'+esc(sub.plan_name)+'</strong></article><article><span>وضعیت</span><strong>'+esc(status(sub.status))+'</strong></article><article><span>قیمت ماهانه</span><strong>'+toman(sub.price_monthly_rial)+'</strong></article><article><span>دوره پرداخت</span><strong>'+fa.format(sub.billing_period_months)+' ماه</strong></article><article><span>شروع دوره</span><strong>'+esc(sub.current_period_start||"—")+'</strong></article><article><span>پایان دوره</span><strong>'+esc(sub.current_period_end||"—")+'</strong></article></div>';
   }
+  function renderUsage(usage,sub,month){
+    const box=$("subscriptionUsage");
+    if(!sub){box.hidden=true;return;}
+    box.hidden=false;
+    $("subscriptionUsageMonth").textContent="ماه محاسباتی UTC: "+fa.format(Number(String(month||"").slice(5,7)||0))+" / "+String(month||"");
+    const labels={products:"محصول فعال",staff:"کارمند فعال",media_assets:"فایل رسانه",storage_bytes:"فضای ذخیره‌سازی",monthly_orders:"سفارش این ماه"};
+    const pretty=(key,value)=>key==="storage_bytes"?(value>=1073741824?(value/1073741824).toFixed(1)+" گیگابایت":(value/1048576).toFixed(0)+" مگابایت"):fa.format(value);
+    const rows=Object.keys(labels).map(key=>{
+      const current=Number(usage[key]||0),limit=sub.limits&&Object.prototype.hasOwnProperty.call(sub.limits,key)?Number(sub.limits[key]):null;
+      const percent=limit===null?0:(limit===0?(current>0?100:0):Math.min(100,Math.round(current/limit*100)));
+      const total=limit===null?"بدون سقف تعریف‌شده":pretty(key,limit);
+      return '<article class="subscription-usage-item"><div><strong>'+labels[key]+'</strong><span>'+pretty(key,current)+' / '+total+'</span></div><div class="subscription-usage-track"><span style="width:'+percent+'%"></span></div></article>';
+    });
+    $("subscriptionUsageGrid").innerHTML=rows.join("");
+  }
   function renderPlans(plans,sub){
     $("subscriptionPlans").innerHTML=plans.length?plans.map(p=>{
       const limits=p.limits||{};
@@ -55,6 +70,7 @@
       csrf=csrfResult.data.csrf_token;
       const data=result.data||{};
       renderCurrent(data.subscription||null);
+      renderUsage(data.usage||{},data.subscription||null,data.usage_month_utc||"");
       renderPlans(data.plans||[],data.subscription||null);
       renderRequests(data.change_requests||[]);
       renderInvoices(data.invoices||[]);
