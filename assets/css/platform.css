@@ -71,3 +71,15 @@
 .platform-billing-panel .platform-tenant{margin:10px 0}
 .platform-billing-panel button:disabled{opacity:.45;cursor:not-allowed}
 @media(max-width:760px){.platform-billing-totals{grid-template-columns:1fr}.platform-billing-columns{grid-template-columns:1fr}.platform-billing-panel{padding:14px}}
+
+.platform-usage-section{margin:22px 0;padding:18px;border:1px solid var(--line,#dce5df);border-radius:16px;background:var(--surface,#fff)}
+.platform-usage-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.platform-usage-tenant{min-width:0;padding:14px;border:1px solid var(--line,#dce5df);border-radius:14px;background:var(--surface-soft,#f7faf8)}
+.platform-usage-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
+.platform-usage-metric{min-width:0}
+.platform-usage-metric>div:first-child{display:flex;justify-content:space-between;gap:8px;font-size:.82rem}
+.platform-usage-metric strong{font-variant-numeric:tabular-nums;text-align:left}
+.platform-usage-track{height:7px;margin-top:7px;border-radius:99px;background:#e6ece8;overflow:hidden}
+.platform-usage-track i{display:block;height:100%;border-radius:inherit;background:#54856b}
+.platform-usage-unlimited{margin-top:7px;color:var(--muted,#64756b);font-size:.72rem}
+@media(max-width:760px){.platform-usage-list{grid-template-columns:1fr}.platform-usage-metrics{grid-template-columns:1fr}}
