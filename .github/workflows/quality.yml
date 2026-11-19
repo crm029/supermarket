@@ -196,6 +196,12 @@ jobs:
       - name: Apply media cleanup queue migration
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_05_media_cleanup_queue.sql
 
+      - name: Apply platform SMS settings migration
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_20_platform_sms_settings.sql
+
+      - name: Verify platform SMS settings schema
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/platform-sms-settings.sql
+
       - name: Apply operator-reviewed orphan media migration
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_20_media_orphan_reviews.sql
       - name: Verify operator-reviewed orphan media schema and permission
