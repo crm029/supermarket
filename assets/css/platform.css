@@ -83,3 +83,7 @@
 .platform-usage-track i{display:block;height:100%;border-radius:inherit;background:#54856b}
 .platform-usage-unlimited{margin-top:7px;color:var(--muted,#64756b);font-size:.72rem}
 @media(max-width:760px){.platform-usage-list{grid-template-columns:1fr}.platform-usage-metrics{grid-template-columns:1fr}}
+
+.platform-reconciliation{margin:22px 0;padding:18px;border:1px solid var(--line,#dce5df);border-radius:16px;background:var(--surface,#fff)}
+.platform-reconciliation-row{border-inline-start:4px solid #c98243}
+.platform-reconciliation-row p{margin:10px 0 4px;font-size:.9rem}
