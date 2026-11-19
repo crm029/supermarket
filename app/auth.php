@@ -93,30 +93,7 @@ function app_auth_send_otp(PDO $db, string $mobile, string $code, int $challenge
     }
     if ($provider === '0098vip') {
         if (!$smsRow || !app_auth_sms_ready($db)) throw new RuntimeException('SMS provider is not configured.');
-        if (!function_exists('curl_init')) throw new RuntimeException('PHP cURL extension is required for SMS delivery.');
-        $settings = app_sms_settings($db);
-        $query = http_build_query([
-            'FROM' => $settings['sender_number'],
-            'TO' => $mobile,
-            'TEXT' => 'کد ورود شما: ' . $code,
-            'USERNAME' => $settings['username'],
-            'PASSWORD' => $settings['password'],
-            'DOMAIN' => $settings['domain'],
-        ], '', '&', PHP_QUERY_RFC3986);
-        $curl = curl_init('https://www.0098vip.com/sendsmslink.aspx?' . $query);
-        curl_setopt_array($curl, [
-            CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 5, CURLOPT_TIMEOUT => 12,
-            CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_HTTPHEADER => ['Accept: text/plain'], CURLOPT_FOLLOWLOCATION => false,
-        ]);
-        $response = curl_exec($curl); $error = curl_error($curl); $status = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE); curl_close($curl);
-        if (!is_string($response) || $error !== '' || $status < 200 || $status >= 300) throw new RuntimeException('SMS provider connection failed (HTTP ' . $status . ').');
-        $result = trim($response);
-        if (!app_sms_0098_response_success($result)) {
-            $codeMap = ['1'=>'شماره گیرنده اشتباه است','2'=>'گیرنده تعریف نشده است','3'=>'فرستنده تعریف نشده است','4'=>'متن پیامک تنظیم نشده است','5'=>'نام کاربری تنظیم نشده است','6'=>'رمز عبور تنظیم نشده است','7'=>'دامنه تنظیم نشده است','8'=>'مجوز سرویس باطل شده است','9'=>'اعتبار پیامک کافی نیست','10'=>'برای این شماره لینک تعریف نشده است','11'=>'مجوز اتصال لینک وجود ندارد','12'=>'نام کاربری یا رمز عبور اشتباه است','13'=>'متن دارای کاراکتر غیرمجاز است','14'=>'سقف ارسال روزانه پر شده است','16'=>'ارسال با این شماره مجاز نیست','17'=>'خطای شماره پنل','18'=>'اعتبار پنل تمام شده است','19'=>'تنظیمات OTP انجام نشده است','20'=>'فرمت کد OTP صحیح نیست','21'=>'کد OTP تأیید نشده است','22'=>'اطلاعات مالک شماره تأیید نشده است','23'=>'مجوز ارسال به این پنل صادر نشده است','24'=>'IP سرور مجاز نیست'];
-            $safeCode = preg_match('/^\\d+$/',$result) ? $result : 'unknown';
-            throw new RuntimeException('0098 SMS error ' . $safeCode . ': ' . ($codeMap[$safeCode] ?? 'پاسخ نامعتبر سرویس پیامک'));
-        }
+        app_sms_0098_send_text($db,$mobile,'کد ورود شما: ' . $code);
         return;
     }
     if ($provider !== 'kavenegar' || !app_auth_sms_ready($db)) {
@@ -426,7 +403,7 @@ function app_auth_current(PDO $db, array $tenant): ?array {
     if (!preg_match('/^[A-Za-z0-9_-]{43}$/', $token)) return null;
 
     $stmt = $db->prepare(
-        "SELECT s.id AS session_id, s.csrf_hash, u.id, u.full_name, u.mobile, u.referral_code
+        "SELECT s.id AS session_id, s.csrf_hash, u.id, u.full_name, u.mobile, u.mobile_verified_at, u.referral_code
          FROM auth_sessions s
          JOIN users u ON u.id = s.user_id AND u.tenant_id = s.tenant_id
          WHERE s.tenant_id = ? AND s.token_hash = ? AND s.revoked_at IS NULL
