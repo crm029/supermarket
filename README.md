@@ -114,3 +114,5 @@ Returned POS items remain outside sellable stock until an authorized inspector c
 
 
 Platform SaaS billing includes plan management, product/staff/media/monthly-order/storage-byte quotas, tenant subscriptions, partial-payment invoices, an append-only receipt ledger and a scheduled renewal, grace-period and idempotent in-app payment-reminder worker, plus owner-requested plan changes that require platform approval and full invoice payment. It records manual receipts; it does not automatically debit merchants or suspend overdue stores. See `docs/local-setup.md`.
+
+Store owners can review their subscription invoices and live quota usage, request a plan change, or schedule/reverse cancellation at the end of the paid billing period.
