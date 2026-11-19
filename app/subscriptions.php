@@ -20,7 +20,7 @@ function app_tenant_subscription_overview(PDO $db,array $tenant,array $session):
     app_subscription_require_store_owner($db,$tenant,$session);
     $stmt=$db->prepare(
         "SELECT s.id,s.status,s.plan_id,s.billing_period_months,s.price_monthly_rial,
-          s.current_period_start,s.current_period_end,p.name AS plan_name,p.limits_json
+          s.current_period_start,s.current_period_end,s.cancel_at_period_end,s.cancelled_at,p.name AS plan_name,p.limits_json
          FROM tenant_subscriptions s JOIN platform_plans p ON p.id=s.plan_id
          WHERE s.tenant_id=? AND s.status IN ('active','past_due','pending_payment')
          ORDER BY s.id DESC LIMIT 1"
@@ -235,5 +235,60 @@ function app_platform_subscription_change_reject(PDO $db,array $actorTenant,arra
             'درخواست تغییر پلن رد شد','درخواست تغییر پلن فروشگاه تأیید نشد. برای جزئیات با پشتیبانی تماس بگیرید.','subscription_change_request',$requestId);
         $db->commit();
         app_json(['data'=>['request_id'=>$requestId,'status'=>'rejected'],'message'=>'درخواست رد شد.']);
+    }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
+}
+
+function app_tenant_subscription_cancel(PDO $db,array $tenant,array $session): never {
+    app_subscription_require_store_owner($db,$tenant,$session);
+    $db->beginTransaction();
+    try{
+        $tenantLock=$db->prepare('SELECT id FROM tenants WHERE id=? FOR UPDATE');
+        $tenantLock->execute([(int)$tenant['id']]);
+        if(!$tenantLock->fetchColumn()){$db->rollBack();app_json(['error'=>'فروشگاه پیدا نشد.'],404);}
+        $lock=$db->prepare(
+            "SELECT id,status,current_period_end,cancel_at_period_end
+             FROM tenant_subscriptions WHERE tenant_id=? AND status IN ('active','past_due')
+             ORDER BY id DESC LIMIT 1 FOR UPDATE"
+        );
+        $lock->execute([(int)$tenant['id']]);$sub=$lock->fetch(PDO::FETCH_ASSOC);
+        if(!$sub||empty($sub['current_period_end'])){$db->rollBack();app_json(['error'=>'اشتراک فعالی برای زمان‌بندی لغو وجود ندارد.'],409);}
+        if(strtotime($sub['current_period_end'].' UTC')<=time()){$db->rollBack();app_json(['error'=>'دوره اشتراک به پایان رسیده است؛ امکان زمان‌بندی لغو وجود ندارد.'],409);}
+        if((int)$sub['cancel_at_period_end']===1){$db->rollBack();app_json(['error'=>'لغو اشتراک از قبل برای پایان دوره زمان‌بندی شده است.'],409);}
+        $update=$db->prepare('UPDATE tenant_subscriptions SET cancel_at_period_end=1 WHERE tenant_id=? AND id=? AND status IN (\'active\',\'past_due\') AND cancel_at_period_end=0');
+        $update->execute([(int)$tenant['id'],(int)$sub['id']]);
+        app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'subscription.cancel_at_period_end.requested','tenant_subscription',(int)$sub['id'],[
+            'current_period_end'=>$sub['current_period_end']
+        ]);
+        $db->commit();
+        app_json(['data'=>['subscription_id'=>(int)$sub['id'],'cancel_at_period_end'=>true,'current_period_end'=>$sub['current_period_end']],
+            'message'=>'لغو اشتراک برای پایان دوره زمان‌بندی شد؛ تا آن تاریخ امکانات فعلی در دسترس می‌ماند.']);
+    }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
+}
+
+function app_tenant_subscription_resume(PDO $db,array $tenant,array $session): never {
+    app_subscription_require_store_owner($db,$tenant,$session);
+    $db->beginTransaction();
+    try{
+        $tenantLock=$db->prepare('SELECT id FROM tenants WHERE id=? FOR UPDATE');
+        $tenantLock->execute([(int)$tenant['id']]);
+        if(!$tenantLock->fetchColumn()){$db->rollBack();app_json(['error'=>'فروشگاه پیدا نشد.'],404);}
+        $lock=$db->prepare(
+            "SELECT id,status,current_period_end,cancel_at_period_end
+             FROM tenant_subscriptions WHERE tenant_id=? AND status IN ('active','past_due')
+             ORDER BY id DESC LIMIT 1 FOR UPDATE"
+        );
+        $lock->execute([(int)$tenant['id']]);$sub=$lock->fetch(PDO::FETCH_ASSOC);
+        if(!$sub||empty($sub['current_period_end'])||(int)$sub['cancel_at_period_end']!==1){
+            $db->rollBack();app_json(['error'=>'لغو زمان‌بندی‌شده‌ای برای بازگردانی وجود ندارد.'],409);
+        }
+        if(strtotime($sub['current_period_end'].' UTC')<=time()){$db->rollBack();app_json(['error'=>'مهلت بازگردانی به پایان رسیده است.'],409);}
+        $update=$db->prepare('UPDATE tenant_subscriptions SET cancel_at_period_end=0 WHERE tenant_id=? AND id=? AND cancel_at_period_end=1');
+        $update->execute([(int)$tenant['id'],(int)$sub['id']]);
+        app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'subscription.cancel_at_period_end.revoked','tenant_subscription',(int)$sub['id'],[
+            'current_period_end'=>$sub['current_period_end']
+        ]);
+        $db->commit();
+        app_json(['data'=>['subscription_id'=>(int)$sub['id'],'cancel_at_period_end'=>false,'current_period_end'=>$sub['current_period_end']],
+            'message'=>'لغو اشتراک لغو شد و تمدید طبق روال قبلی ادامه خواهد داشت.']);
     }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
 }
