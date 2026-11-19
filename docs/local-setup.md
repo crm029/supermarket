@@ -129,7 +129,7 @@ The worker releases reserved quantities and cancels pending-payment orders once 
 
 ## ZarinPal setup
 
-Set APP_BASE_URL to the exact public store origin and keep APP_KEY stable and private. The platform owner configures the encrypted merchant ID and chooses Sandbox or Real from platform.php; tenant store owners and staff cannot read or change these global credentials. The callback URL is generated as /api/v1/payments/zarinpal/callback. Production requires HTTPS and PHP's cURL/OpenSSL extensions.
+Set APP_BASE_URL to the exact public store origin and keep APP_KEY stable and private. The supplied sandbox UUID is prefilled in `.env.example`; copy it into your local `.env` and keep `ZARINPAL_SANDBOX=true` for sandbox testing. The platform owner can also configure the encrypted merchant ID and choose Sandbox or Real from platform.php; tenant store owners and staff cannot read or change these global credentials. The callback URL is generated as /api/v1/payments/zarinpal/callback. Production requires HTTPS and PHP's cURL/OpenSSL extensions.
 
 Never commit a real merchant ID or other payment credentials. Payment attempts retain an encrypted snapshot of the merchant credential and selected gateway mode, so changing the global mode cannot redirect an in-flight sandbox payment to the live verification endpoint (or vice versa). Test success, cancellation, duplicate callbacks, delayed callbacks after reservation expiry, and the exact registered callback domain before enabling live payments.
 
