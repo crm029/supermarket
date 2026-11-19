@@ -39,6 +39,7 @@ jobs:
           php tests/media-orphan-input.php
           php tests/commerce-input.php
           php tests/payment-config.php
+          php tests/sms-provider-config.php
           php tests/wallet-input.php
           php tests/report-csv.php
 
