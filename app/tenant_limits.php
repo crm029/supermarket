@@ -46,8 +46,11 @@ function app_tenant_limit_guard(PDO $db, array $tenant, string $key, int $increm
         $usage=$db->prepare('SELECT COUNT(*) FROM media_assets WHERE tenant_id=?');
         $usage->execute([$tenantId]);
     }elseif($key==='monthly_orders'){
-        $usage=$db->prepare("SELECT COUNT(*) FROM orders WHERE tenant_id=? AND status<>'cancelled' AND created_at>=DATE_FORMAT(UTC_DATE(),'%Y-%m-01') AND created_at<DATE_ADD(DATE_FORMAT(UTC_DATE(),'%Y-%m-01'),INTERVAL 1 MONTH)");
-        $usage->execute([$tenantId]);
+        $usage=$db->prepare("SELECT
+            (SELECT COUNT(*) FROM orders WHERE tenant_id=? AND status<>'cancelled' AND created_at>=DATE_FORMAT(UTC_DATE(),'%Y-%m-01') AND created_at<DATE_ADD(DATE_FORMAT(UTC_DATE(),'%Y-%m-01'),INTERVAL 1 MONTH))
+            +
+            (SELECT COUNT(*) FROM pos_sales WHERE tenant_id=? AND created_at>=DATE_FORMAT(UTC_DATE(),'%Y-%m-01') AND created_at<DATE_ADD(DATE_FORMAT(UTC_DATE(),'%Y-%m-01'),INTERVAL 1 MONTH))");
+        $usage->execute([$tenantId,$tenantId]);
     }else{
         $usage=$db->prepare("SELECT COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(metadata,'$.size')) AS UNSIGNED)),0) FROM media_assets WHERE tenant_id=?");
         $usage->execute([$tenantId]);
