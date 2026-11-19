@@ -30,6 +30,7 @@ VALUES (1,'store_owner','مالک فروشگاه')
 ON DUPLICATE KEY UPDATE title=VALUES(title);
 SET @worker_owner_role=(SELECT id FROM roles WHERE tenant_id=1 AND role_key='store_owner' LIMIT 1);
 INSERT IGNORE INTO user_roles (tenant_id,user_id,role_id) VALUES (1,@worker_owner,@worker_owner_role);
+DELETE FROM notifications WHERE tenant_id=1 AND user_id=@worker_owner;
 SQL
 mysql --host=127.0.0.1 --user=root --password=root supermarket360 <<SQL
 INSERT INTO tenant_subscriptions
@@ -74,5 +75,5 @@ PAST_DUE_NOTICE_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --sk
 echo "Past-due notifications: $PAST_DUE_NOTICE_COUNT"
 test "$PAST_DUE_NOTICE_COUNT" = "$OWNER_ROLE_COUNT"
 
-mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "DELETE FROM notifications WHERE tenant_id=1 AND event_key IN (CONCAT('platform-renewal-invoice-',(SELECT id FROM platform_invoices WHERE subscription_id=$SUB_ID ORDER BY id DESC LIMIT 1)),CONCAT('platform-invoice-due-',(SELECT id FROM platform_invoices WHERE subscription_id=$SUB_ID ORDER BY id DESC LIMIT 1)),CONCAT('platform-invoice-overdue-',$OVERDUE_INVOICE_ID,'-',DATE_FORMAT(UTC_DATE(),'%x-%v')),CONCAT('platform-subscription-past-due-',$SUB_ID)); DELETE FROM platform_invoices WHERE subscription_id=$SUB_ID; DELETE FROM tenant_subscriptions WHERE id=$SUB_ID AND tenant_id=1; DELETE FROM user_roles WHERE tenant_id=1 AND user_id=(SELECT id FROM users WHERE tenant_id=1 AND mobile='09129999991'); DELETE FROM users WHERE tenant_id=1 AND mobile='09129999991'"
+mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "DELETE FROM notifications WHERE tenant_id=1 AND event_key IN (CONCAT('platform-renewal-invoice-',(SELECT id FROM platform_invoices WHERE subscription_id=$SUB_ID ORDER BY id DESC LIMIT 1)),CONCAT('platform-invoice-due-',(SELECT id FROM platform_invoices WHERE subscription_id=$SUB_ID ORDER BY id DESC LIMIT 1)),CONCAT('platform-invoice-overdue-',$OVERDUE_INVOICE_ID,'-',DATE_FORMAT(UTC_DATE(),'%x-%v')),CONCAT('platform-subscription-past-due-',$SUB_ID)); DELETE FROM platform_invoices WHERE subscription_id=$SUB_ID; DELETE FROM tenant_subscriptions WHERE id=$SUB_ID AND tenant_id=1; DELETE FROM notifications WHERE tenant_id=1 AND user_id=(SELECT id FROM users WHERE tenant_id=1 AND mobile='09129999991'); DELETE FROM user_roles WHERE tenant_id=1 AND user_id=(SELECT id FROM users WHERE tenant_id=1 AND mobile='09129999991'); DELETE FROM users WHERE tenant_id=1 AND mobile='09129999991'"
 echo "Subscription renewal and grace-period worker checks passed"
