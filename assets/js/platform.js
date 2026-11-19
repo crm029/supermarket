@@ -112,6 +112,25 @@
     if(n<1024*1024*1024)return (n/1024/1024).toLocaleString("fa-IR",{maximumFractionDigits:1})+" مگابایت";
     return (n/1024/1024/1024).toLocaleString("fa-IR",{maximumFractionDigits:2})+" گیگابایت";
   }
+
+  async function loadReconciliation(){
+    const list=$("platformReconciliationList"),totalsBox=$("platformReconciliationTotals");
+    if(!list||!totalsBox)return;
+    list.innerHTML="<p>در حال بررسی دفتر مالی...</p>";
+    try{
+      const result=await api("platform/billing/reconciliation");
+      const data=result.data||{},totals=data.totals||{},rows=data.anomalies||[];
+      totalsBox.innerHTML=[
+        ["کل فاکتورها",usageNumber(totals.invoice_count)],
+        ["مبلغ صادرشده",moneyToman(totals.invoiced_rial)+" تومان"],
+        ["دریافت دفتر",moneyToman(totals.received_rial)+" تومان"],
+        ["مانده باز",moneyToman(totals.outstanding_rial)+" تومان"],
+        ["مغایرت‌ها",usageNumber(totals.anomaly_count)]
+      ].map(([label,value])=>'<article><span>'+escapeText(label)+'</span><strong>'+escapeText(value)+'</strong></article>').join("");
+      const labels={overpaid:"دریافت بیش از مبلغ فاکتور",paid_amount_mismatch:"فاکتور پرداخت‌شده با جمع دریافتی متفاوت",paid_timestamp_missing:"زمان پرداخت ثبت نشده",unexpected_paid_timestamp:"زمان پرداخت برای فاکتور غیرپرداخت‌شده",fully_received_but_open:"فاکتور کامل دریافت شده ولی باز است",void_invoice_has_receipts:"برای فاکتور باطل‌شده دریافت ثبت شده"};
+      list.innerHTML=rows.length?rows.map(row=>'<article class="platform-tenant platform-reconciliation-row"><div class="platform-tenant-head"><div><strong>'+escapeText(row.invoice_number)+' · '+escapeText(row.tenant_name)+'</strong><small>'+escapeText(labels[row.anomaly_code]||row.anomaly_code)+'</small></div><span class="platform-status suspended">نیازمند بررسی</span></div><p>مبلغ: '+moneyToman(row.amount_rial)+' تومان · دریافت: '+moneyToman(row.paid_rial)+' تومان · مانده: '+moneyToman(row.balance_rial)+' تومان</p><small>سررسید: '+escapeText(row.due_at||"—")+' · شناسه فاکتور: '+Number(row.id)+'</small></article>').join(""):'<div class="platform-empty">مغایرت مالی ثبت‌شده‌ای پیدا نشد.</div>';
+    }catch(error){list.innerHTML='<div class="platform-empty">'+escapeText(error.message)+'</div>';totalsBox.innerHTML="";}
+  }
   async function loadUsage(){
     const list=$("platformUsageList"),totalsBox=$("platformUsageTotals");
     if(!list||!totalsBox)return;
@@ -149,7 +168,7 @@
     try{
       const me=await api("me");currentUser=me.data;
       const csrf=await api("auth/csrf");csrfToken=csrf.data.csrf_token;
-      showDashboard();await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling(),loadUsage()]);
+      showDashboard();await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling(),loadUsage(),loadReconciliation()]);
     }catch(error){
       showLogin();
       if(error.message!=="برای ادامه وارد حساب کاربری شوید.")message("platformLoginMessage",error.message,true);
@@ -165,7 +184,7 @@
   $("platformVerifyOtp").addEventListener("click",async()=>{
     try{
       const result=await api("auth/verify-otp",{method:"POST",body:JSON.stringify({mobile:$("platformMobile").value.trim(),code:$("platformOtpCode").value.trim()})});
-      currentUser=result.data.user;csrfToken=result.data.csrf_token;showDashboard();await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling(),loadUsage()]);
+      currentUser=result.data.user;csrfToken=result.data.csrf_token;showDashboard();await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling(),loadUsage(),loadReconciliation()]);
     }catch(error){message("platformLoginMessage",error.message,true);}
   });
   $("platformPaymentForm").addEventListener("submit",async event=>{
@@ -292,7 +311,7 @@
       message("platformBillingMessage",result.message);await loadBilling();
     }catch(error){message("platformBillingMessage",error.message,true);}
   });
-  $("platformReload").addEventListener("click",async()=>{await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling(),loadUsage()]);});
+  $("platformReload").addEventListener("click",async()=>{await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling(),loadUsage(),loadReconciliation()]);});
   $("platformLogout").addEventListener("click",async()=>{
     try{await api("auth/logout",{method:"POST",body:"{}",csrf:true});}catch(_){}
     currentUser=null;csrfToken="";showLogin();
