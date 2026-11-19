@@ -439,6 +439,12 @@ assert_json() {
       }
       exit(1);
     }
+    if ($check === "pos-cashier-shift-closed") {
+      $shift=$data["data"]??[];
+      if (($shift["status"]??"")!=="closed" || (int)($shift["expected_cash_rial"]??-1)!==800000 ||
+          (int)($shift["counted_cash_rial"]??-1)!==800000 || (int)($shift["cash_variance_rial"]??-1)!==0) exit(1);
+      exit(0);
+    }
     if ($check === "pos-shift-closed") {
       $shift=$data["data"]??[];
       if (($shift["status"]??"")!=="closed" || (int)($shift["expected_cash_rial"]??-1)!==750000 ||
@@ -1218,7 +1224,7 @@ REFERRAL_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-colu
 if [[ "$REGISTERED_STATUS" != "active" || "$REFERRAL_COUNT" != "1" ]]; then echo "OTP registration or referral activation failed"; exit 1; fi
 # Closing the cashier shift must reconcile cash and block further sales until a new shift opens.
 request POST "/admin/pos/shifts/$POS_SHIFT_ID/close" 200 '{"counted_cash_rial":800000,"note":"تطبیق نهایی صندوق‌دار CI"}' "$POS_TOKEN" "$POS_CSRF"
-assert_json pos-shift-closed
+assert_json pos-cashier-shift-closed
 request POST /admin/pos/sales 409 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"cash_received_rial":150000,"idempotency_key":"ci-pos-closed-shift-01"}' "$POS_TOKEN" "$POS_CSRF"
 
 echo "HTTP API and commerce smoke tests passed."
