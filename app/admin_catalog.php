@@ -163,6 +163,8 @@ function app_admin_product_create(PDO $db, array $tenant, array $session): never
     try {
         app_tenant_limit_guard($db,$tenant,'products',!empty($data['is_active'])?1:0);
         app_admin_validate_product_category($db, (int)$tenant['id'], $data);
+        $nextActive=array_key_exists('is_active',$data)?(bool)$data['is_active']:(bool)$current['is_active'];
+        if($nextActive&&!(bool)$current['is_active'])app_tenant_limit_guard($db,$tenant,'products',1);
         $stmt = $db->prepare(
             "INSERT INTO products
               (tenant_id, category_id, sku, barcode, title, brand, description, seo_title, seo_slug, seo_description,
@@ -226,7 +228,7 @@ function app_admin_product_update(PDO $db, array $tenant, array $session, int $i
 
     $db->beginTransaction();
     try {
-        $exists = $db->prepare('SELECT id, price_rial, compare_at_rial FROM products WHERE tenant_id = ? AND id = ? FOR UPDATE');
+        $exists = $db->prepare('SELECT id, price_rial, compare_at_rial, is_active FROM products WHERE tenant_id = ? AND id = ? FOR UPDATE');
         $exists->execute([$tenant['id'], $id]);
         $current = $exists->fetch();
         if (!$current) {
@@ -400,10 +402,12 @@ function app_admin_product_variant_update(PDO $db,array $tenant,array $session,i
     $db->beginTransaction();
     try{
         app_admin_variant_parent($db,$tenant,$parentId,true);
-        $exists=$db->prepare("SELECT id,price_rial,compare_at_rial FROM products WHERE tenant_id=? AND parent_product_id=? AND id=? AND product_kind='variant' FOR UPDATE");
+        $exists=$db->prepare("SELECT id,price_rial,compare_at_rial,is_active FROM products WHERE tenant_id=? AND parent_product_id=? AND id=? AND product_kind='variant' FOR UPDATE");
         $exists->execute([$tenant['id'],$parentId,$variantId]);
         $current=$exists->fetch(PDO::FETCH_ASSOC);
         if(!$current){$db->rollBack();app_json(['error'=>'تنوع محصول پیدا نشد.'],404);}
+        $nextActive=array_key_exists('is_active',$data)?(bool)$data['is_active']:(bool)$current['is_active'];
+        if($nextActive&&!(bool)$current['is_active'])app_tenant_limit_guard($db,$tenant,'products',1);
         $nextPrice=$data['price_rial']??(int)$current['price_rial'];
         $nextCompare=array_key_exists('compare_at_rial',$data)?$data['compare_at_rial']:($current['compare_at_rial']===null?null:(int)$current['compare_at_rial']);
         if($nextCompare!==null&&$nextCompare<$nextPrice){$db->rollBack();app_json(['error'=>'قیمت قبل از تخفیف نمی‌تواند از قیمت فعلی کمتر باشد.'],422);}
