@@ -144,7 +144,7 @@ function app_admin_staff_assign_role(PDO $db, array $tenant, array $session): ne
     if($existing->fetchColumn())app_json(['error'=>'این نقش قبلاً به کاربر اختصاص داده شده است.'],409);
     $db->beginTransaction();
     try{
-        $hasRole=$db->prepare('SELECT COUNT(*) FROM user_roles WHERE tenant_id=? AND user_id=?');
+        $hasRole=$db->prepare("SELECT COUNT(*) FROM user_roles ur JOIN roles r ON r.role_scope_id=ur.role_scope_id AND r.id=ur.role_id WHERE ur.tenant_id=? AND ur.user_id=? AND r.role_key<>'customer'");
         $hasRole->execute([$tenant['id'],$userId]);
         app_tenant_limit_guard($db,$tenant,'staff',(int)$hasRole->fetchColumn()===0?1:0);
         $assign = $db->prepare('INSERT IGNORE INTO user_roles (tenant_id,role_scope_id,user_id,role_id) VALUES (?,?,?,?)');
