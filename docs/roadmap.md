@@ -78,6 +78,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Tenant-scoped inventory movement ledger with warehouse/product/type/date filters and signed quantities.
 - [x] Read-only inventory reconciliation compares aggregate stock and reservations with batch totals, reports missing/orphan batch groups and is covered by tenant-aware API smoke tests.
 - [x] Concurrent manual stock receipts are integration-tested: both parallel requests must succeed without lost updates, and stock-level totals must equal batch totals.
+- [x] Concurrent same-direction stock transfers are integration-tested for source serialization, destination increments, and per-warehouse batch reconciliation.
 - [x] Tenant-scoped CSV exports for orders and inventory movements, with date/status/warehouse/product filters, formula-injection protection and permission checks.
 - [x] Operational notifications.
 
