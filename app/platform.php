@@ -632,7 +632,7 @@ function app_platform_usage_summary(PDO $db): never {
            FROM users u
            JOIN user_roles ur ON ur.tenant_id=u.tenant_id AND ur.user_id=u.id
            JOIN roles r ON r.role_scope_id=ur.role_scope_id AND r.id=ur.role_id
-           WHERE u.tenant_id=t.id AND u.status='active' AND r.role_key<>'customer') AS staff,
+           WHERE u.tenant_id=t.id AND r.tenant_id=t.id AND u.status='active' AND r.role_key<>'customer') AS staff,
           (SELECT COUNT(*) FROM media_assets m WHERE m.tenant_id=t.id) AS media_assets,
           (SELECT COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(m.metadata,'$.size')) AS UNSIGNED)),0)
            FROM media_assets m WHERE m.tenant_id=t.id) AS storage_bytes,
