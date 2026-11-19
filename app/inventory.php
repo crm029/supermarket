@@ -267,13 +267,15 @@ function app_inventory_transfer(PDO $db, array $tenant, array $session): never {
         $ensure=$db->prepare('INSERT IGNORE INTO stock_levels (tenant_id,warehouse_id,product_id,on_hand,reserved) VALUES (?,?,?,0,0)');
         foreach($warehouseIds as $warehouseId)$ensure->execute([$tenant['id'],$warehouseId,$product]);
         $lock=$db->prepare(
-            'SELECT warehouse_id,on_hand,reserved FROM stock_levels
-             WHERE tenant_id=? AND product_id=? AND warehouse_id IN (?,?)
-             ORDER BY warehouse_id FOR UPDATE'
+            'SELECT on_hand,reserved FROM stock_levels
+             WHERE tenant_id=? AND warehouse_id=? AND product_id=? FOR UPDATE'
         );
-        $lock->execute([$tenant['id'],$product,$warehouseIds[0],$warehouseIds[1]]);
         $balances=[];
-        foreach($lock->fetchAll(PDO::FETCH_ASSOC) as $balance)$balances[(int)$balance['warehouse_id']]=$balance;
+        foreach($warehouseIds as $warehouseId){
+            $lock->execute([$tenant['id'],$warehouseId,$product]);
+            $balance=$lock->fetch(PDO::FETCH_ASSOC);
+            if($balance!==false)$balances[$warehouseId]=$balance;
+        }
         $source=$balances[$from]??null;
         if(!$source||(int)$source['on_hand']-(int)$source['reserved']<$qty){
             $db->rollBack();app_json(['error'=>'موجودی آزاد انبار مبدأ کافی نیست.'],409);
