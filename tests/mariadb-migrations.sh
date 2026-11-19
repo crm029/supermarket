@@ -9,6 +9,7 @@ migrations=(
   2026_11_05_auth_sessions_otp.sql
   2026_11_05_permissions.sql
   2026_11_06_platform_payment_settings.sql
+  2026_11_20_platform_sms_settings.sql
   2026_11_19_platform_subscriptions.sql
   2026_11_19_subscription_plan_changes.sql
   2026_11_06_order_assignments.sql
@@ -45,6 +46,7 @@ done
 
 "${DB[@]}" < database/tests/tenant-isolation.sql
 "${DB[@]}" < database/tests/platform-payment-settings.sql
+"${DB[@]}" < database/tests/platform-sms-settings.sql
 "${DB[@]}" < database/tests/platform-billing.sql
 "${DB[@]}" < database/tests/pos-cash-register.sql
 echo "MariaDB 10.11 schema and migration compatibility checks passed"
