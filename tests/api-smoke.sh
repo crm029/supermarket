@@ -802,10 +802,10 @@ request POST /admin/stock/receipts 200 '{"warehouse_id":1,"product_id":'$PRODUCT
 CONCURRENT_BEFORE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COALESCE(SUM(on_hand),0) FROM stock_levels WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
 parallel_receipt() {
   local tag="$1"
-  curl --silent --show-error --output "/tmp/supermarket-concurrent-receipt-$tag.json" --write-out "%{http_code}" \\
-    -X POST -H "Host: localhost" -H "Accept: application/json" -H "Content-Type: application/json" \\
-    -H "Cookie: sm_session=$TOKEN" -H "X-CSRF-Token: $CSRF" \\
-    --data '{"warehouse_id":1,"product_id":'$PRODUCT_ID',"quantity":2,"reason":"رسید هم‌زمان تست"}' \\
+  curl --silent --show-error --output "/tmp/supermarket-concurrent-receipt-$tag.json" --write-out "%{http_code}" \
+    -X POST -H "Host: localhost" -H "Accept: application/json" -H "Content-Type: application/json" \
+    -H "Cookie: sm_session=$TOKEN" -H "X-CSRF-Token: $CSRF" \
+    --data '{"warehouse_id":1,"product_id":'$PRODUCT_ID',"quantity":2,"reason":"رسید هم‌زمان تست"}' \
     "$BASE_URL/admin/stock/receipts" > "/tmp/supermarket-concurrent-receipt-$tag.status"
 }
 parallel_receipt a & RECEIPT_A_PID=$!
