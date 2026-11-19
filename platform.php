@@ -92,7 +92,7 @@ declare(strict_types=1);
         </div>
         <p id="platformSmsStatus" class="platform-payment-status">در حال دریافت وضعیت پیامک...</p>
         <p class="platform-payment-warning">شماره فرستنده از اطلاعات ارائه‌شده تنظیم شده است. ارسال آزمایشی پس از ثبت اطلاعات ورود و تأیید حساب پنل انجام شود.</p>
-        <button class="primary-button" type="submit">ذخیره تنظیمات پیامک</button>
+        <div class="platform-form-actions"><button class="primary-button" type="submit">ذخیره تنظیمات پیامک</button><button id="platformSmsTest" class="secondary-button" type="button">ارسال پیامک آزمایشی به موبایل مدیر</button></div>
       </form>
       <p id="platformSmsMessage" class="platform-message" role="status" aria-live="polite"></p>
     </section>
