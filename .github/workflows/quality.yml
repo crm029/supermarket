@@ -32,6 +32,7 @@ jobs:
           for file in "${files[@]}"; do
             php -l "$file"
           done
+          php tests/env-file.php
           php tests/auth-input.php
           php tests/admin-catalog-input.php
           php tests/media-url.php
