@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 2) . '/app/bootstrap.php';
 require_once dirname(__DIR__, 2) . '/app/auth.php';
+require_once dirname(__DIR__, 2) . '/app/sms_provider.php';
 require_once dirname(__DIR__, 2) . '/app/policies.php';
 require_once dirname(__DIR__, 2) . '/app/admin_catalog.php';
 require_once dirname(__DIR__, 2) . '/app/media.php';
@@ -55,6 +56,18 @@ try {
     }
     $method = app_method();
     $db = app_db();
+
+    if ($path === '/platform/sms-settings') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_platform_permission($db, $tenant, $session, 'platform.payments.manage');
+        if ($method === 'GET') app_sms_platform_settings_read($db);
+        if ($method === 'PUT') {
+            app_auth_require_csrf($session);
+            app_sms_platform_settings_update($db, $tenant, $session);
+        }
+        header('Allow: GET, PUT');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
 
     if ($path === '/platform/payment-settings') {
         $session = app_auth_require($db, $tenant);
