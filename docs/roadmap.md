@@ -89,6 +89,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Supplier-return integration test follows a real purchase receipt and confirms an expired original lot can be returned only against its own receipt line with stock and movement-ledger reconciliation.
 - [x] Tenant-scoped CSV exports for orders and inventory movements, with date/status/warehouse/product filters, formula-injection protection and permission checks.
 - [x] Operational notifications.
+- [x] Bounded notification-retention CLI with configurable 30–3650-day policy, unread preservation, batch limits, retention index and cross-tenant MySQL integration coverage.
 
 ## Phase 5 — customer growth and integrations
 - [x] ZarinPal v4 request/verify adapter, payment-attempt persistence, callback verification, stock commit and duplicate-callback protection.
