@@ -30,7 +30,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Tenant media library browsing with usage counts and reusable media IDs.
 - [x] Safe unused media deletion with reference guards, tenant-safe paths and retryable cleanup queue.
 - [x] Read-only media-storage reconciliation CLI reports unregistered files, missing registered files, queued cleanup files and unsafe filesystem entries; MySQL CI verifies each classification.
-- [ ] Automated alerting, retention policy and operator-approved orphan cleanup; the scanner deliberately never deletes files.
+- [x] Bounded retention for completed media-cleanup queue records via `bin/prune-media-cleanup.php` (configurable 30–3650 days, 500-row batches and a 20-batch run cap; MySQL CI verifies old completed rows are pruned while recent and pending rows remain).\n- [ ] Automated alert delivery and explicit operator-approved orphan cleanup; reconciliation remains read-only and never deletes or queues orphan files automatically.
 
 ## Phase 2 — catalog and commerce
 - [x] Basic tenant-scoped product list/create/update/deactivate API with permission checks.
