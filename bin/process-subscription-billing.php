@@ -101,12 +101,12 @@ try{
             if(!$tenantLock->fetchColumn()){$db->rollBack();continue;}
 
             $lock=$db->prepare(
-                "SELECT id,tenant_id,status,billing_period_months,price_monthly_rial,current_period_end
+                "SELECT id,tenant_id,status,billing_period_months,price_monthly_rial,current_period_end,cancel_at_period_end
                  FROM tenant_subscriptions WHERE tenant_id=? AND id=? FOR UPDATE"
             );
             $lock->execute([(int)$candidate['tenant_id'],(int)$candidate['id']]);
             $sub=$lock->fetch(PDO::FETCH_ASSOC);
-            if(!$sub||$sub['status']!=='active'||empty($sub['current_period_end'])||
+            if(!$sub||$sub['status']!=='active'||(int)$sub['cancel_at_period_end']===1||empty($sub['current_period_end'])||
                strtotime($sub['current_period_end'].' UTC')<time()-($graceDays*86400)||
                strtotime($sub['current_period_end'].' UTC')>time()+($leadDays*86400)){
                 $db->commit();continue;
@@ -165,11 +165,11 @@ try{
             $tenantLock->execute([(int)$candidate['tenant_id']]);
             if(!$tenantLock->fetchColumn()){$db->rollBack();continue;}
             $lock=$db->prepare(
-                'SELECT id,tenant_id,status,current_period_end FROM tenant_subscriptions WHERE tenant_id=? AND id=? FOR UPDATE'
+                'SELECT id,tenant_id,status,current_period_end,cancel_at_period_end FROM tenant_subscriptions WHERE tenant_id=? AND id=? FOR UPDATE'
             );
             $lock->execute([(int)$candidate['tenant_id'],(int)$candidate['id']]);
             $sub=$lock->fetch(PDO::FETCH_ASSOC);
-            if(!$sub||$sub['status']!=='active'||empty($sub['current_period_end'])||
+            if(!$sub||$sub['status']!=='active'||(int)$sub['cancel_at_period_end']===1||empty($sub['current_period_end'])||
                strtotime($sub['current_period_end'].' UTC')>=time()-($graceDays*86400)){
                 $db->commit();continue;
             }
