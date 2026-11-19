@@ -416,7 +416,7 @@ assert_json() {
       foreach(["products","staff","media_assets","storage_bytes","monthly_orders"] as $key){
         if(!array_key_exists($key,$usage)||!is_int($usage[$key])||$usage[$key]<0) exit(1);
       }
-      if((int)($limits["products"]??-1)!==10000 || (int)($limits["monthly_orders"]??-1)!==10000) exit(1);
+      if((int)($limits["products"]??-1)!==500 || (int)($limits["monthly_orders"]??-1)!==5000) exit(1);
       exit(0);
     }
     if ($check === "subscription-invoices") {
