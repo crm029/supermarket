@@ -383,6 +383,8 @@ assert_json() {
       exit(0);
     }
     if ($check === "pos-sale-detail" || $check === "pos-sale-detail-refunded") {
+      $sale=$data["data"]["sale"]??[];
+      if(empty($sale["cashier_name"])||empty($sale["sale_number"])) exit(1);
       $items=$data["data"]["items"]??[];
       if (count($items)!==1 || (int)($items[0]["sale_item_id"]??0)<1) exit(1);
       $expectedRefunded=$check==="pos-sale-detail-refunded"?1:0;
