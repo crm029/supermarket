@@ -111,3 +111,6 @@ Cashier POS refunds are recorded in an immutable, tenant-scoped refund ledger th
 ### POS returned-item inspection
 
 Returned POS items remain outside sellable stock until an authorized inspector completes the workflow at `pos-inspection.php`. The API requires the separate `pos.refund.inspect` permission. Restocking requires an inspection note, a new batch identifier and a non-expired expiry date; the system creates a traceable stock batch, increments the warehouse balance, writes a `return` stock movement and appends an inspection/audit record in one transaction. Rejected items are recorded without increasing sellable stock. Repeated inspection attempts are rejected.
+
+
+Platform SaaS billing includes plan management, tenant subscriptions, invoice issuance and an audited manual receipt ledger. See `docs/local-setup.md`.
