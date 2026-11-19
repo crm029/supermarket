@@ -112,9 +112,9 @@ foreach ($known as $key => $meta) {
 $hasIssues = $report['counts']['orphan_files'] > 0 ||
     $report['counts']['missing_registered_files'] > 0 ||
     $report['counts']['unsafe_entries'] > 0;
-if (count($report['orphan_files']) >= $maxDetails ||
-    count($report['missing_registered_files']) >= $maxDetails ||
-    count($report['unsafe_entries']) >= $maxDetails) {
+if ($report['counts']['orphan_files'] > $maxDetails ||
+    $report['counts']['missing_registered_files'] > $maxDetails ||
+    $report['counts']['unsafe_entries'] > $maxDetails) {
     $report['truncated'] = true;
 }
 $report['status'] = $hasIssues ? 'attention_required' : 'ok';
