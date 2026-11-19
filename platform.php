@@ -97,6 +97,10 @@ declare(strict_types=1);
         <div id="platformUsageTotals" class="platform-billing-totals"></div>
         <div id="platformUsageList" class="platform-usage-list"><p>در حال محاسبه مصرف...</p></div>
       </section>
+      <section class="platform-change-requests">
+        <div class="platform-section-heading"><h3>درخواست‌های تغییر پلن فروشگاه‌ها</h3><span>تأیید، صدور فاکتور یا رد درخواست</span></div>
+        <div id="platformChangeRequestList" class="platform-tenant-list"><p>در حال دریافت درخواست‌ها...</p></div>
+      </section>
       <form id="platformPlanForm" class="platform-create">
         <h3>تعریف پلن جدید</h3>
         <div class="platform-form-grid">
