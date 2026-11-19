@@ -29,7 +29,8 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Store settings UI, branding controls, fulfillment availability, delivery fee, minimum order and reservation duration.
 - [x] Tenant media library browsing with usage counts and reusable media IDs.
 - [x] Safe unused media deletion with reference guards, tenant-safe paths and retryable cleanup queue.
-- [ ] Full orphan reconciliation and storage lifecycle monitoring.
+- [x] Read-only media-storage reconciliation CLI reports unregistered files, missing registered files, queued cleanup files and unsafe filesystem entries; MySQL CI verifies each classification.
+- [ ] Automated alerting, retention policy and operator-approved orphan cleanup; the scanner deliberately never deletes files.
 
 ## Phase 2 — catalog and commerce
 - [x] Basic tenant-scoped product list/create/update/deactivate API with permission checks.
