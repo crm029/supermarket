@@ -37,7 +37,8 @@ CREATE TABLE tenant_subscriptions (
   CONSTRAINT fk_subscription_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id),
   CONSTRAINT fk_subscription_plan FOREIGN KEY (plan_id) REFERENCES platform_plans(id),
   CONSTRAINT fk_subscription_actor FOREIGN KEY (created_by) REFERENCES users(id),
-  CONSTRAINT chk_subscription_period CHECK (billing_period_months IN (1,3,12))
+  CONSTRAINT chk_subscription_period CHECK (billing_period_months IN (1,3,12)),
+  CONSTRAINT chk_subscription_price CHECK (price_monthly_rial > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE platform_invoices (
@@ -82,6 +83,22 @@ CREATE TABLE platform_invoice_payments (
   CONSTRAINT fk_platform_payment_actor FOREIGN KEY (received_by) REFERENCES users(id),
   CONSTRAINT chk_platform_payment_amount CHECK (amount_rial > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DELIMITER //
+CREATE TRIGGER trg_platform_invoice_payment_no_update
+BEFORE UPDATE ON platform_invoice_payments
+FOR EACH ROW
+BEGIN
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Platform invoice payment ledger is append-only';
+END//
+
+CREATE TRIGGER trg_platform_invoice_payment_no_delete
+BEFORE DELETE ON platform_invoice_payments
+FOR EACH ROW
+BEGIN
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Platform invoice payment ledger is append-only';
+END//
+DELIMITER ;
 
 INSERT INTO permissions (permission_key,scope,description)
 VALUES ('platform.billing.manage','platform','مدیریت پلن‌ها، اشتراک‌ها و دریافت‌های مالی پلتفرم')
