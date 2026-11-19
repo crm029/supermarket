@@ -553,3 +553,38 @@ function app_platform_invoice_record_payment(PDO $db,array $actorTenant,array $s
     }catch(PDOException $e){if($db->inTransaction())$db->rollBack();if((string)$e->getCode()==='23000')app_json(['error'=>'این کلید یکتا قبلاً استفاده شده است.'],409);throw $e;}
     catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
 }
+
+function app_platform_billing_export(PDO $db): never {
+    $stmt=$db->query(
+        "SELECT i.invoice_number,t.name AS tenant_name,i.status,i.amount_rial,
+          COALESCE(SUM(p.amount_rial),0) AS paid_rial,
+          i.period_start,i.period_end,i.due_at,i.paid_at
+         FROM platform_invoices i
+         JOIN tenants t ON t.id=i.tenant_id
+         LEFT JOIN platform_invoice_payments p ON p.tenant_id=i.tenant_id AND p.invoice_id=i.id
+         GROUP BY i.id,i.invoice_number,t.name,i.status,i.amount_rial,
+          i.period_start,i.period_end,i.due_at,i.paid_at
+         ORDER BY i.id DESC LIMIT 50000"
+    );
+    $safe=function(mixed $value): string {
+        $text=(string)($value??'');
+        return preg_match('/^\\s*[=+\\-@]/u',$text)===1?"'".$text:$text;
+    };
+    header('Content-Type: text/csv; charset=UTF-8');
+    header('Content-Disposition: attachment; filename="supermarket360-billing-'.gmdate('Ymd').'.csv"');
+    header('Cache-Control: no-store, private');
+    echo "\xEF\xBB\xBF";
+    $output=fopen('php://output','wb');
+    if($output===false)throw new RuntimeException('Unable to open CSV output stream.');
+    fputcsv($output,['invoice_number','tenant_name','status','amount_rial','paid_rial','balance_rial','period_start_utc','period_end_utc','due_at_utc','paid_at_utc'],',','"','\\');
+    while($row=$stmt->fetch(PDO::FETCH_ASSOC)){
+        $amount=(int)$row['amount_rial'];$paid=(int)$row['paid_rial'];
+        fputcsv($output,[
+            $safe($row['invoice_number']),$safe($row['tenant_name']),$safe($row['status']),
+            $amount,$paid,max(0,$amount-$paid),$safe($row['period_start']),
+            $safe($row['period_end']),$safe($row['due_at']),$safe($row['paid_at'])
+        ],',','"','\\');
+    }
+    fclose($output);
+    exit;
+}
