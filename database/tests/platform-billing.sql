@@ -29,7 +29,7 @@ BEGIN
   SELECT COALESCE(SUM(amount_rial),0),COUNT(*) INTO paid_total,payment_count
   FROM platform_invoice_payments WHERE tenant_id=2 AND invoice_id=@billing_invoice;
   IF paid_total<>120000 OR payment_count<>2 THEN
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Partial invoice payments did not reconcile to the invoice total';
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Partial invoice payment ledger sum or count is incorrect';
   END IF;
 END//
 
