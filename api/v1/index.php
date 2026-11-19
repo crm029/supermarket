@@ -13,6 +13,7 @@ require_once dirname(__DIR__, 2) . '/app/order_assignments.php';
 require_once dirname(__DIR__, 2) . '/app/staff_tasks.php';
 require_once dirname(__DIR__, 2) . '/app/delivery_tracking.php';
 require_once dirname(__DIR__, 2) . '/app/platform.php';
+require_once dirname(__DIR__, 2) . '/app/subscriptions.php';
 require_once dirname(__DIR__, 2) . '/app/tenant_limits.php';
 require_once dirname(__DIR__, 2) . '/app/notifications.php';
 require_once dirname(__DIR__, 2) . '/app/order_refunds.php';
@@ -64,6 +65,38 @@ try {
         }
         header('Allow: GET, PUT');
         app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+
+    if ($path === '/admin/subscription' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_tenant_subscription_overview($db, $tenant, $session);
+    }
+
+    if ($path === '/admin/subscription/change-requests' && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_tenant_subscription_change_request($db, $tenant, $session);
+    }
+
+    if ($path === '/platform/subscription-change-requests' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_platform_permission($db, $tenant, $session, 'platform.billing.manage');
+        app_platform_subscription_change_requests($db);
+    }
+
+    if (preg_match('#^/platform/subscription-change-requests/([1-9][0-9]*)/approve$#', $path, $changeApproveMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_platform_permission($db, $tenant, $session, 'platform.billing.manage');
+        app_platform_subscription_change_approve($db, $tenant, $session, (int)$changeApproveMatch[1]);
+    }
+
+    if (preg_match('#^/platform/subscription-change-requests/([1-9][0-9]*)/reject$#', $path, $changeRejectMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_platform_permission($db, $tenant, $session, 'platform.billing.manage');
+        app_platform_subscription_change_reject($db, $tenant, $session, (int)$changeRejectMatch[1]);
     }
 
     if ($path === '/platform/billing/reconciliation' && $method === 'GET') {
