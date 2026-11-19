@@ -368,9 +368,9 @@ function app_platform_billing_summary(PDO $db): never {
     unset($invoice);
     $totals=$db->query(
         "SELECT COUNT(*) AS invoice_count,
-          COALESCE(SUM(CASE WHEN status='paid' THEN amount_rial ELSE 0 END),0) AS collected_rial,
+          COALESCE(SUM(CASE WHEN i.status='paid' THEN i.amount_rial ELSE 0 END),0) AS collected_rial,
           COALESCE(SUM(CASE WHEN i.status='issued' THEN GREATEST(i.amount_rial-COALESCE((SELECT SUM(px.amount_rial) FROM platform_invoice_payments px WHERE px.tenant_id=i.tenant_id AND px.invoice_id=i.id),0),0) ELSE 0 END),0) AS outstanding_rial
-         FROM platform_invoices"
+         FROM platform_invoices i"
     )->fetch(PDO::FETCH_ASSOC)?:[];
     app_json(['data'=>[
         'plans'=>$plans,'tenants'=>$tenants,'invoices'=>$invoices,
