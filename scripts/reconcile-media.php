@@ -48,35 +48,44 @@ $report = [
 $maxDetails = 500;
 $seen = [];
 $allowedTypes = ['logo','hero','aisle','panorama','category','product','other'];
+$recordUnsafe = static function (string $path) use (&$report, $maxDetails): void {
+    $report['counts']['unsafe_entries']++;
+    if (count($report['unsafe_entries']) < $maxDetails) {
+        $report['unsafe_entries'][] = $path;
+    }
+};
 
 $tenantDirs = new DirectoryIterator($rootReal);
 foreach ($tenantDirs as $tenantEntry) {
     if ($tenantEntry->isDot()) continue;
     $tenantName = $tenantEntry->getFilename();
-    if (!preg_match('/^tenant-([1-9][0-9]*)$/', $tenantName, $tenantMatch)) continue;
+    if (!preg_match('/^tenant-([1-9][0-9]*)$/', $tenantName, $tenantMatch)) {
+        $recordUnsafe($tenantName);
+        continue;
+    }
     if ($tenantEntry->isLink() || !$tenantEntry->isDir()) {
-        $report['counts']['unsafe_entries']++;
-        if (count($report['unsafe_entries']) < $maxDetails) $report['unsafe_entries'][] = $tenantName;
+        $recordUnsafe($tenantName);
         continue;
     }
     $tenantId = (int)$tenantMatch[1];
     foreach (new DirectoryIterator($tenantEntry->getPathname()) as $typeEntry) {
         if ($typeEntry->isDot()) continue;
         $type = $typeEntry->getFilename();
-        if (!in_array($type, $allowedTypes, true)) continue;
+        if (!in_array($type, $allowedTypes, true)) {
+            $recordUnsafe($tenantName.'/'.$type);
+            continue;
+        }
         if ($typeEntry->isLink() || !$typeEntry->isDir()) {
-            $report['counts']['unsafe_entries']++;
-            if (count($report['unsafe_entries']) < $maxDetails) $report['unsafe_entries'][] = $tenantName.'/'.$type;
+            $recordUnsafe($tenantName.'/'.$type);
             continue;
         }
         foreach (new DirectoryIterator($typeEntry->getPathname()) as $fileEntry) {
             if ($fileEntry->isDot()) continue;
             $name = $fileEntry->getFilename();
-            if (!preg_match('/^[a-f0-9]{40}\.(?:jpg|png|webp)$/', $name)) continue;
             $key = $tenantName.'/'.$type.'/'.$name;
-            if ($fileEntry->isLink() || !$fileEntry->isFile()) {
-                $report['counts']['unsafe_entries']++;
-                if (count($report['unsafe_entries']) < $maxDetails) $report['unsafe_entries'][] = $key;
+            if ($fileEntry->isLink() || !$fileEntry->isFile() ||
+                !preg_match('/^[a-f0-9]{40}\.(?:jpg|png|webp)$/', $name)) {
+                $recordUnsafe($key);
                 continue;
             }
             $report['counts']['files_scanned']++;
@@ -103,10 +112,10 @@ foreach ($known as $key => $meta) {
 $hasIssues = $report['counts']['orphan_files'] > 0 ||
     $report['counts']['missing_registered_files'] > 0 ||
     $report['counts']['unsafe_entries'] > 0;
-foreach (['orphan_files','missing_registered_files','unsafe_entries'] as $list) {
-    if ($report['counts'][$list === 'orphan_files' ? 'orphan_files' : ($list === 'missing_registered_files' ? 'missing_registered_files' : 'unsafe_entries')] > $maxDetails) {
-        $report['truncated'] = true;
-    }
+if (count($report['orphan_files']) >= $maxDetails ||
+    count($report['missing_registered_files']) >= $maxDetails ||
+    count($report['unsafe_entries']) >= $maxDetails) {
+    $report['truncated'] = true;
 }
 $report['status'] = $hasIssues ? 'attention_required' : 'ok';
 media_reconcile_emit($report, $hasIssues ? 2 : 0);
