@@ -534,7 +534,7 @@ REJECT_REQUEST_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-c
 request POST "/platform/subscription-change-requests/$REJECT_REQUEST_ID/reject" 200 '{}' "$TOKEN" "$CSRF"
 request POST "/platform/subscription-change-requests/$REJECT_REQUEST_ID/reject" 409 '{}' "$TOKEN" "$CSRF"
 
-
+request PUT "/platform/plans/$UPGRADE_PLAN_ID" 200 '{"name":"پلن حرفه‌ای تست","description":"پلن ارتقای API","monthly_price_rial":150000,"limits":{"products":0,"staff":0,"media_assets":0,"monthly_orders":0,"storage_bytes":0},"is_active":true}' "$TOKEN" "$CSRF"
 request POST /admin/products 403 '{"sku":"QUOTA-BLOCKED-001","title":"محصول خارج از سقف پلن","price_rial":1000,"is_active":true}' "$TOKEN" "$CSRF"
 request PUT "/platform/plans/$UPGRADE_PLAN_ID" 200 '{"name":"پلن حرفه‌ای تست","description":"پلن ارتقای API","monthly_price_rial":150000,"limits":{"products":10000,"staff":1000,"media_assets":10000,"monthly_orders":10000,"storage_bytes":10000000000},"is_active":true}' "$TOKEN" "$CSRF"
 request POST "/platform/tenants/$NEW_TENANT_ID/suspend" 200 '{"reason":"تعلیق آزمایشی برای تست گردش مدیریت پلتفرم"}' "$TOKEN" "$CSRF"
