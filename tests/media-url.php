@@ -42,6 +42,16 @@ try {
             throw new RuntimeException('The symlink target was unexpectedly modified.');
         }
     }
+
+    $typeLink = $safeTenant . DIRECTORY_SEPARATOR . 'product';
+    if (function_exists('symlink') && @symlink($outside, $typeLink)) {
+        if (app_media_ensure_child_directory($safeTenant, 'product') !== null) {
+            throw new RuntimeException('A symlinked media type directory was accepted.');
+        }
+        if (glob($outside . DIRECTORY_SEPARATOR . '*') !== []) {
+            throw new RuntimeException('The media type symlink target was unexpectedly modified.');
+        }
+    }
 } finally {
     foreach (glob($root . DIRECTORY_SEPARATOR . '*') ?: [] as $entry) {
         if (is_link($entry) || is_file($entry)) @unlink($entry);
