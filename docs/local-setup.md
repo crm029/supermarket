@@ -225,3 +225,5 @@ Run `php bin/process-subscription-billing.php` daily. It issues one renewal invo
 The platform billing panel includes a read-only financial reconciliation view: invoice totals, recorded receipts, outstanding balances and exception detection for overpayments, inconsistent paid states and void invoices with receipts. It is a control report, not a substitute for bank-statement reconciliation.
 
 The CI pipeline also checks the fresh schema, ordered migrations and key tenant/billing/POS SQL tests on MariaDB 10.11. This is a compatibility smoke test, not a substitute for a real XAMPP installation test.
+
+Store owners can open `subscription.php` to view their current plan and request a change. Platform finance administrators review the request, approve or reject it, and an approved change creates an invoice for the next billing period. The new plan is applied only after the invoice is fully paid; the existing plan remains in force while the request is pending or unpaid.
