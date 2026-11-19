@@ -184,7 +184,7 @@ function app_auth_prune(PDO $db, int $tenantId): void {
 }
 
 function app_auth_register(PDO $db, array $tenant): never {
-    if (!app_auth_sms_ready()) app_json(['error' => 'ثبت‌نام تا زمان پیکربندی سرویس پیامک در دسترس نیست.'], 503);
+    if (!app_auth_sms_ready($db)) app_json(['error' => 'ثبت‌نام تا زمان پیکربندی سرویس پیامک در دسترس نیست.'], 503);
     $body = app_auth_request_body();
     $name = trim((string)($body['full_name'] ?? ''));
     $mobile = app_auth_mobile((string)($body['mobile'] ?? ''));
