@@ -903,6 +903,17 @@ request GET /admin/stock/reconciliation 403 "" "$POS_TOKEN"
 TOTAL_STOCK="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT SUM(on_hand) FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID")"
 if [[ "$TOTAL_STOCK" != "12" ]]; then echo "Expected 12 total units after wallet and pickup sales, manual and concurrent receipts, adjustment and transfer; received $TOTAL_STOCK"; exit 1; fi
 
+# FEFO reservation must select the earliest valid expiry batch before later lots.
+FEFO_EARLY_EXPIRY="$(date -u -d '+30 days' +%F)"
+FEFO_LATE_EXPIRY="$(date -u -d '+60 days' +%F)"
+request POST /admin/stock/receipts 200 '{"warehouse_id":1,"product_id":'$PRODUCT_ID',"quantity":1,"batch_number":"FEFO-EARLY-CI","expiry_date":"'$FEFO_EARLY_EXPIRY'","reason":"آزمون اولویت تاریخ انقضا"}' "$TOKEN" "$CSRF"
+request POST /admin/stock/receipts 200 '{"warehouse_id":1,"product_id":'$PRODUCT_ID',"quantity":1,"batch_number":"FEFO-LATE-CI","expiry_date":"'$FEFO_LATE_EXPIRY'","reason":"آزمون اولویت تاریخ انقضا"}' "$TOKEN" "$CSRF"
+request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"fulfillment":"delivery","address_id":'$ADDRESS_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+FEFO_ORDER_ID="$(assert_json order-created)"
+FEFO_ALLOCATED_BATCH="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT b.batch_number FROM stock_reservation_batches rb JOIN stock_reservations sr ON sr.tenant_id=rb.tenant_id AND sr.id=rb.reservation_id JOIN stock_batches b ON b.tenant_id=rb.tenant_id AND b.id=rb.batch_id WHERE sr.tenant_id=1 AND sr.order_id=$FEFO_ORDER_ID AND rb.status='active' ORDER BY b.expiry_date,b.received_at,b.id LIMIT 1")"
+if [[ "$FEFO_ALLOCATED_BATCH" != "FEFO-EARLY-CI" ]]; then echo "FEFO reservation did not allocate the earliest-expiring valid batch first; received $FEFO_ALLOCATED_BATCH"; exit 1; fi
+request POST "/me/orders/$FEFO_ORDER_ID/cancel" 200 "" "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+
 # Cashier POS: isolated permissions, shift lifecycle, cash sale, idempotency and stock posting.
 request GET /admin/pos/reports 200 "" "$TOKEN"
 request GET /admin/pos/reports 403 "" "$CUSTOMER_TOKEN"
