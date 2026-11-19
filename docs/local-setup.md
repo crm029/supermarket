@@ -231,3 +231,5 @@ Store owners can open `subscription.php` to view their current plan and request 
 Store owners can also review up to 50 tenant-scoped subscription invoices on `subscription.php`. The page displays live product, staff, media, storage and monthly order usage against plan limits, plus invoice totals, received amounts, remaining balances and payment state. Invoice history is read-only and does not accept or fabricate receipts.
 
 Store owners can schedule cancellation at the end of the current billing period and reverse it before expiry. Access continues until the period end. The daily subscription worker suppresses renewal invoices for scheduled cancellations and marks them cancelled at expiry; new writes are blocked after cancellation.
+
+After a successful POS sale, use the receipt link to open `pos-receipt.php`. The page fetches the sale through the cashier/manager-authorized API and provides 58mm or 80mm browser-print layouts. Actual printer-driver and device acceptance still needs testing on the target hardware.
