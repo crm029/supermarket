@@ -107,6 +107,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Platform finance reconciliation totals and anomaly detection for overpayments, paid/open status mismatches, missing/unexpected paid timestamps and void invoices with receipts (platform permission checks and API CI coverage).
 - [x] Store-owner self-service plan-change requests, platform approval/rejection, next-period invoice issuance and apply-only-after-full-payment workflow (MySQL/API CI coverage).
 - [x] Store-owner tenant-scoped invoice history with paid, partial and outstanding balance calculations (API integration CI coverage).
+- [x] Store-owner live quota usage dashboard for products, staff, media files, storage bytes and monthly online/POS orders, compared with the active plan limits (tenant-aware API integration CI coverage).
 - [ ] Automated recurring SaaS payment collection through a separate provider and verified webhook.
 - [x] Custom-domain ownership verification and tenant provisioning workflow.
 - [ ] Production DNS/HTTPS deployment, backups, monitoring and disaster recovery.
