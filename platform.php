@@ -79,6 +79,32 @@ declare(strict_types=1);
       <p id="platformPaymentMessage" class="platform-message" role="status" aria-live="polite"></p>
     </section>
 
+    <section id="platformBillingSection" class="platform-billing-panel" hidden>
+      <div class="platform-section-heading"><h2>اشتراک‌ها و امور مالی SaaS</h2><span>مدیریت سراسری</span></div>
+      <div class="platform-billing-totals">
+        <article><span>تعداد فاکتورها</span><strong id="platformInvoiceCount">۰</strong></article>
+        <article><span>دریافت‌شده</span><strong id="platformCollected">۰</strong><small>تومان</small></article>
+        <article><span>مانده فاکتورها</span><strong id="platformOutstanding">۰</strong><small>تومان</small></article>
+      </div>
+      <form id="platformPlanForm" class="platform-create">
+        <h3>تعریف پلن جدید</h3>
+        <div class="platform-form-grid">
+          <label>کد انگلیسی پلن<input id="platformPlanCode" required maxlength="40" pattern="[a-z0-9][a-z0-9_-]{1,39}" placeholder="basic"></label>
+          <label>نام پلن<input id="platformPlanName" required maxlength="120" placeholder="پایه"></label>
+          <label>قیمت ماهانه (تومان)<input id="platformPlanPrice" type="number" min="0" max="100000000000" step="1" required></label>
+          <label>توضیحات<input id="platformPlanDescription" maxlength="500" placeholder="مناسب فروشگاه‌های کوچک"></label>
+        </div>
+        <button class="primary-button" type="submit">ثبت پلن</button>
+        <p id="platformPlanMessage" class="platform-message" role="status"></p>
+      </form>
+      <div class="platform-billing-columns">
+        <section><h3>پلن‌های فروش</h3><div id="platformPlanList" class="platform-tenant-list"></div></section>
+        <section><h3>اشتراک فروشگاه‌ها</h3><div id="platformBillingTenantList" class="platform-tenant-list"></div></section>
+      </div>
+      <section class="platform-list-section"><div class="platform-section-heading"><h3>فاکتورها و ثبت دریافت</h3><span>۲۰۰ فاکتور اخیر</span></div><div id="platformInvoiceList" class="platform-tenant-list"></div></section>
+      <p id="platformBillingMessage" class="platform-message" role="status" aria-live="polite"></p>
+    </section>
+
     <section class="platform-list-section">
       <div class="platform-section-heading"><h2>فروشگاه‌های ثبت‌شده</h2><span id="platformTenantCount"></span></div>
       <div id="platformTenantList" class="platform-tenant-list"><p>در حال بارگذاری...</p></div>
