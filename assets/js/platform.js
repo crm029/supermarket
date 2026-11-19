@@ -123,7 +123,7 @@
   $("platformVerifyOtp").addEventListener("click",async()=>{
     try{
       const result=await api("auth/verify-otp",{method:"POST",body:JSON.stringify({mobile:$("platformMobile").value.trim(),code:$("platformOtpCode").value.trim()})});
-      currentUser=result.data.user;csrfToken=result.data.csrf_token;showDashboard();await Promise.all([loadTenants(),loadPaymentSettings()]);
+      currentUser=result.data.user;csrfToken=result.data.csrf_token;showDashboard();await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling()]);
     }catch(error){message("platformLoginMessage",error.message,true);}
   });
   $("platformPaymentForm").addEventListener("submit",async event=>{
