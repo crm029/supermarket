@@ -4,18 +4,14 @@ Run these commands from the application repository root with the production envi
 
 ## Scheduled workers
 
-Run the media cleanup worker frequently so files explicitly queued by an authenticated, reference-checked deletion are removed:
-
-```cron
-*/15 * * * * cd /srv/supermarket && php scripts/cleanup-media.php
-```
-
-Run the read-only reconciliation daily. It prints a JSON report and uses exit codes: `0` means healthy, `2` means review is required (orphan, missing or unsafe entries), and `1` means configuration/database failure. Configure the host's cron mail or external process monitor to alert on non-zero exit codes; alert delivery is an infrastructure integration and is not sent by the PHP scanner itself.
+Run the combined media operations check on a schedule. It processes up to 100 explicitly queued cleanup items, then runs the read-only reconciliation scan. It emits a sanitized JSON summary (counts and alert codes only; no tenant storage keys or absolute paths) and returns `0` when healthy, `2` when operator attention is required, or `1` when a worker/configuration/database error occurs.
 
 ```cron
 MAILTO=ops@example.invalid
-17 2 * * * cd /srv/supermarket && php scripts/reconcile-media.php
+17 * * * * cd /srv/supermarket && php scripts/media-operations-check.php
 ```
+
+The cron host must have a working local mail transport for `MAILTO` delivery. If it does not, forward non-zero exit codes and the JSON output to an authenticated external process monitor. Do not send reports containing storage keys or absolute paths to public destinations. The standalone `scripts/cleanup-media.php` and `scripts/reconcile-media.php` commands remain available for manual diagnosis.
 
 Prune completed media-cleanup queue history and read notifications on separate schedules:
 
@@ -28,7 +24,7 @@ Both retention workers have bounded batches and configurable retention between 3
 
 ## Orphan review
 
-The reconciliation command is intentionally read-only. An orphan means a syntactically valid file under a tenant media directory has no matching media-library record and no pending cleanup record. Review the JSON report, tenant ownership, application logs and backups before any manual intervention. Do not run broad recursive deletion commands against the media root. A dedicated operator-approved orphan queueing workflow is not yet implemented.
+The reconciliation command is intentionally read-only. An orphan means a syntactically valid file under a tenant media directory has no matching media-library record and no pending cleanup record. Review the JSON report, tenant ownership, application logs and backups before any manual intervention. Do not run broad recursive deletion commands against the media root. Orphan cleanup is never automatic. Use the restricted operator-review workflow below; reconciliation itself remains read-only.
 
 ## Operator-approved orphan cleanup
 
