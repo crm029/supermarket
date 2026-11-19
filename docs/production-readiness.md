@@ -61,5 +61,5 @@ Do not enable live checkout until all relevant boxes have been completed. No mer
 - [ ] Grant `platform.billing.manage` only to trusted platform finance administrators; the migration grants it to the existing global platform_admin role.
 - [ ] Configure and review plan prices/limits in toman; the database stores all monetary amounts as integer rial.
 - [ ] Record bank/cash receipts only after checking the actual bank statement or receipt. Enter the bank reference; partial payments remain outstanding until the invoice is fully settled.
-- [ ] Review open invoices and issue renewal invoices before each period ends. The current ledger does not automatically debit merchants or suspend overdue stores.
+- [ ] Schedule `php bin/process-subscription-billing.php` daily; it issues renewal invoices 7 days before period end and marks subscriptions `past_due` after a configurable 7-day grace period. It does not debit merchants or suspend overdue stores.
 - [ ] Add monthly order quotas and storage-byte metering; product, staff and media-count quotas are enforced for active subscriptions.\n- [ ] Configure a separate provider contract and verified webhook flow before enabling automated SaaS subscription payments.
