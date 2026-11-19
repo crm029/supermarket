@@ -914,6 +914,31 @@ FEFO_ALLOCATED_BATCH="$(mysql --host=127.0.0.1 --user=root --password=root --ski
 if [[ "$FEFO_ALLOCATED_BATCH" != "FEFO-EARLY-CI" ]]; then echo "FEFO reservation did not allocate the earliest-expiring valid batch first; received $FEFO_ALLOCATED_BATCH"; exit 1; fi
 request POST "/me/orders/$FEFO_ORDER_ID/cancel" 200 "" "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 
+# Concurrent negative adjustments must not overdraw free stock or desynchronize lots.
+ADJUST_SOURCE_BEFORE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT on_hand FROM stock_levels WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
+parallel_adjustment() {
+  local tag="$1"
+  curl --silent --show-error --output "/tmp/supermarket-concurrent-adjustment-$tag.json" --write-out "%{http_code}" \
+    -X POST -H "Host: localhost" -H "Accept: application/json" -H "Content-Type: application/json" \
+    -H "Cookie: sm_session=$TOKEN" -H "X-CSRF-Token: $CSRF" \
+    --data '{"warehouse_id":1,"product_id":'$PRODUCT_ID',"quantity":-1,"reason":"اصلاح هم‌زمان تست"}' \
+    "$BASE_URL/admin/stock/adjustments" > "/tmp/supermarket-concurrent-adjustment-$tag.status"
+}
+parallel_adjustment a & ADJUST_A_PID=$!
+parallel_adjustment b & ADJUST_B_PID=$!
+wait "$ADJUST_A_PID"
+wait "$ADJUST_B_PID"
+for tag in a b; do
+  if [[ "$(cat "/tmp/supermarket-concurrent-adjustment-$tag.status")" != "200" ]]; then
+    echo "Concurrent stock adjustment $tag did not succeed"; cat "/tmp/supermarket-concurrent-adjustment-$tag.json"; exit 1
+  fi
+done
+ADJUST_SOURCE_AFTER="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT on_hand FROM stock_levels WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
+ADJUST_BATCH_TOTAL="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COALESCE(SUM(on_hand),0) FROM stock_batches WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
+if (( ADJUST_SOURCE_AFTER != ADJUST_SOURCE_BEFORE - 2 )) || [[ "$ADJUST_SOURCE_AFTER" != "$ADJUST_BATCH_TOTAL" ]]; then
+  echo "Concurrent adjustments caused overselling or stock/batch mismatch"; exit 1
+fi
+
 # Cashier POS: isolated permissions, shift lifecycle, cash sale, idempotency and stock posting.
 request GET /admin/pos/reports 200 "" "$TOKEN"
 request GET /admin/pos/reports 403 "" "$CUSTOMER_TOKEN"
