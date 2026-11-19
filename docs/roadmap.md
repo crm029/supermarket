@@ -8,7 +8,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Create visual storefront prototype.
 - [x] Add initial MySQL schema for commerce, multi-warehouse inventory, media scenes, orders, wallet/referral and audit records.
 - [x] Add verified-host tenant resolver and read-only store/category/product API, including product detail and published scene/hotspot reads.
-- [x] Add local sample tenant seed and PHP syntax-check workflow.
+- [x] Add local sample tenant seed, safe `.env` loading (process variables take precedence), and PHP syntax-check workflow.
 - [x] Run PHP syntax checks in GitHub Actions and resolve any failures.
 - [x] Validate schema and tenant isolation against MySQL 8 CI.
 - [x] Validate fresh schema, ordered migrations and key tenant/billing/POS SQL suites on MariaDB 10.11 in CI.
@@ -96,7 +96,8 @@ Status is intentionally conservative: a checklist item is complete only when imp
 
 ## Phase 5 — customer growth and integrations
 - [x] ZarinPal v4 request/verify adapter, payment-attempt persistence, callback verification, stock commit and duplicate-callback protection.
-- [ ] Merchant sandbox transaction acceptance, live-provider acceptance and settlement reconciliation; sandbox v4 endpoints and `S`-prefixed authority validation are implemented and covered by configuration tests, but a real sandbox round-trip still requires the merchant runtime. Full-order wallet-credit refunds are implemented; gateway/bank refunds remain unavailable.
+- [x] Configure the project-provided public sandbox merchant UUID in `.env.example`, load local `.env` safely, preserve server-level environment precedence, and test the configured UUID plus sandbox v4 endpoints and `S`-prefixed authority validation.
+- [ ] Complete a real merchant-runtime sandbox round-trip, live-provider acceptance and settlement reconciliation. Full-order wallet-credit refunds are implemented; gateway/bank refunds remain unavailable.
 - [x] Kavenegar Verify Lookup OTP adapter with configurable template.
 - [ ] Live SMS account/template credentials, delivery reports and alternate-provider adapter.
 - [x] Append-only wallet credit ledger, customer balance/history endpoint and idempotent first-paid-order referral rewards (merchant-configured rate).
