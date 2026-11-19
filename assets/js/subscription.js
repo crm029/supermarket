@@ -40,6 +40,13 @@
       return '<article class="subscription-request"><div class="subscription-request-head"><strong>'+esc(r.requested_plan_name)+' · '+fa.format(r.requested_billing_period_months)+' ماه</strong><span class="subscription-status">'+esc(status(r.status))+'</span></div><small>ثبت: '+esc(r.created_at)+'</small>'+invoice+'</article>';
     }).join(""):'<div class="subscription-request">هنوز درخواستی ثبت نکرده‌اید.</div>';
   }
+  function renderInvoices(rows){
+    const box=$("subscriptionInvoices");
+    box.innerHTML=rows.length?rows.map(invoice=>{
+      const label=({paid:"پرداخت‌شده",partial:"پرداخت ناقص",unpaid:"در انتظار پرداخت",void:"باطل‌شده"})[invoice.display_status]||invoice.display_status;
+      return '<article class="subscription-invoice"><div class="subscription-invoice-head"><strong>'+esc(invoice.invoice_number)+'</strong><span class="subscription-status">'+label+'</span></div><div class="subscription-invoice-grid"><span>پلن: '+esc(invoice.plan_name)+'</span><span>مبلغ: '+toman(invoice.amount_rial)+'</span><span>پرداخت‌شده: '+toman(invoice.paid_rial)+'</span><span>مانده: '+toman(invoice.balance_rial)+'</span><span>سررسید: '+esc(invoice.due_at)+'</span><span>دوره: '+esc(invoice.period_start)+' تا '+esc(invoice.period_end)+'</span></div></article>';
+    }).join(""):'<div class="subscription-request">هنوز فاکتوری برای این فروشگاه صادر نشده است.</div>';
+  }
   async function load(){
     try{
       const [csrfResult,result]=await Promise.all([api("auth/csrf"),api("admin/subscription")]);
@@ -48,6 +55,7 @@
       renderCurrent(data.subscription||null);
       renderPlans(data.plans||[],data.subscription||null);
       renderRequests(data.change_requests||[]);
+      renderInvoices(data.invoices||[]);
       $("subscriptionMessage").textContent="";
     }catch(error){$("subscriptionMessage").textContent=error.message;}
   }
