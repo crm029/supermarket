@@ -77,6 +77,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Seller dashboard with 30-day paid revenue, seven-day sales trend and low-stock count.
 - [x] Tenant-scoped inventory movement ledger with warehouse/product/type/date filters and signed quantities.
 - [x] Read-only inventory reconciliation compares aggregate stock and reservations with batch totals, reports missing/orphan batch groups and is covered by tenant-aware API smoke tests.
+- [x] Concurrent manual stock receipts are integration-tested: both parallel requests must succeed without lost updates, and stock-level totals must equal batch totals.
 - [x] Tenant-scoped CSV exports for orders and inventory movements, with date/status/warehouse/product filters, formula-injection protection and permission checks.
 - [x] Operational notifications.
 
