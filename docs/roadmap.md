@@ -20,7 +20,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Opaque database-backed sessions, HttpOnly cookies and CSRF-protected logout.
 - [x] Customer registration with pending status, OTP activation and optional referral attribution.
 - [x] Kavenegar Verify Lookup production OTP adapter with server-side credentials and delivery response validation.
-- [x] Owner-only 0098 VIP SMS link adapter with encrypted credentials, configurable sender and provider selection; provider delivery reports and password recovery remain open.
+- [x] Owner-only 0098 VIP SMS link adapter with encrypted credentials, configurable sender, provider selection and a rate-limited test message to the verified platform-owner mobile; provider delivery reports and password recovery remain open.
 - [x] Tenant/platform permission catalog, role grants, deny-by-default product API checks and product-change audit events.
 - [x] Tenant staff role creation, permission assignment, employee role assignment/removal UI and API; staff-management privilege cannot be delegated.
 - [x] Platform super-admin authorization with OTP-verified accounts, global permission scope and owner-only payment configuration.
