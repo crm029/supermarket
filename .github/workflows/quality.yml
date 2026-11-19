@@ -311,6 +311,29 @@ jobs:
           mysql --host=127.0.0.1 --user=root --password=root supermarket360 -N -e "SELECT COUNT(*) FROM notifications WHERE event_key IN ('ci-old-unread','ci-recent-read')" | grep -qx '2'
           mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "DELETE FROM notifications WHERE event_key LIKE 'ci-%'"
 
+      - name: Verify bounded media cleanup retention
+        env:
+          APP_ENV: testing
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: supermarket360
+          DB_USERNAME: root
+          DB_PASSWORD: root
+          MEDIA_CLEANUP_RETENTION_DAYS: "180"
+        run: |
+          set -euo pipefail
+          mysql --host=127.0.0.1 --user=root --password=root supermarket360 <<'SQL'
+          INSERT INTO media_cleanup_queue (tenant_id,storage_key,status,attempts,created_at,processed_at)
+          VALUES
+            (1,'tenant-1/product/1111111111111111111111111111111111111111.jpg','completed',1,DATE_SUB(UTC_TIMESTAMP(),INTERVAL 220 DAY),DATE_SUB(UTC_TIMESTAMP(),INTERVAL 200 DAY)),
+            (1,'tenant-1/product/2222222222222222222222222222222222222222.jpg','completed',1,DATE_SUB(UTC_TIMESTAMP(),INTERVAL 10 DAY),DATE_SUB(UTC_TIMESTAMP(),INTERVAL 5 DAY)),
+            (1,'tenant-1/product/3333333333333333333333333333333333333333.jpg','pending',0,DATE_SUB(UTC_TIMESTAMP(),INTERVAL 220 DAY),NULL);
+          SQL
+          php bin/prune-media-cleanup.php >/tmp/media-cleanup-prune.json
+          php -r '$r=json_decode(file_get_contents("/tmp/media-cleanup-prune.json"),true,512,JSON_THROW_ON_ERROR); if (($r["status"]??"")!=="ok" || ($r["deleted"]??-1)!==1 || ($r["retention_days"]??-1)!==180) { fwrite(STDERR,"Unexpected media cleanup retention report\\n"); exit(1); }'
+          mysql --host=127.0.0.1 --user=root --password=root supermarket360 -N -e "SELECT COUNT(*) FROM media_cleanup_queue WHERE storage_key LIKE 'tenant-1/product/%' AND status='completed'" | grep -qx '1'
+          mysql --host=127.0.0.1 --user=root --password=root supermarket360 -N -e "SELECT COUNT(*) FROM media_cleanup_queue WHERE storage_key='tenant-1/product/3333333333333333333333333333333333333333.jpg' AND status='pending'" | grep -qx '1'
+          mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "DELETE FROM media_cleanup_queue WHERE tenant_id=1 AND storage_key LIKE 'tenant-1/product/%'"
+
       - name: Create public API smoke fixtures
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/api-smoke-fixtures.sql
 
