@@ -96,7 +96,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 
 ## Phase 5 — customer growth and integrations
 - [x] ZarinPal v4 request/verify adapter, payment-attempt persistence, callback verification, stock commit and duplicate-callback protection.
-- [ ] Real-provider sandbox/live acceptance and settlement reconciliation; full-order wallet-credit refunds are implemented, but gateway/bank refunds remain unavailable.
+- [ ] Merchant sandbox transaction acceptance, live-provider acceptance and settlement reconciliation; sandbox v4 endpoints and `S`-prefixed authority validation are implemented and covered by configuration tests, but a real sandbox round-trip still requires the merchant runtime. Full-order wallet-credit refunds are implemented; gateway/bank refunds remain unavailable.
 - [x] Kavenegar Verify Lookup OTP adapter with configurable template.
 - [ ] Live SMS account/template credentials, delivery reports and alternate-provider adapter.
 - [x] Append-only wallet credit ledger, customer balance/history endpoint and idempotent first-paid-order referral rewards (merchant-configured rate).
