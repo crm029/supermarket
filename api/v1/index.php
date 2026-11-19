@@ -65,6 +65,47 @@ try {
         app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
     }
 
+    if ($path === '/platform/billing' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_platform_permission($db, $tenant, $session, 'platform.billing.manage');
+        app_platform_billing_summary($db);
+    }
+
+    if ($path === '/platform/plans' && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_platform_permission($db, $tenant, $session, 'platform.billing.manage');
+        app_platform_plan_create($db, $tenant, $session);
+    }
+
+    if (preg_match('#^/platform/plans/([1-9][0-9]*)$#', $path, $platformPlanMatch) && $method === 'PUT') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_platform_permission($db, $tenant, $session, 'platform.billing.manage');
+        app_platform_plan_update($db, $tenant, $session, (int)$platformPlanMatch[1]);
+    }
+
+    if (preg_match('#^/platform/tenants/([1-9][0-9]*)/subscription$#', $path, $platformSubscriptionMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_platform_permission($db, $tenant, $session, 'platform.billing.manage');
+        app_platform_subscription_assign($db, $tenant, $session, (int)$platformSubscriptionMatch[1]);
+    }
+
+    if (preg_match('#^/platform/subscriptions/([1-9][0-9]*)/renew$#', $path, $platformRenewMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_platform_permission($db, $tenant, $session, 'platform.billing.manage');
+        app_platform_subscription_renew($db, $tenant, $session, (int)$platformRenewMatch[1]);
+    }
+
+    if (preg_match('#^/platform/invoices/([1-9][0-9]*)/payments$#', $path, $platformInvoicePaymentMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_platform_permission($db, $tenant, $session, 'platform.billing.manage');
+        app_platform_invoice_record_payment($db, $tenant, $session, (int)$platformInvoicePaymentMatch[1]);
+    }
+
     if ($path === '/platform/audit' && $method === 'GET') {
         $session = app_auth_require($db, $tenant);
         app_auth_require_platform_permission($db, $tenant, $session, 'platform.audit.read');
