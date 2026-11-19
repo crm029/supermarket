@@ -92,7 +92,7 @@ function app_sms_0098_send_text(PDO $db, string $mobile, string $message): void 
 }
 
 function app_sms_platform_test(PDO $db, array $tenant, array $session): never {
-    if (!app_auth_sms_ready($db)) app_json(['error'=>'ابتدا سرویس پیامک ۰۰۹۸ را با اطلاعات ورود معتبر فعال کنید.'],422);
+    if (!app_auth_sms_ready($db) || app_sms_settings($db)['provider'] !== '0098vip') app_json(['error'=>'ابتدا سرویس پیامک ۰۰۹۸ را با اطلاعات ورود معتبر فعال کنید.'],422);
     $mobile = app_auth_mobile((string)($session['mobile'] ?? ''));
     if ($mobile === null || empty($session['mobile_verified_at'])) app_json(['error'=>'برای آزمایش پیامک، شماره موبایل تأییدشده حساب مدیر لازم است.'],422);
     app_auth_hit_limit($db,(int)$tenant['id'],'platform_sms_test',app_auth_hash('platform-sms-test-user:' . (int)$session['id']),2,3600);
