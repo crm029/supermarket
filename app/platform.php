@@ -645,3 +645,64 @@ function app_platform_usage_summary(PDO $db): never {
     }
     app_json(['data'=>['totals'=>$totals,'tenants'=>$rows,'month_utc'=>gmdate('Y-m')],'meta'=>['tenant_count'=>count($rows),'limit'=>500]]);
 }
+
+function app_platform_billing_reconciliation(PDO $db): never {
+    $totals=$db->query(
+        "SELECT COUNT(*) AS invoice_count,
+          COALESCE(SUM(CASE WHEN i.status<>'void' THEN i.amount_rial ELSE 0 END),0) AS invoiced_rial,
+          COALESCE(SUM(COALESCE(p.paid_rial,0)),0) AS received_rial,
+          COALESCE(SUM(CASE WHEN i.status='issued' THEN GREATEST(i.amount_rial-COALESCE(p.paid_rial,0),0) ELSE 0 END),0) AS outstanding_rial,
+          COALESCE(SUM(CASE WHEN
+            COALESCE(p.paid_rial,0)>i.amount_rial OR
+            (i.status='paid' AND (COALESCE(p.paid_rial,0)<>i.amount_rial OR i.paid_at IS NULL)) OR
+            (i.status<>'paid' AND i.paid_at IS NOT NULL) OR
+            (i.status='issued' AND COALESCE(p.paid_rial,0)>=i.amount_rial) OR
+            (i.status='void' AND COALESCE(p.paid_rial,0)>0)
+          THEN 1 ELSE 0 END),0) AS anomaly_count
+         FROM platform_invoices i
+         LEFT JOIN (
+           SELECT tenant_id,invoice_id,SUM(amount_rial) AS paid_rial
+           FROM platform_invoice_payments GROUP BY tenant_id,invoice_id
+         ) p ON p.tenant_id=i.tenant_id AND p.invoice_id=i.id"
+    )->fetch(PDO::FETCH_ASSOC)?:[];
+    $rows=$db->query(
+        "SELECT i.id,i.tenant_id,i.invoice_number,t.name AS tenant_name,i.status,
+          i.amount_rial,COALESCE(p.paid_rial,0) AS paid_rial,
+          GREATEST(i.amount_rial-COALESCE(p.paid_rial,0),0) AS balance_rial,
+          i.due_at,i.paid_at,
+          CASE
+            WHEN COALESCE(p.paid_rial,0)>i.amount_rial THEN 'overpaid'
+            WHEN i.status='paid' AND COALESCE(p.paid_rial,0)<>i.amount_rial THEN 'paid_amount_mismatch'
+            WHEN i.status='paid' AND i.paid_at IS NULL THEN 'paid_timestamp_missing'
+            WHEN i.status<>'paid' AND i.paid_at IS NOT NULL THEN 'unexpected_paid_timestamp'
+            WHEN i.status='issued' AND COALESCE(p.paid_rial,0)>=i.amount_rial THEN 'fully_received_but_open'
+            WHEN i.status='void' AND COALESCE(p.paid_rial,0)>0 THEN 'void_invoice_has_receipts'
+            ELSE NULL END AS anomaly_code
+         FROM platform_invoices i
+         JOIN tenants t ON t.id=i.tenant_id
+         LEFT JOIN (
+           SELECT tenant_id,invoice_id,SUM(amount_rial) AS paid_rial
+           FROM platform_invoice_payments GROUP BY tenant_id,invoice_id
+         ) p ON p.tenant_id=i.tenant_id AND p.invoice_id=i.id
+         WHERE COALESCE(p.paid_rial,0)>i.amount_rial
+            OR (i.status='paid' AND (COALESCE(p.paid_rial,0)<>i.amount_rial OR i.paid_at IS NULL))
+            OR (i.status<>'paid' AND i.paid_at IS NOT NULL)
+            OR (i.status='issued' AND COALESCE(p.paid_rial,0)>=i.amount_rial)
+            OR (i.status='void' AND COALESCE(p.paid_rial,0)>0)
+         ORDER BY i.id DESC LIMIT 200"
+    )->fetchAll(PDO::FETCH_ASSOC);
+    foreach($rows as &$row){
+        foreach(['id','tenant_id','amount_rial','paid_rial','balance_rial'] as $key)$row[$key]=(int)$row[$key];
+    }
+    unset($row);
+    app_json(['data'=>[
+        'totals'=>[
+            'invoice_count'=>(int)($totals['invoice_count']??0),
+            'invoiced_rial'=>(int)($totals['invoiced_rial']??0),
+            'received_rial'=>(int)($totals['received_rial']??0),
+            'outstanding_rial'=>(int)($totals['outstanding_rial']??0),
+            'anomaly_count'=>(int)($totals['anomaly_count']??0)
+        ],
+        'anomalies'=>$rows
+    ],'meta'=>['anomaly_limit'=>200]]);
+}
