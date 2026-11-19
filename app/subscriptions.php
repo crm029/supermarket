@@ -22,7 +22,7 @@ function app_tenant_subscription_overview(PDO $db,array $tenant,array $session):
         "SELECT s.id,s.status,s.plan_id,s.billing_period_months,s.price_monthly_rial,
           s.current_period_start,s.current_period_end,s.cancel_at_period_end,s.cancelled_at,p.name AS plan_name,p.limits_json
          FROM tenant_subscriptions s JOIN platform_plans p ON p.id=s.plan_id
-         WHERE s.tenant_id=? AND s.status IN ('active','past_due','pending_payment')
+         WHERE s.tenant_id=? AND s.status IN ('active','past_due','pending_payment','cancelled','expired')
          ORDER BY s.id DESC LIMIT 1"
     );
     $stmt->execute([(int)$tenant['id']]);
