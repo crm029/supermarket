@@ -20,7 +20,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Opaque database-backed sessions, HttpOnly cookies and CSRF-protected logout.
 - [x] Customer registration with pending status, OTP activation and optional referral attribution.
 - [x] Kavenegar Verify Lookup production OTP adapter with server-side credentials and delivery response validation.
-- [ ] Merchant SMS credentials/templates, password recovery and delivery reports; platform OTP adapter is implemented.
+- [x] Owner-only 0098 VIP SMS link adapter with encrypted credentials, configurable sender and provider selection; provider delivery reports and password recovery remain open.
 - [x] Tenant/platform permission catalog, role grants, deny-by-default product API checks and product-change audit events.
 - [x] Tenant staff role creation, permission assignment, employee role assignment/removal UI and API; staff-management privilege cannot be delegated.
 - [x] Platform super-admin authorization with OTP-verified accounts, global permission scope and owner-only payment configuration.
@@ -100,7 +100,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Configure the project-provided public sandbox merchant UUID in `.env.example`, load local `.env` safely, preserve server-level environment precedence, and test the configured UUID plus sandbox v4 endpoints and `S`-prefixed authority validation.
 - [ ] Complete a real merchant-runtime sandbox round-trip, live-provider acceptance and settlement reconciliation. Full-order wallet-credit refunds are implemented; gateway/bank refunds remain unavailable.
 - [x] Kavenegar Verify Lookup OTP adapter with configurable template.
-- [ ] Live SMS account/template credentials, delivery reports and alternate-provider adapter.
+- [x] 0098 VIP account credentials can be configured in the platform owner panel and are encrypted at rest; live account acceptance and delivery reports remain open.
 - [x] Append-only wallet credit ledger, customer balance/history endpoint and idempotent first-paid-order referral rewards (merchant-configured rate).
 - [x] Referral attribution on OTP-verified registration.
 - [x] Qualifying-order referral reward: only the referred customer's first verified paid order; tenant-scoped attribution, self-referral rejection and idempotent wallet credit. Advanced fraud scoring remains future work.
