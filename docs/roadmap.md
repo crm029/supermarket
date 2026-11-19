@@ -76,6 +76,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [ ] Complete POS release: cashier page/API, shift lifecycle, FEFO cash sales, idempotency, cash reconciliation, manager reporting, audited cash refunds and the returned-item inspection/restock-or-reject workflow are implemented. Bank card terminals, thermal printing and mixed tender remain.
 - [x] Seller dashboard with 30-day paid revenue, seven-day sales trend and low-stock count.
 - [x] Tenant-scoped inventory movement ledger with warehouse/product/type/date filters and signed quantities.
+- [x] Read-only inventory reconciliation compares aggregate stock and reservations with batch totals, reports missing/orphan batch groups and is covered by tenant-aware API smoke tests.
 - [x] Tenant-scoped CSV exports for orders and inventory movements, with date/status/warehouse/product filters, formula-injection protection and permission checks.
 - [x] Operational notifications.
 
