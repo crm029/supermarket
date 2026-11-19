@@ -264,7 +264,7 @@ function app_inventory_transfer(PDO $db, array $tenant, array $session): never {
         // in the same order for every transfer (including opposite-direction transfers).
         $warehouseIds=[$from,$to];
         sort($warehouseIds,SORT_NUMERIC);
-        $ensure=$db->prepare('INSERT IGNORE INTO stock_levels (tenant_id,warehouse_id,product_id,on_hand,reserved) VALUES (?,?,?,0,0)');
+        $ensure=$db->prepare('INSERT INTO stock_levels (tenant_id,warehouse_id,product_id,on_hand,reserved) VALUES (?,?,?,0,0) ON DUPLICATE KEY UPDATE on_hand=on_hand');
         foreach($warehouseIds as $warehouseId)$ensure->execute([$tenant['id'],$warehouseId,$product]);
         $lock=$db->prepare(
             'SELECT on_hand,reserved FROM stock_levels
