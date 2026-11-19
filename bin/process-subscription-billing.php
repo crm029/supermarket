@@ -44,11 +44,50 @@ try{
     $graceDays=app_subscription_worker_int('SUBSCRIPTION_GRACE_DAYS',7,0,30);
     $created=0;
     $pastDue=0;
+    $cancelled=0;
     $errors=0;
+
+    $cancellationCandidates=$db->query(
+        "SELECT id,tenant_id FROM tenant_subscriptions
+         WHERE status IN ('active','past_due') AND cancel_at_period_end=1
+           AND current_period_end IS NOT NULL AND current_period_end<=UTC_TIMESTAMP()
+         ORDER BY current_period_end,id LIMIT {$batchSize}"
+    )->fetchAll(PDO::FETCH_ASSOC);
+    foreach($cancellationCandidates as $candidate){
+        $db->beginTransaction();
+        try{
+            $tenantLock=$db->prepare('SELECT id FROM tenants WHERE id=? FOR UPDATE');
+            $tenantLock->execute([(int)$candidate['tenant_id']]);
+            if(!$tenantLock->fetchColumn()){$db->rollBack();continue;}
+            $lock=$db->prepare("SELECT id,tenant_id,status,current_period_end,cancel_at_period_end FROM tenant_subscriptions WHERE tenant_id=? AND id=? FOR UPDATE");
+            $lock->execute([(int)$candidate['tenant_id'],(int)$candidate['id']]);
+            $sub=$lock->fetch(PDO::FETCH_ASSOC);
+            if(!$sub||!in_array($sub['status'],['active','past_due'],true)||(int)$sub['cancel_at_period_end']!==1||
+               empty($sub['current_period_end'])||strtotime($sub['current_period_end'].' UTC')>time()){
+                $db->commit();continue;
+            }
+            $update=$db->prepare("UPDATE tenant_subscriptions SET status='cancelled',cancelled_at=UTC_TIMESTAMP(),cancel_at_period_end=0 WHERE tenant_id=? AND id=? AND status IN ('active','past_due') AND cancel_at_period_end=1");
+            $update->execute([(int)$sub['tenant_id'],(int)$sub['id']]);
+            if($update->rowCount()===1){
+                app_subscription_worker_audit($db,'platform.subscription.cancelled_at_period_end',(int)$sub['id'],[
+                    'tenant_id'=>(int)$sub['tenant_id'],'current_period_end'=>$sub['current_period_end']
+                ]);
+                app_subscription_worker_notify_owner($db,(int)$sub['tenant_id'],'platform-subscription-cancelled-'.(int)$sub['id'],
+                    'اشتراک فروشگاه لغو شد','دوره اشتراک به پایان رسید و لغو زمان‌بندی‌شده اجرا شد. برای فعال‌سازی دوباره با مدیریت پلتفرم تماس بگیرید.',
+                    'tenant_subscription',(int)$sub['id']);
+                $cancelled++;
+            }
+            $db->commit();
+        }catch(Throwable $e){
+            if($db->inTransaction())$db->rollBack();
+            $errors++;
+            fwrite(STDERR,'Scheduled cancellation failed for subscription '.(int)$candidate['id'].': '.$e->getMessage().PHP_EOL);
+        }
+    }
 
     $due=$db->query(
         "SELECT id,tenant_id FROM tenant_subscriptions
-         WHERE status='active' AND current_period_end IS NOT NULL
+         WHERE status='active' AND cancel_at_period_end=0 AND current_period_end IS NOT NULL
            AND current_period_end>=DATE_SUB(UTC_TIMESTAMP(),INTERVAL {$graceDays} DAY)
            AND current_period_end<=DATE_ADD(UTC_TIMESTAMP(),INTERVAL {$leadDays} DAY)
          ORDER BY current_period_end,id LIMIT {$batchSize}"
@@ -114,7 +153,7 @@ try{
 
     $overdue=$db->query(
         "SELECT id,tenant_id FROM tenant_subscriptions
-         WHERE status='active' AND current_period_end IS NOT NULL
+         WHERE status='active' AND cancel_at_period_end=0 AND current_period_end IS NOT NULL
            AND current_period_end<DATE_SUB(UTC_TIMESTAMP(),INTERVAL {$graceDays} DAY)
          ORDER BY current_period_end,id LIMIT {$batchSize}"
     )->fetchAll(PDO::FETCH_ASSOC);
@@ -220,10 +259,15 @@ try{
 
     $moreRenewals=$db->query(
         "SELECT EXISTS(SELECT 1 FROM tenant_subscriptions s
-          WHERE s.status='active' AND s.current_period_end>=DATE_SUB(UTC_TIMESTAMP(),INTERVAL {$graceDays} DAY)
+          WHERE s.status='active' AND s.cancel_at_period_end=0 AND s.current_period_end>=DATE_SUB(UTC_TIMESTAMP(),INTERVAL {$graceDays} DAY)
             AND s.current_period_end<=DATE_ADD(UTC_TIMESTAMP(),INTERVAL {$leadDays} DAY)
             AND NOT EXISTS(SELECT 1 FROM platform_invoices i WHERE i.subscription_id=s.id AND i.period_start=s.current_period_end)
           LIMIT 1)"
+    )->fetchColumn();
+
+    $moreCancellations=$db->query(
+        "SELECT EXISTS(SELECT 1 FROM tenant_subscriptions WHERE status IN ('active','past_due')
+          AND cancel_at_period_end=1 AND current_period_end<=UTC_TIMESTAMP() LIMIT 1)"
     )->fetchColumn();
 
     $moreReminders=$db->query(
@@ -239,13 +283,14 @@ try{
     )->fetchColumn();
     $moreOverdue=$db->query(
         "SELECT EXISTS(SELECT 1 FROM tenant_subscriptions
-          WHERE status='active' AND current_period_end<DATE_SUB(UTC_TIMESTAMP(),INTERVAL {$graceDays} DAY) LIMIT 1)"
+          WHERE status='active' AND cancel_at_period_end=0 AND current_period_end<DATE_SUB(UTC_TIMESTAMP(),INTERVAL {$graceDays} DAY) LIMIT 1)"
     )->fetchColumn();
 
     $report=[
         'status'=>$errors===0?'ok':'attention_required',
         'renewal_invoices_created'=>$created,
         'subscriptions_marked_past_due'=>$pastDue,
+        'subscriptions_cancelled_at_period_end'=>$cancelled,
         'upcoming_invoice_reminders'=>$upcomingReminders,
         'overdue_invoice_reminders'=>$overdueReminders,
         'errors'=>$errors,
@@ -253,7 +298,7 @@ try{
         'lead_days'=>$leadDays,
         'grace_days'=>$graceDays,
         'reminder_lead_days'=>$reminderDays,
-        'more_may_remain'=>(bool)$moreRenewals||(bool)$moreOverdue||(bool)$moreReminders,
+        'more_may_remain'=>(bool)$moreCancellations||(bool)$moreRenewals||(bool)$moreOverdue||(bool)$moreReminders,
         'checked_at'=>gmdate('c')
     ];
     fwrite(STDOUT,json_encode($report,JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR).PHP_EOL);
