@@ -187,6 +187,68 @@
     try{await navigator.clipboard.writeText($("platformDnsRecordValue").textContent);message("platformMessage","مقدار TXT کپی شد.");}
     catch(_){message("platformMessage","کپی خودکار در دسترس نیست؛ مقدار TXT را دستی انتخاب و کپی کنید.",true);}
   });
+
+  $("platformPlanForm").addEventListener("submit",async event=>{
+    event.preventDefault();
+    let limits;
+    try{
+      limits=JSON.parse($("platformPlanLimits").value||"{}");
+      if(!limits||Array.isArray(limits)||typeof limits!=="object")throw new Error("محدودیت‌ها باید یک شیء JSON باشند.");
+    }catch(error){message("platformPlanMessage",error.message||"JSON محدودیت‌ها معتبر نیست.",true);return;}
+    try{
+      const result=await api("platform/plans",{method:"POST",csrf:true,body:JSON.stringify({
+        code:$("platformPlanCode").value.trim(),name:$("platformPlanName").value.trim(),
+        description:$("platformPlanDescription").value.trim(),monthly_price_rial:Math.round(Number($("platformPlanPrice").value)*10),limits
+      })});
+      message("platformPlanMessage",result.message);$("platformPlanForm").reset();await loadBilling();
+    }catch(error){message("platformPlanMessage",error.message,true);}
+  });
+  $("platformPlanList").addEventListener("click",async event=>{
+    const button=event.target.closest("[data-toggle-plan]");if(!button)return;
+    const id=Number(button.dataset.togglePlan),current=button.dataset.active==="1";
+    try{
+      const latest=await api("platform/billing");
+      const item=(latest.data.plans||[]).find(p=>p.id===id);if(!item)return;
+      await api("platform/plans/"+id,{method:"PUT",csrf:true,body:JSON.stringify({
+        name:item.name,description:item.description,monthly_price_rial:item.monthly_price_rial,
+        limits:item.limits||{},is_active:!current
+      })});
+      await loadBilling();
+    }catch(error){message("platformBillingMessage",error.message,true);}
+  });
+  $("platformBillingTenantList").addEventListener("click",async event=>{
+    const assign=event.target.closest("[data-assign-subscription]"),renew=event.target.closest("[data-renew-subscription]");
+    try{
+      if(assign){
+        const id=Number(assign.dataset.assignSubscription);
+        const planId=Number(document.querySelector('[data-plan-select="'+id+'"]').value);
+        const months=Number(document.querySelector('[data-month-select="'+id+'"]').value);
+        const result=await api("platform/tenants/"+id+"/subscription",{method:"POST",csrf:true,body:JSON.stringify({plan_id:planId,billing_period_months:months})});
+        message("platformBillingMessage",result.message+" مبلغ فاکتور: "+moneyToman(result.data.amount_rial)+" تومان.");
+      }else if(renew){
+        const id=Number(renew.dataset.renewSubscription);
+        const result=await api("platform/subscriptions/"+id+"/renew",{method:"POST",csrf:true,body:"{}"});
+        message("platformBillingMessage",result.message);
+      }
+      await loadBilling();
+    }catch(error){message("platformBillingMessage",error.message,true);}
+  });
+  $("platformInvoiceList").addEventListener("click",async event=>{
+    const button=event.target.closest("[data-record-payment]");if(!button)return;
+    const invoiceId=Number(button.dataset.recordPayment),due=Number(button.dataset.due);
+    const amountInput=window.prompt("مبلغ دریافتی به تومان (مانده: "+moneyToman(due)+" تومان):",String(Math.ceil(due/10)));
+    if(amountInput===null)return;
+    const toman=Number(amountInput);
+    if(!Number.isSafeInteger(toman)||toman<1){message("platformBillingMessage","مبلغ واردشده معتبر نیست.",true);return;}
+    const reference=window.prompt("شناسه پیگیری یا شماره رسید (اختیاری):","")??"";
+    try{
+      const result=await api("platform/invoices/"+invoiceId+"/payments",{method:"POST",csrf:true,body:JSON.stringify({
+        amount_rial:toman*10,method:"bank_transfer",reference,
+        idempotency_key:"ui-"+crypto.randomUUID().replace(/-/g,"")
+      })});
+      message("platformBillingMessage",result.message);await loadBilling();
+    }catch(error){message("platformBillingMessage",error.message,true);}
+  });
   $("platformReload").addEventListener("click",loadTenants);
   $("platformLogout").addEventListener("click",async()=>{
     try{await api("auth/logout",{method:"POST",body:"{}",csrf:true});}catch(_){}
