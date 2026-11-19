@@ -61,6 +61,14 @@ VALUES
   (1,@api_user_one,SHA2(REPEAT('S',43),256),SHA2(REPEAT('C',43),256),DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 DAY)),
   (2,@api_user_two,SHA2(REPEAT('T',43),256),SHA2(REPEAT('D',43),256),DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 DAY));
 
+-- The main API session also represents the tenant-one store owner for subscription self-service.
+INSERT INTO roles (tenant_id,role_key,title)
+VALUES (1,'store_owner','مالک فروشگاه')
+ON DUPLICATE KEY UPDATE title=VALUES(title);
+SET @api_store_owner_role_id=(SELECT id FROM roles WHERE role_scope_id=1 AND tenant_id=1 AND role_key='store_owner' LIMIT 1);
+INSERT IGNORE INTO user_roles (tenant_id,role_scope_id,user_id,role_id)
+VALUES (1,1,@api_user_one,@api_store_owner_role_id);
+
 -- Give the tenant-one API test manager a global platform role for platform API coverage.
 INSERT INTO roles (tenant_id,role_key,title)
 VALUES (NULL,'ci_platform_admin','مدیر پلتفرم CI');
