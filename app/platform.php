@@ -369,7 +369,7 @@ function app_platform_billing_summary(PDO $db): never {
     $totals=$db->query(
         "SELECT COUNT(*) AS invoice_count,
           COALESCE(SUM(CASE WHEN status='paid' THEN amount_rial ELSE 0 END),0) AS collected_rial,
-          COALESCE(SUM(CASE WHEN status='issued' THEN amount_rial ELSE 0 END),0) AS outstanding_rial
+          COALESCE(SUM(CASE WHEN i.status='issued' THEN GREATEST(i.amount_rial-COALESCE((SELECT SUM(px.amount_rial) FROM platform_invoice_payments px WHERE px.tenant_id=i.tenant_id AND px.invoice_id=i.id),0),0) ELSE 0 END),0) AS outstanding_rial
          FROM platform_invoices"
     )->fetch(PDO::FETCH_ASSOC)?:[];
     app_json(['data'=>[
@@ -386,7 +386,7 @@ function app_platform_plan_create(PDO $db,array $actorTenant,array $session): ne
     $price=filter_var($body['monthly_price_rial']??null,FILTER_VALIDATE_INT);
     $limits=$body['limits']??[];
     if(!preg_match('/^[a-z0-9][a-z0-9_-]{1,39}$/',$code)||$name===''||mb_strlen($name)>120||
-       mb_strlen($description)>500||$price===false||$price<0||$price>1000000000000||
+       mb_strlen($description)>500||$price===false||$price<1||$price>1000000000000||
        !is_array($limits)||count($limits)>30){
         app_json(['error'=>'اطلاعات پلن معتبر نیست.'],422);
     }
@@ -413,7 +413,7 @@ function app_platform_plan_update(PDO $db,array $actorTenant,array $session,int 
     $active=filter_var($body['is_active']??null,FILTER_VALIDATE_BOOLEAN,FILTER_NULL_ON_FAILURE);
     $limits=$body['limits']??[];
     if($name===''||mb_strlen($name)>120||mb_strlen($description)>500||
-       $price===false||$price<0||$price>1000000000000||$active===null||!is_array($limits)||count($limits)>30){
+       $price===false||$price<1||$price>1000000000000||$active===null||!is_array($limits)||count($limits)>30){
         app_json(['error'=>'اطلاعات و وضعیت پلن معتبر نیست.'],422);
     }
     $stmt=$db->prepare('UPDATE platform_plans SET name=?,description=?,monthly_price_rial=?,limits_json=?,is_active=? WHERE id=?');
@@ -501,6 +501,17 @@ function app_platform_invoice_record_payment(PDO $db,array $actorTenant,array $s
         $stmt=$db->prepare("SELECT id,tenant_id,subscription_id,amount_rial,status FROM platform_invoices WHERE id=? FOR UPDATE");
         $stmt->execute([$invoiceId]);$invoice=$stmt->fetch(PDO::FETCH_ASSOC);
         if(!$invoice){$db->rollBack();app_json(['error'=>'فاکتور پیدا نشد.'],404);}
+        $existing=$db->prepare('SELECT invoice_id,amount_rial,method,reference FROM platform_invoice_payments WHERE idempotency_key=?');
+        $existing->execute([$key]);$prior=$existing->fetch(PDO::FETCH_ASSOC);
+        if($prior){
+            if((int)$prior['invoice_id']!==$invoiceId||(int)$prior['amount_rial']!==$amount||$prior['method']!==$method||$prior['reference']!==$reference){
+                $db->rollBack();app_json(['error'=>'کلید یکتا قبلاً برای دریافت متفاوتی استفاده شده است.'],409);
+            }
+            $sumNow=$db->prepare('SELECT COALESCE(SUM(amount_rial),0) FROM platform_invoice_payments WHERE tenant_id=? AND invoice_id=?');
+            $sumNow->execute([$invoice['tenant_id'],$invoiceId]);$paidNow=(int)$sumNow->fetchColumn();
+            $db->commit();
+            app_json(['data'=>['invoice_id'=>$invoiceId,'paid_rial'=>$paidNow,'remaining_rial'=>max(0,(int)$invoice['amount_rial']-$paidNow),'status'=>$paidNow>=(int)$invoice['amount_rial']?'paid':'issued'],'message'=>'این دریافت قبلاً ثبت شده بود؛ نتیجه قبلی بازگردانده شد.']);
+        }
         if($invoice['status']!=='issued'){$db->rollBack();app_json(['error'=>'این فاکتور دیگر قابل دریافت وجه نیست.'],409);}
         $sum=$db->prepare('SELECT COALESCE(SUM(amount_rial),0) FROM platform_invoice_payments WHERE tenant_id=? AND invoice_id=?');
         $sum->execute([$invoice['tenant_id'],$invoiceId]);$paid=(int)$sum->fetchColumn();
