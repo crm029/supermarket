@@ -596,3 +596,52 @@ function app_platform_billing_export(PDO $db): never {
     fclose($output);
     exit;
 }
+
+function app_platform_usage_summary(PDO $db): never {
+    $stmt=$db->query(
+        "SELECT t.id,t.name,t.slug,t.status,
+          s.status AS subscription_status,p.name AS plan_name,p.limits_json,
+          (SELECT COUNT(*) FROM products pr WHERE pr.tenant_id=t.id AND pr.is_active=1) AS products,
+          (SELECT COUNT(DISTINCT u.id)
+           FROM users u
+           JOIN user_roles ur ON ur.tenant_id=u.tenant_id AND ur.user_id=u.id
+           JOIN roles r ON r.role_scope_id=ur.role_scope_id AND r.id=ur.role_id
+           WHERE u.tenant_id=t.id AND u.status='active' AND r.role_key<>'customer') AS staff,
+          (SELECT COUNT(*) FROM media_assets m WHERE m.tenant_id=t.id) AS media_assets,
+          (SELECT COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(m.metadata,'$.size')) AS UNSIGNED)),0)
+           FROM media_assets m WHERE m.tenant_id=t.id) AS storage_bytes,
+          ((SELECT COUNT(*) FROM orders o WHERE o.tenant_id=t.id AND o.status<>'cancelled'
+              AND o.created_at>=DATE_FORMAT(UTC_DATE(),'%Y-%m-01')
+              AND o.created_at<DATE_ADD(DATE_FORMAT(UTC_DATE(),'%Y-%m-01'),INTERVAL 1 MONTH))
+           +(SELECT COUNT(*) FROM pos_sales ps WHERE ps.tenant_id=t.id
+              AND ps.created_at>=DATE_FORMAT(UTC_DATE(),'%Y-%m-01')
+              AND ps.created_at<DATE_ADD(DATE_FORMAT(UTC_DATE(),'%Y-%m-01'),INTERVAL 1 MONTH))) AS monthly_orders
+         FROM tenants t
+         LEFT JOIN tenant_subscriptions s ON s.id=(
+           SELECT MAX(s2.id) FROM tenant_subscriptions s2
+           WHERE s2.tenant_id=t.id AND s2.status IN ('active','past_due','pending_payment')
+         )
+         LEFT JOIN platform_plans p ON p.id=s.plan_id
+         ORDER BY t.id DESC LIMIT 500"
+    );
+    $rows=[];
+    $totals=['tenants'=>0,'active_subscriptions'=>0,'past_due_subscriptions'=>0,'products'=>0,'staff'=>0,'media_assets'=>0,'storage_bytes'=>0,'monthly_orders'=>0];
+    foreach($stmt->fetchAll(PDO::FETCH_ASSOC) as $row){
+        $limits=json_decode((string)($row['limits_json']??''),true);
+        if(!is_array($limits))$limits=[];
+        $usage=[];
+        foreach(['products','staff','media_assets','storage_bytes','monthly_orders'] as $key){
+            $usage[$key]=(int)$row[$key];
+            $totals[$key]+=$usage[$key];
+        }
+        $totals['tenants']++;
+        if($row['subscription_status']==='active')$totals['active_subscriptions']++;
+        if($row['subscription_status']==='past_due')$totals['past_due_subscriptions']++;
+        $rows[]=[
+            'tenant_id'=>(int)$row['id'],'name'=>$row['name'],'slug'=>$row['slug'],
+            'tenant_status'=>$row['status'],'subscription_status'=>$row['subscription_status'],
+            'plan_name'=>$row['plan_name'],'usage'=>$usage,'limits'=>$limits
+        ];
+    }
+    app_json(['data'=>['totals'=>$totals,'tenants'=>$rows,'month_utc'=>gmdate('Y-m')],'meta'=>['tenant_count'=>count($rows),'limit'=>500]]);
+}
