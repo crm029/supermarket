@@ -842,6 +842,34 @@ request DELETE "/admin/products/$VARIANT_PARENT_ID/variants/$VARIANT_500_ID" 200
 request DELETE "/admin/products/$VARIANT_PARENT_ID" 200 "" "$TOKEN" "$CSRF"
 request POST /cart/quote 409 '{"items":[{"product_id":'$VARIANT_1L_ID',"quantity":1}]}'
 request PATCH "/admin/products/$VARIANT_PARENT_ID" 200 '{"is_active":true}' "$TOKEN" "$CSRF"
+
+# Parallel transfers from one source must serialize and preserve both stock and batch totals.
+TRANSFER_SOURCE_BEFORE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COALESCE(on_hand,0) FROM stock_levels WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
+TRANSFER_TARGET_BEFORE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COALESCE(on_hand,0) FROM stock_levels WHERE tenant_id=1 AND warehouse_id=$NEW_WAREHOUSE_ID AND product_id=$PRODUCT_ID")"
+parallel_transfer() {
+  local tag="$1"
+  curl --silent --show-error --output "/tmp/supermarket-concurrent-transfer-$tag.json" --write-out "%{http_code}" \
+    -X POST -H "Host: localhost" -H "Accept: application/json" -H "Content-Type: application/json" \
+    -H "Cookie: sm_session=$TOKEN" -H "X-CSRF-Token: $CSRF" \
+    --data '{"from_warehouse_id":1,"to_warehouse_id":'$NEW_WAREHOUSE_ID',"product_id":'$PRODUCT_ID',"quantity":1}' \
+    "$BASE_URL/admin/stock/transfers" > "/tmp/supermarket-concurrent-transfer-$tag.status"
+}
+parallel_transfer a & TRANSFER_A_PID=$!
+parallel_transfer b & TRANSFER_B_PID=$!
+wait "$TRANSFER_A_PID"
+wait "$TRANSFER_B_PID"
+for tag in a b; do
+  if [[ "$(cat "/tmp/supermarket-concurrent-transfer-$tag.status")" != "200" ]]; then
+    echo "Concurrent stock transfer $tag did not succeed"; cat "/tmp/supermarket-concurrent-transfer-$tag.json"; exit 1
+  fi
+done
+TRANSFER_SOURCE_AFTER="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COALESCE(on_hand,0) FROM stock_levels WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
+TRANSFER_TARGET_AFTER="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COALESCE(on_hand,0) FROM stock_levels WHERE tenant_id=1 AND warehouse_id=$NEW_WAREHOUSE_ID AND product_id=$PRODUCT_ID")"
+TRANSFER_BATCH_SOURCE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COALESCE(SUM(on_hand),0) FROM stock_batches WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
+TRANSFER_BATCH_TARGET="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COALESCE(SUM(on_hand),0) FROM stock_batches WHERE tenant_id=1 AND warehouse_id=$NEW_WAREHOUSE_ID AND product_id=$PRODUCT_ID")"
+if (( TRANSFER_SOURCE_AFTER != TRANSFER_SOURCE_BEFORE - 2 )) || (( TRANSFER_TARGET_AFTER != TRANSFER_TARGET_BEFORE + 2 )) || [[ "$TRANSFER_SOURCE_AFTER" != "$TRANSFER_BATCH_SOURCE" || "$TRANSFER_TARGET_AFTER" != "$TRANSFER_BATCH_TARGET" ]]; then
+  echo "Concurrent transfers caused overselling, lost updates or stock/batch mismatch"; exit 1
+fi
 request POST /admin/stock/transfers 200 '{"from_warehouse_id":1,"to_warehouse_id":'$NEW_WAREHOUSE_ID',"product_id":'$PRODUCT_ID',"quantity":2}' "$TOKEN" "$CSRF"
 request GET /admin/stock/reconciliation 200 "" "$TOKEN"
 assert_json inventory-reconciliation
