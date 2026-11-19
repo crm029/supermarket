@@ -871,6 +871,31 @@ if (( TRANSFER_SOURCE_AFTER != TRANSFER_SOURCE_BEFORE - 2 )) || (( TRANSFER_TARG
   echo "Concurrent transfers caused overselling, lost updates or stock/batch mismatch"; exit 1
 fi
 request POST /admin/stock/transfers 200 '{"from_warehouse_id":1,"to_warehouse_id":'$NEW_WAREHOUSE_ID',"product_id":'$PRODUCT_ID',"quantity":2}' "$TOKEN" "$CSRF"
+
+# Opposite-direction transfers must acquire balance locks in a consistent order.
+CROSS_BEFORE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COALESCE(SUM(on_hand),0) FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID AND warehouse_id IN (1,$NEW_WAREHOUSE_ID)")"
+parallel_cross_transfer() {
+  local tag="$1" from="$2" to="$3"
+  curl --silent --show-error --output "/tmp/supermarket-cross-transfer-$tag.json" --write-out "%{http_code}" \
+    -X POST -H "Host: localhost" -H "Accept: application/json" -H "Content-Type: application/json" \
+    -H "Cookie: sm_session=$TOKEN" -H "X-CSRF-Token: $CSRF" \
+    --data '{"from_warehouse_id":'$from',"to_warehouse_id":'$to',"product_id":'$PRODUCT_ID',"quantity":1}' \
+    "$BASE_URL/admin/stock/transfers" > "/tmp/supermarket-cross-transfer-$tag.status"
+}
+parallel_cross_transfer ab 1 "$NEW_WAREHOUSE_ID" & CROSS_AB_PID=$!
+parallel_cross_transfer ba "$NEW_WAREHOUSE_ID" 1 & CROSS_BA_PID=$!
+wait "$CROSS_AB_PID"
+wait "$CROSS_BA_PID"
+for tag in ab ba; do
+  if [[ "$(cat "/tmp/supermarket-cross-transfer-$tag.status")" != "200" ]]; then
+    echo "Opposite-direction concurrent transfer $tag did not succeed"; cat "/tmp/supermarket-cross-transfer-$tag.json"; exit 1
+  fi
+done
+CROSS_AFTER="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COALESCE(SUM(on_hand),0) FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID AND warehouse_id IN (1,$NEW_WAREHOUSE_ID)")"
+CROSS_BATCH_TOTAL="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COALESCE(SUM(on_hand),0) FROM stock_batches WHERE tenant_id=1 AND product_id=$PRODUCT_ID AND warehouse_id IN (1,$NEW_WAREHOUSE_ID)")"
+if [[ "$CROSS_BEFORE" != "$CROSS_AFTER" || "$CROSS_AFTER" != "$CROSS_BATCH_TOTAL" ]]; then
+  echo "Opposite-direction transfers caused deadlock, lost stock or batch mismatch"; exit 1
+fi
 request GET /admin/stock/reconciliation 200 "" "$TOKEN"
 assert_json inventory-reconciliation
 request GET /admin/stock/reconciliation 403 "" "$POS_TOKEN"
