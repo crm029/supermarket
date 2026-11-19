@@ -126,6 +126,18 @@ declare(strict_types=1);
       <div id="platformTenantList" class="platform-tenant-list"><p>در حال بارگذاری...</p></div>
     </section>
     <section class="platform-list-section">
+      <div class="platform-section-heading"><h2>بررسی فایل‌های رسانه‌ای یتیم</h2><span>فقط مدیر پلتفرم مجاز</span></div>
+      <p>ابتدا گزارش read-only فایل یتیم را بررسی کنید. ثبت درخواست یا رد آن هیچ فایلی را حذف نمی‌کند؛ تأیید نهایی فقط فایل را وارد صف می‌کند و worker پس از بررسی مجدد مسیر آن را پاک می‌کند.</p>
+      <form id="platformOrphanReviewForm" class="platform-form-grid">
+        <label>شناسه فروشگاه<input id="orphanTenantId" type="number" min="1" step="1" required></label>
+        <label>کلید کامل فایل<input id="orphanStorageKey" maxlength="500" required dir="ltr" placeholder="tenant-1/product/40-character-hash.jpg"></label>
+        <label>دلیل بررسی<input id="orphanReviewReason" maxlength="500" required minlength="5"></label>
+        <button class="secondary-button" type="submit">ثبت درخواست بررسی</button>
+      </form>
+      <p id="platformOrphanReviewMessage" class="platform-message" role="status" aria-live="polite"></p>
+      <div id="platformOrphanReviewList" class="platform-tenant-list"><p>در حال دریافت درخواست‌ها...</p></div>
+    </section>
+    <section class="platform-list-section">
       <div class="platform-section-heading"><h2>گزارش رویدادهای پلتفرم</h2><span>آخرین ۲۰۰ رویداد</span></div>
       <div id="platformAuditList" class="platform-audit-list"><p>در حال بارگذاری...</p></div>
     </section>
