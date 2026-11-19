@@ -81,6 +81,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Concurrent same-direction stock transfers are integration-tested for source serialization, destination increments, and per-warehouse batch reconciliation.
 - [x] Opposite-direction concurrent transfers are covered to enforce deterministic balance-row lock ordering and prevent avoidable transfer deadlocks.
 - [x] Checkout locks multi-warehouse stock rows in the same stable warehouse order as transfers while preserving stock-availability allocation priority.
+- [x] Concurrent negative stock adjustments are integration-tested for reserved-stock safety and exact batch/aggregate synchronization.
 - [x] FEFO allocation is integration-tested against distinct near- and later-expiry lots through a real customer checkout reservation.
 - [x] Tenant-scoped CSV exports for orders and inventory movements, with date/status/warehouse/product filters, formula-injection protection and permission checks.
 - [x] Operational notifications.
