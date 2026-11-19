@@ -30,7 +30,7 @@ The application sandbox adapter uses these v4 endpoints:
 - Verify: `https://sandbox.zarinpal.com/pg/v4/payment/verify.json`
 - Redirect: `https://sandbox.zarinpal.com/pg/StartPay/{authority}`
 
-Configure the sandbox merchant UUID in **Platform → تنظیمات درگاه پرداخت سراسری**, choose **Sandbox — آزمایشی**, and save. The merchant identifier is encrypted in the database; it must not be committed to Git or pasted into logs. Sandbox authorities must begin with uppercase `S`; callback validation now checks this against the saved payment-attempt mode. A sandbox payment must never be treated as proof of live settlement.
+The repository's local `.env.example` is prefilled with the project-provided public sandbox merchant UUID `50cd6e57-81b9-4f2b-9aff-6ce699f4b56d`. Copy it into your local `.env` as a starting point, keep `ZARINPAL_SANDBOX=true`, or enter the same UUID in **Platform → تنظیمات درگاه پرداخت سراسری** and choose **Sandbox — آزمایشی**. The value is specifically a sandbox identifier supplied for this project; never substitute it for a live merchant credential. When saved through the platform UI, it is encrypted in the database. Do not log merchant settings. Sandbox authorities must begin with uppercase `S`; callback validation now checks this against the saved payment-attempt mode. A sandbox payment must never be treated as proof of live settlement.
 
 - [ ] Select sandbox mode and use the merchant's sandbox credentials.
 - [ ] Complete a successful low-value test order and verify the provider reference, order amount and currency.
