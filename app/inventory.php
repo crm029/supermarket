@@ -260,20 +260,30 @@ function app_inventory_transfer(PDO $db, array $tenant, array $session): never {
     try{
         app_inventory_validate_refs($db,(int)$tenant['id'],$from,$product);
         app_inventory_validate_refs($db,(int)$tenant['id'],$to,$product);
-        $lock=$db->prepare('SELECT on_hand,reserved FROM stock_levels WHERE tenant_id=? AND warehouse_id=? AND product_id=? FOR UPDATE');
-        $lock->execute([$tenant['id'],$from,$product]);
-        $source=$lock->fetch();
+        // Materialize both balance rows in deterministic key order, then lock them
+        // in the same order for every transfer (including opposite-direction transfers).
+        $warehouseIds=[$from,$to];
+        sort($warehouseIds,SORT_NUMERIC);
+        $ensure=$db->prepare('INSERT IGNORE INTO stock_levels (tenant_id,warehouse_id,product_id,on_hand,reserved) VALUES (?,?,?,0,0)');
+        foreach($warehouseIds as $warehouseId)$ensure->execute([$tenant['id'],$warehouseId,$product]);
+        $lock=$db->prepare(
+            'SELECT warehouse_id,on_hand,reserved FROM stock_levels
+             WHERE tenant_id=? AND product_id=? AND warehouse_id IN (?,?)
+             ORDER BY warehouse_id FOR UPDATE'
+        );
+        $lock->execute([$tenant['id'],$product,$warehouseIds[0],$warehouseIds[1]]);
+        $balances=[];
+        foreach($lock->fetchAll(PDO::FETCH_ASSOC) as $balance)$balances[(int)$balance['warehouse_id']]=$balance;
+        $source=$balances[$from]??null;
         if(!$source||(int)$source['on_hand']-(int)$source['reserved']<$qty){
             $db->rollBack();app_json(['error'=>'موجودی آزاد انبار مبدأ کافی نیست.'],409);
         }
         $take=$db->prepare('UPDATE stock_levels SET on_hand=on_hand-? WHERE tenant_id=? AND warehouse_id=? AND product_id=? AND on_hand-reserved>=?');
         $take->execute([$qty,$tenant['id'],$from,$product,$qty]);
         if($take->rowCount()!==1)throw new RuntimeException('Source stock changed during transfer.');
-        $add=$db->prepare(
-            'INSERT INTO stock_levels (tenant_id,warehouse_id,product_id,on_hand,reserved) VALUES (?,?,?, ?,0)
-             ON DUPLICATE KEY UPDATE on_hand=on_hand+VALUES(on_hand)'
-        );
-        $add->execute([$tenant['id'],$to,$product,$qty]);
+        $add=$db->prepare('UPDATE stock_levels SET on_hand=on_hand+? WHERE tenant_id=? AND warehouse_id=? AND product_id=?');
+        $add->execute([$qty,$tenant['id'],$to,$product]);
+        if($add->rowCount()!==1)throw new RuntimeException('Destination stock row missing during transfer.');
         app_stock_batch_transfer($db,(int)$tenant['id'],$from,$to,$product,$qty);
         $movement=$db->prepare(
             "INSERT INTO stock_movements
