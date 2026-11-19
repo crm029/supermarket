@@ -54,7 +54,19 @@ function app_auth_hit_limit(PDO $db, int $tenantId, string $action, string $buck
     }
 }
 
-function app_auth_sms_ready(): bool {
+function app_auth_sms_ready(?PDO $db = null): bool {
+    if ($db !== null && $db->query("SHOW TABLES LIKE 'platform_sms_settings'")->fetchColumn()) {
+        $configured = $db->query('SELECT provider, sender_number, username_encrypted, password_encrypted FROM platform_sms_settings WHERE id=1')->fetch();
+        if ($configured && $configured['provider'] === '0098vip') {
+            return trim((string)$configured['sender_number']) !== '' &&
+                !empty($configured['username_encrypted']) && !empty($configured['password_encrypted']);
+        }
+        if ($configured && $configured['provider'] === 'disabled') return false;
+        if ($configured && $configured['provider'] === 'kavenegar') {
+            return trim((string)(app_env('KAVENEGAR_API_KEY') ?? '')) !== '' &&
+                trim((string)(app_env('KAVENEGAR_VERIFY_TEMPLATE') ?? '')) !== '';
+        }
+    }
     $provider = strtolower(app_env('SMS_PROVIDER', app_auth_is_development() ? 'log' : 'disabled') ?? 'disabled');
     if ($provider === 'log') return app_auth_is_development();
     if ($provider === 'kavenegar') {
@@ -64,14 +76,46 @@ function app_auth_sms_ready(): bool {
     return false;
 }
 
-function app_auth_send_otp(string $mobile, string $code, int $challengeId): void {
-    $provider = strtolower(app_env('SMS_PROVIDER', app_auth_is_development() ? 'log' : 'disabled') ?? 'disabled');
+function app_auth_send_otp(PDO $db, string $mobile, string $code, int $challengeId): void {
+    $smsRow = null;
+    if ($db->query("SHOW TABLES LIKE 'platform_sms_settings'")->fetchColumn()) {
+        $smsRow = $db->query('SELECT provider,sender_number,username_encrypted,password_encrypted,domain FROM platform_sms_settings WHERE id=1')->fetch() ?: null;
+    }
+    $provider = $smsRow ? (string)$smsRow['provider'] : strtolower(app_env('SMS_PROVIDER', app_auth_is_development() ? 'log' : 'disabled') ?? 'disabled');
     if ($provider === 'log' && app_auth_is_development()) {
         $masked = substr($mobile, 0, 4) . '******' . substr($mobile, -2);
         error_log('[supermarket360-dev-otp] challenge=' . $challengeId . ' mobile=' . $masked . ' code=' . $code);
         return;
     }
-    if ($provider !== 'kavenegar' || !app_auth_sms_ready()) {
+    if ($provider === '0098vip') {
+        if (!$smsRow || !app_auth_sms_ready($db)) throw new RuntimeException('SMS provider is not configured.');
+        if (!function_exists('curl_init')) throw new RuntimeException('PHP cURL extension is required for SMS delivery.');
+        $settings = app_sms_settings($db);
+        $query = http_build_query([
+            'FROM' => $settings['sender_number'],
+            'TO' => $mobile,
+            'TEXT' => 'کد ورود شما: ' . $code,
+            'USERNAME' => $settings['username'],
+            'PASSWORD' => $settings['password'],
+            'DOMAIN' => $settings['domain'],
+        ], '', '&', PHP_QUERY_RFC3986);
+        $curl = curl_init('https://www.0098vip.com/sendsmslink.aspx?' . $query);
+        curl_setopt_array($curl, [
+            CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 5, CURLOPT_TIMEOUT => 12,
+            CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_HTTPHEADER => ['Accept: text/plain'], CURLOPT_FOLLOWLOCATION => false,
+        ]);
+        $response = curl_exec($curl); $error = curl_error($curl); $status = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE); curl_close($curl);
+        if (!is_string($response) || $error !== '' || $status < 200 || $status >= 300) throw new RuntimeException('SMS provider connection failed (HTTP ' . $status . ').');
+        $result = trim($response);
+        if (!preg_match('/^0(?:\\.0+)?$/', $result)) {
+            $codeMap = ['1'=>'شماره گیرنده اشتباه است','2'=>'گیرنده تعریف نشده است','3'=>'فرستنده تعریف نشده است','4'=>'متن پیامک تنظیم نشده است','5'=>'نام کاربری تنظیم نشده است','6'=>'رمز عبور تنظیم نشده است','7'=>'دامنه تنظیم نشده است','8'=>'مجوز سرویس باطل شده است','9'=>'اعتبار پیامک کافی نیست','10'=>'برای این شماره لینک تعریف نشده است','11'=>'مجوز اتصال لینک وجود ندارد','12'=>'نام کاربری یا رمز عبور اشتباه است','13'=>'متن دارای کاراکتر غیرمجاز است','14'=>'سقف ارسال روزانه پر شده است','16'=>'ارسال با این شماره مجاز نیست','17'=>'خطای شماره پنل','18'=>'اعتبار پنل تمام شده است','19'=>'تنظیمات OTP انجام نشده است','20'=>'فرمت کد OTP صحیح نیست','21'=>'کد OTP تأیید نشده است','22'=>'اطلاعات مالک شماره تأیید نشده است','23'=>'مجوز ارسال به این پنل صادر نشده است','24'=>'IP سرور مجاز نیست'];
+            $safeCode = preg_match('/^\\d+$/',$result) ? $result : 'unknown';
+            throw new RuntimeException('0098 SMS error ' . $safeCode . ': ' . ($codeMap[$safeCode] ?? 'پاسخ نامعتبر سرویس پیامک'));
+        }
+        return;
+    }
+    if ($provider !== 'kavenegar' || !app_auth_sms_ready($db)) {
         throw new RuntimeException('SMS provider is not configured.');
     }
     if (!function_exists('curl_init')) throw new RuntimeException('PHP cURL extension is required for SMS delivery.');
@@ -186,7 +230,7 @@ function app_auth_refresh_csrf(PDO $db, array $session): never {
 }
 
 function app_auth_request_otp(PDO $db, array $tenant): never {
-    if (!app_auth_sms_ready()) {
+    if (!app_auth_sms_ready($db)) {
         app_json(['error' => 'سرویس ارسال پیامک هنوز برای این فروشگاه پیکربندی نشده است.'], 503);
     }
 
@@ -235,7 +279,7 @@ function app_auth_request_otp(PDO $db, array $tenant): never {
     }
 
     try {
-        app_auth_send_otp($mobile, $code, $challengeId);
+        app_auth_send_otp($db, $mobile, $code, $challengeId);
     } catch (Throwable $e) {
         $cancel = $db->prepare('UPDATE auth_challenges SET consumed_at = UTC_TIMESTAMP() WHERE id = ?');
         $cancel->execute([$challengeId]);
