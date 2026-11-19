@@ -3,6 +3,23 @@ set -euo pipefail
 
 PLAN_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM platform_plans WHERE code='ci-billing' LIMIT 1")"
 test -n "$PLAN_ID"
+# Remove fixtures left by an interrupted earlier run so this test is repeatable.
+mysql --host=127.0.0.1 --user=root --password=root supermarket360 <<SQL
+DELETE FROM notifications
+WHERE tenant_id=1 AND (
+  (entity_type='platform_invoice' AND entity_id IN (
+    SELECT id FROM platform_invoices WHERE tenant_id=1 AND subscription_id IN
+      (SELECT id FROM tenant_subscriptions WHERE tenant_id=1 AND plan_id=$PLAN_ID)
+  ))
+  OR
+  (entity_type='tenant_subscription' AND entity_id IN
+    (SELECT id FROM tenant_subscriptions WHERE tenant_id=1 AND plan_id=$PLAN_ID))
+);
+DELETE FROM platform_invoices
+WHERE tenant_id=1 AND subscription_id IN
+  (SELECT id FROM tenant_subscriptions WHERE tenant_id=1 AND plan_id=$PLAN_ID);
+DELETE FROM tenant_subscriptions WHERE tenant_id=1 AND plan_id=$PLAN_ID;
+SQL
 mysql --host=127.0.0.1 --user=root --password=root supermarket360 <<SQL
 INSERT INTO users (tenant_id,full_name,mobile,status,referral_code)
 VALUES (1,'CI Store Owner','09129999991','active','CIWORKEROWNER1')
@@ -21,7 +38,7 @@ VALUES
   (1,$PLAN_ID,'active',1,120000,UTC_TIMESTAMP(),UTC_TIMESTAMP(),DATE_ADD(UTC_TIMESTAMP(),INTERVAL 2 DAY));
 SET @worker_subscription=LAST_INSERT_ID();
 SQL
-OWNER_ROLE_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM users u JOIN user_roles ur ON ur.tenant_id=u.tenant_id AND ur.user_id=u.id JOIN roles r ON r.role_scope_id=ur.role_scope_id AND r.id=ur.role_id WHERE u.tenant_id=1 AND r.role_key='store_owner'")"
+OWNER_ROLE_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(DISTINCT u.id) FROM users u JOIN user_roles ur ON ur.tenant_id=u.tenant_id AND ur.user_id=u.id JOIN roles r ON r.role_scope_id=ur.role_scope_id AND r.id=ur.role_id WHERE u.tenant_id=1 AND u.status='active' AND r.role_key='store_owner'")"
 echo "Billing worker owner recipients: $OWNER_ROLE_COUNT"
 test "$OWNER_ROLE_COUNT" -ge 1
 SUB_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM tenant_subscriptions WHERE tenant_id=1 AND plan_id=$PLAN_ID ORDER BY id DESC LIMIT 1")"
