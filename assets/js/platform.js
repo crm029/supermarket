@@ -242,6 +242,15 @@
       message("platformSmsMessage",result.message||"تنظیمات ذخیره شد.");await loadSmsSettings();
     }catch(error){message("platformSmsMessage",error.message,true);}
   });
+  $("platformSmsTest").addEventListener("click",async()=>{
+    if(!window.confirm("یک پیامک آزمایشی به شماره تأییدشده حساب مدیر ارسال شود؟ این عملیات از اعتبار پیامک پنل استفاده می‌کند."))return;
+    const button=$("platformSmsTest");button.disabled=true;
+    try{
+      const result=await api("platform/sms-settings/test",{method:"POST",csrf:true,body:"{}"});
+      message("platformSmsMessage",result.message+(result.data?.destination_masked?" · "+result.data.destination_masked:""));
+    }catch(error){message("platformSmsMessage",error.message,true);}
+    finally{button.disabled=false;}
+  });
   $("platformPaymentForm").addEventListener("submit",async event=>{
     event.preventDefault();
     const mode=$("platformPaymentMode").value;
