@@ -205,3 +205,7 @@ Apply the variants migration after the coupons migration. Create a product as �
 - کلید یکتای فروش به اثرانگشت اقلام، وجه دریافتی و توضیح فاکتور متصل است تا تکرار درخواست با محتوای متفاوت رد شود.
 - انتظار وجه صندوق برابر موجودی اولیه به‌علاوه فروش خالص نقدی است. در بستن شیفت، وجه شمارش‌شده و مغایرت ثبت می‌شود.
 - این نسخه فقط فروش نقدی ساده را پوشش می‌دهد؛ پرداخت ترکیبی، کارت‌خوان بانکی، برگشت فروش POS، چاپگر حرارتی، بارکدخوان سخت‌افزاری و گزارش حسابداری صندوق در مراحل بعدی هستند.
+
+
+## Media storage reconciliation
+Run `php scripts/reconcile-media.php` from the project root to compare generated tenant media files with `media_assets` and pending cleanup records. The command is read-only: it reports registered files, queued cleanup files, orphan files, missing registered files and unsafe filesystem entries as JSON. Exit codes: 0 = clean, 1 = configuration/runtime error, 2 = attention required. Schedule it daily and send non-zero exit codes and JSON output to monitoring; investigate before manually deleting any files. It scans only generated 40-character hexadecimal JPG/PNG/WebP filenames under recognized `tenant-{id}/{media-type}` directories.
