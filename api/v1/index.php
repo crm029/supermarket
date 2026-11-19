@@ -57,6 +57,13 @@ try {
     $method = app_method();
     $db = app_db();
 
+    if ($path === '/platform/sms-settings/test' && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_platform_permission($db, $tenant, $session, 'platform.payments.manage');
+        app_sms_platform_test($db, $tenant, $session);
+    }
+
     if ($path === '/platform/sms-settings') {
         $session = app_auth_require($db, $tenant);
         app_auth_require_platform_permission($db, $tenant, $session, 'platform.payments.manage');
