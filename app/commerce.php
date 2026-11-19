@@ -241,6 +241,7 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
 
     $db->beginTransaction();
     try {
+        app_tenant_limit_guard($db,$tenant,'monthly_orders',1);
         if ($addressId !== null) {
             $address = $db->prepare('SELECT id,province,city,postal_code FROM customer_addresses WHERE tenant_id = ? AND user_id = ? AND id = ? AND is_active = 1 FOR UPDATE');
             $address->execute([$tenant['id'], $session['id'], $addressId]);
