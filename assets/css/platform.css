@@ -87,3 +87,7 @@
 .platform-reconciliation{margin:22px 0;padding:18px;border:1px solid var(--line,#dce5df);border-radius:16px;background:var(--surface,#fff)}
 .platform-reconciliation-row{border-inline-start:4px solid #c98243}
 .platform-reconciliation-row p{margin:10px 0 4px;font-size:.9rem}
+
+.platform-change-requests{margin:22px 0;padding:18px;border:1px solid var(--line,#dce5df);border-radius:16px;background:var(--surface,#fff)}
+.platform-change-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.platform-change-actions button{min-height:38px}
