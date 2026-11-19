@@ -87,6 +87,11 @@ declare(strict_types=1);
         <article><span>دریافت‌شده</span><strong id="platformCollected">۰</strong><small>تومان</small></article>
         <article><span>مانده فاکتورها</span><strong id="platformOutstanding">۰</strong><small>تومان</small></article>
       </div>
+      <section class="platform-usage-section">
+        <div class="platform-section-heading"><h3>مصرف منابع فروشگاه‌ها</h3><span id="platformUsagePeriod">ماه جاری UTC</span></div>
+        <div id="platformUsageTotals" class="platform-billing-totals"></div>
+        <div id="platformUsageList" class="platform-usage-list"><p>در حال محاسبه مصرف...</p></div>
+      </section>
       <form id="platformPlanForm" class="platform-create">
         <h3>تعریف پلن جدید</h3>
         <div class="platform-form-grid">
