@@ -539,7 +539,11 @@ request POST "/platform/subscription-change-requests/$CHANGE_REQUEST_ID/approve"
 CHANGE_INVOICE_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM platform_invoices WHERE subscription_change_request_id=$CHANGE_REQUEST_ID")"
 PLAN_BEFORE_CHANGE_PAYMENT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT plan_id FROM tenant_subscriptions WHERE tenant_id=1 AND id=$MAIN_SUBSCRIPTION_ID")"
 if [[ "$PLAN_BEFORE_CHANGE_PAYMENT" != "$PLAN_ID" ]]; then echo "Plan changed before the change invoice was fully paid."; exit 1; fi
-request POST "/platform/invoices/$CHANGE_INVOICE_ID/payments" 200 '{"amount_rial":150000,"method":"bank_transfer","reference":"API-CI-PLAN-CHANGE","idempotency_key":"api-ci-plan-change-pay-0001"}' "$TOKEN" "$CSRF"
+request POST "/platform/invoices/$CHANGE_INVOICE_ID/payments" 200 '{"amount_rial":50000,"method":"bank_transfer","reference":"API-CI-PLAN-CHANGE-1","idempotency_key":"api-ci-plan-change-pay-0001"}' "$TOKEN" "$CSRF"
+PARTIAL_STATE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT CONCAT(i.status,'|',COALESCE((SELECT SUM(amount_rial) FROM platform_invoice_payments WHERE tenant_id=i.tenant_id AND invoice_id=i.id),0),'|',s.plan_id) FROM platform_invoices i JOIN tenant_subscriptions s ON s.tenant_id=i.tenant_id AND s.id=i.subscription_id WHERE i.id=$CHANGE_INVOICE_ID")"
+IFS="|" read -r PARTIAL_INVOICE_STATUS PARTIAL_PAID PARTIAL_PLAN_ID <<< "$PARTIAL_STATE"
+if [[ "$PARTIAL_INVOICE_STATUS" != "issued" || "$PARTIAL_PAID" != "50000" || "$PARTIAL_PLAN_ID" != "$PLAN_ID" ]]; then echo "Partial payment must not activate or apply the requested plan: $PARTIAL_STATE"; exit 1; fi
+request POST "/platform/invoices/$CHANGE_INVOICE_ID/payments" 200 '{"amount_rial":100000,"method":"bank_transfer","reference":"API-CI-PLAN-CHANGE-2","idempotency_key":"api-ci-plan-change-pay-0002"}' "$TOKEN" "$CSRF"
 request GET /admin/subscription 200 "" "$TOKEN"
 assert_json "subscription-invoices" "$CHANGE_INVOICE_ID"
 PLAN_CHANGE_STATE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT CONCAT(s.plan_id,'|',s.price_monthly_rial,'|',r.status,'|',i.status) FROM tenant_subscriptions s JOIN platform_subscription_change_requests r ON r.tenant_id=s.tenant_id AND r.subscription_id=s.id JOIN platform_invoices i ON i.subscription_change_request_id=r.id WHERE s.tenant_id=1 AND r.id=$CHANGE_REQUEST_ID")"
