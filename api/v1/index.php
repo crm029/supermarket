@@ -66,6 +66,12 @@ try {
         app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
     }
 
+    if ($path === '/platform/billing/reconciliation' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_platform_permission($db, $tenant, $session, 'platform.billing.manage');
+        app_platform_billing_reconciliation($db);
+    }
+
     if ($path === '/platform/usage' && $method === 'GET') {
         $session = app_auth_require($db, $tenant);
         app_auth_require_platform_permission($db, $tenant, $session, 'platform.billing.manage');
