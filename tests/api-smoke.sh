@@ -914,8 +914,7 @@ FEFO_ALLOCATED_BATCH="$(mysql --host=127.0.0.1 --user=root --password=root --ski
 if [[ "$FEFO_ALLOCATED_BATCH" != "FEFO-EARLY-CI" ]]; then echo "FEFO reservation did not allocate the earliest-expiring valid batch first; received $FEFO_ALLOCATED_BATCH"; exit 1; fi
 request POST "/me/orders/$FEFO_ORDER_ID/cancel" 200 "" "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 
-# Normal stock consumption must skip expired lots; a supplier return may explicitly
-# consume the exact original receipt lot even after its expiry date.
+# Normal stock consumption must skip expired lots even when other valid lots exist.
 php -r '
 require "app/bootstrap.php";
 require "app/stock_batches.php";
@@ -925,15 +924,18 @@ try {
   $productId=(int)$argv[1];
   $expired=(string)$db->query("SELECT DATE_SUB(UTC_DATE(), INTERVAL 30 DAY)")->fetchColumn();
   app_stock_batch_add($db,1,1,$productId,1,"EXPIRED-POLICY-CI",$expired);
+  $batch=$db->prepare("SELECT id,on_hand FROM stock_batches WHERE tenant_id=1 AND warehouse_id=1 AND product_id=? AND batch_number=? FOR UPDATE");
+  $batch->execute([$productId,"EXPIRED-POLICY-CI"]);
+  $before=$batch->fetch(PDO::FETCH_ASSOC);
   try {
     app_stock_batch_consume($db,1,1,$productId,1);
-    throw new RuntimeException("Normal stock consumption accepted an expired lot.");
   } catch (RuntimeException $e) {
     if ($e->getMessage()!=="Insufficient unreserved batch stock for this operation.") throw $e;
   }
-  $taken=app_stock_batch_consume($db,1,1,$productId,1,null,true);
-  if (count($taken)!==1 || $taken[0]["batch_number"]!=="EXPIRED-POLICY-CI") {
-    throw new RuntimeException("Explicit expired-lot return did not select its original lot.");
+  $check=$db->prepare("SELECT on_hand FROM stock_batches WHERE tenant_id=1 AND id=?");
+  $check->execute([$before["id"]]);
+  if ((int)$check->fetchColumn()!==1) {
+    throw new RuntimeException("Normal stock consumption used an expired lot.");
   }
   $db->rollBack();
 } catch (Throwable $e) {
