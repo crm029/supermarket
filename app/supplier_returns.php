@@ -114,7 +114,7 @@ function app_admin_supplier_return_create(PDO $db,array $tenant,array $session):
             $stockUpdate->execute([$requested['quantity'],$tenant['id'],$warehouseId,$line['product_id'],$requested['quantity']]);
             if($stockUpdate->rowCount()!==1)throw new RuntimeException('Stock changed during supplier return.');
             try {
-                app_stock_batch_consume($db,(int)$tenant['id'],$warehouseId,(int)$line['product_id'],$requested['quantity'],(int)$line['id']);
+                app_stock_batch_consume($db,(int)$tenant['id'],$warehouseId,(int)$line['product_id'],$requested['quantity'],(int)$line['id'],true);
             } catch (RuntimeException $batchError) {
                 $db->rollBack();
                 app_json(['error'=>'موجودی بچِ همین رسید برای مرجوعی کافی نیست؛ بچ کالا باید ابتدا در انبار تطبیق داده شود.'],409);
