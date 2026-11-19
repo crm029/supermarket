@@ -286,10 +286,16 @@ function app_payment_redirect_result(string $status, ?int $orderId = null): neve
     exit;
 }
 
+function app_payment_authority_is_valid(string $authority, string $mode): bool {
+    if (!preg_match('/^[A-Za-z0-9_-]{5,64}$/', $authority)) return false;
+    // ZarinPal sandbox authorities are prefixed with uppercase S.
+    return $mode !== 'sandbox' || str_starts_with($authority, 'S');
+}
+
 function app_payment_callback(PDO $db, array $tenant): never {
     $authority = trim((string)($_GET['Authority'] ?? ''));
     $status = strtoupper(trim((string)($_GET['Status'] ?? '')));
-    if (!preg_match('/^[A-Za-z0-9_-]{5,64}$/', $authority)) {
+    if ($authority === '') {
         app_payment_redirect_result('failed');
     }
 
@@ -301,7 +307,7 @@ function app_payment_callback(PDO $db, array $tenant): never {
     );
     $find->execute([$tenant['id'], $authority]);
     $attempt = $find->fetch();
-    if (!$attempt) {
+    if (!$attempt || !app_payment_authority_is_valid($authority, (string)$attempt['gateway_mode'])) {
         app_payment_redirect_result('failed');
     }
     if ($attempt['status'] === 'verified') {
