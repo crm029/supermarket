@@ -225,7 +225,7 @@
   $("platformVerifyOtp").addEventListener("click",async()=>{
     try{
       const result=await api("auth/verify-otp",{method:"POST",body:JSON.stringify({mobile:$("platformMobile").value.trim(),code:$("platformOtpCode").value.trim()})});
-      currentUser=result.data.user;csrfToken=result.data.csrf_token;showDashboard();await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling(),loadUsage(),loadReconciliation(),loadChangeRequests()]);
+      currentUser=result.data.user;csrfToken=result.data.csrf_token;showDashboard();await Promise.all([loadTenants(),loadPaymentSettings(),loadSmsSettings(),loadBilling(),loadUsage(),loadReconciliation(),loadChangeRequests()]);
     }catch(error){message("platformLoginMessage",error.message,true);}
   });
   $("platformSmsForm").addEventListener("submit",async event=>{
