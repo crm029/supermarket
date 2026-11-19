@@ -33,3 +33,11 @@
 .subscription-invoice-head{display:flex;justify-content:space-between;gap:12px;align-items:center}
 .subscription-invoice-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px;color:var(--muted,#64756b);font-size:.84rem}
 @media(max-width:760px){.subscription-invoice-grid{grid-template-columns:1fr 1fr}}
+
+.subscription-usage-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.subscription-usage-item{padding:13px;border:1px solid var(--line,#dce5df);border-radius:12px}
+.subscription-usage-item>div:first-child{display:flex;justify-content:space-between;gap:8px;font-size:.84rem}
+.subscription-usage-item>div:first-child span{color:var(--muted,#64756b)}
+.subscription-usage-track{height:7px;background:#e9efea;border-radius:99px;overflow:hidden;margin-top:11px}
+.subscription-usage-track span{display:block;height:100%;background:#658b70;border-radius:99px}
+@media(max-width:760px){.subscription-usage-grid{grid-template-columns:1fr}}
