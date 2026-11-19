@@ -410,6 +410,15 @@ assert_json() {
       if (empty($data["data"]["idempotent"]) || (int)($data["data"]["amount_rial"]??0)!==125000) exit(1);
       exit(0);
     }
+    if ($check === "subscription-usage") {
+      $usage=$data["data"]["usage"]??[];
+      $limits=$data["data"]["subscription"]["limits"]??[];
+      foreach(["products","staff","media_assets","storage_bytes","monthly_orders"] as $key){
+        if(!array_key_exists($key,$usage)||!is_int($usage[$key])||$usage[$key]<0) exit(1);
+      }
+      if((int)($limits["products"]??-1)!==10000 || (int)($limits["monthly_orders"]??-1)!==10000) exit(1);
+      exit(0);
+    }
     if ($check === "subscription-invoices") {
       $invoices=$data["data"]["invoices"]??[];
       $invoiceId=(int)$argv[3];
@@ -546,6 +555,7 @@ if [[ "$PARTIAL_INVOICE_STATUS" != "issued" || "$PARTIAL_PAID" != "50000" || "$P
 request POST "/platform/invoices/$CHANGE_INVOICE_ID/payments" 200 '{"amount_rial":100000,"method":"bank_transfer","reference":"API-CI-PLAN-CHANGE-2","idempotency_key":"api-ci-plan-change-pay-0002"}' "$TOKEN" "$CSRF"
 request GET /admin/subscription 200 "" "$TOKEN"
 assert_json "subscription-invoices" "$CHANGE_INVOICE_ID"
+assert_json "subscription-usage" "$UPGRADE_PLAN_ID"
 PLAN_CHANGE_STATE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT CONCAT(s.plan_id,'|',s.price_monthly_rial,'|',r.status,'|',i.status) FROM tenant_subscriptions s JOIN platform_subscription_change_requests r ON r.tenant_id=s.tenant_id AND r.subscription_id=s.id JOIN platform_invoices i ON i.subscription_change_request_id=r.id WHERE s.tenant_id=1 AND r.id=$CHANGE_REQUEST_ID")"
 IFS="|" read -r APPLIED_PLAN_ID APPLIED_MONTHLY_PRICE CHANGE_STATUS CHANGE_INVOICE_STATUS <<< "$PLAN_CHANGE_STATE"
 if [[ "$APPLIED_PLAN_ID" != "$UPGRADE_PLAN_ID" || "$APPLIED_MONTHLY_PRICE" != "150000" || "$CHANGE_STATUS" != "applied" || "$CHANGE_INVOICE_STATUS" != "paid" ]]; then echo "Paid plan-change invoice did not apply the new subscription plan: $PLAN_CHANGE_STATE"; exit 1; fi
