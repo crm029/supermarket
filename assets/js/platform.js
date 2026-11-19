@@ -113,6 +113,23 @@
     return (n/1024/1024/1024).toLocaleString("fa-IR",{maximumFractionDigits:2})+" گیگابایت";
   }
 
+
+  async function loadChangeRequests(){
+    const box=$("platformChangeRequestList");
+    if(!box)return;
+    box.innerHTML="<p>در حال دریافت درخواست‌ها...</p>";
+    try{
+      const result=await api("platform/subscription-change-requests");
+      const rows=result.data||[];
+      box.innerHTML=rows.length?rows.map(r=>{
+        const status=r.status==="pending"?"در انتظار بررسی":"فاکتور صادرشده";
+        const actions=r.status==="pending"
+          ?'<div class="platform-change-actions"><button class="primary-button" data-approve-change="'+Number(r.id)+'">تأیید و صدور فاکتور</button><button class="danger" data-reject-change="'+Number(r.id)+'">رد درخواست</button></div>'
+          :'<small>فاکتور: '+escapeText(r.invoice_number||"—")+' · مبلغ: '+moneyToman(r.amount_rial)+' تومان · سررسید: '+escapeText(r.due_at||"—")+'</small>';
+        return '<article class="platform-tenant"><div class="platform-tenant-head"><div><strong>'+escapeText(r.tenant_name)+' · '+escapeText(r.plan_name)+'</strong><small>'+escapeText(r.slug)+' · دوره '+Number(r.requested_billing_period_months)+' ماه · '+moneyToman(r.monthly_price_rial)+' تومان/ماه</small><small>ثبت درخواست: '+escapeText(r.created_at)+'</small></div><span class="platform-status '+(r.status==="pending"?"pending":"")+'">'+status+'</span></div>'+actions+'</article>';
+      }).join(""):'<div class="platform-empty">درخواست تغییر پلن بازی وجود ندارد.</div>';
+    }catch(error){box.innerHTML='<div class="platform-empty">'+escapeText(error.message)+'</div>';}
+  }
   async function loadReconciliation(){
     const list=$("platformReconciliationList"),totalsBox=$("platformReconciliationTotals");
     if(!list||!totalsBox)return;
@@ -168,7 +185,7 @@
     try{
       const me=await api("me");currentUser=me.data;
       const csrf=await api("auth/csrf");csrfToken=csrf.data.csrf_token;
-      showDashboard();await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling(),loadUsage(),loadReconciliation()]);
+      showDashboard();await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling(),loadUsage(),loadReconciliation(),loadChangeRequests()]);
     }catch(error){
       showLogin();
       if(error.message!=="برای ادامه وارد حساب کاربری شوید.")message("platformLoginMessage",error.message,true);
@@ -184,7 +201,7 @@
   $("platformVerifyOtp").addEventListener("click",async()=>{
     try{
       const result=await api("auth/verify-otp",{method:"POST",body:JSON.stringify({mobile:$("platformMobile").value.trim(),code:$("platformOtpCode").value.trim()})});
-      currentUser=result.data.user;csrfToken=result.data.csrf_token;showDashboard();await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling(),loadUsage(),loadReconciliation()]);
+      currentUser=result.data.user;csrfToken=result.data.csrf_token;showDashboard();await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling(),loadUsage(),loadReconciliation(),loadChangeRequests()]);
     }catch(error){message("platformLoginMessage",error.message,true);}
   });
   $("platformPaymentForm").addEventListener("submit",async event=>{
@@ -249,6 +266,25 @@
     catch(_){message("platformMessage","کپی خودکار در دسترس نیست؛ مقدار TXT را دستی انتخاب و کپی کنید.",true);}
   });
 
+
+  $("platformChangeRequestList").addEventListener("click",async event=>{
+    const approve=event.target.closest("[data-approve-change]");
+    const reject=event.target.closest("[data-reject-change]");
+    try{
+      if(approve){
+        const id=Number(approve.dataset.approveChange);
+        if(!window.confirm("درخواست تأیید و برای دوره بعد فاکتور صادر شود؟"))return;
+        const result=await api("platform/subscription-change-requests/"+id+"/approve",{method:"POST",csrf:true,body:"{}"});
+        message("platformBillingMessage",result.message+" شناسه فاکتور: "+result.data.invoice_id);
+      }else if(reject){
+        const id=Number(reject.dataset.rejectChange);
+        if(!window.confirm("این درخواست تغییر پلن رد شود؟"))return;
+        const result=await api("platform/subscription-change-requests/"+id+"/reject",{method:"POST",csrf:true,body:"{}"});
+        message("platformBillingMessage",result.message);
+      }else return;
+      await Promise.all([loadChangeRequests(),loadBilling()]);
+    }catch(error){message("platformBillingMessage",error.message,true);}
+  });
   $("platformExportBilling").addEventListener("click",()=>{window.location.href="api/v1/platform/billing/export";});
   $("platformPlanForm").addEventListener("submit",async event=>{
     event.preventDefault();
@@ -311,7 +347,7 @@
       message("platformBillingMessage",result.message);await loadBilling();
     }catch(error){message("platformBillingMessage",error.message,true);}
   });
-  $("platformReload").addEventListener("click",async()=>{await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling(),loadUsage(),loadReconciliation()]);});
+  $("platformReload").addEventListener("click",async()=>{await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling(),loadUsage(),loadReconciliation(),loadChangeRequests()]);});
   $("platformLogout").addEventListener("click",async()=>{
     try{await api("auth/logout",{method:"POST",body:"{}",csrf:true});}catch(_){}
     currentUser=null;csrfToken="";showLogin();
