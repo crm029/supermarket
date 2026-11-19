@@ -16,11 +16,28 @@ if(PHP_SAPI!=='cli'){
 
 require_once dirname(__DIR__).'/app/bootstrap.php';
 require_once dirname(__DIR__).'/app/platform.php';
+require_once dirname(__DIR__).'/app/notifications.php';
 
 function app_subscription_worker_int(string $key,int $default,int $min,int $max): int {
     $value=filter_var(app_env($key,(string)$default),FILTER_VALIDATE_INT);
     if($value===false||$value<$min||$value>$max)throw new RuntimeException('Invalid '.$key.' configuration.');
     return $value;
+}
+
+
+function app_subscription_worker_notify_owner(PDO $db,int $tenantId,string $eventKey,string $title,string $body,string $entityType,int $entityId): void {
+    $owners=$db->prepare(
+        "SELECT DISTINCT u.id
+         FROM users u
+         JOIN user_roles ur ON ur.tenant_id=u.tenant_id AND ur.user_id=u.id
+         JOIN roles r ON r.role_scope_id=ur.role_scope_id AND r.id=ur.role_id
+         WHERE u.tenant_id=? AND u.status='active' AND r.role_key='store_owner'
+         ORDER BY u.id"
+    );
+    $owners->execute([$tenantId]);
+    foreach($owners->fetchAll(PDO::FETCH_COLUMN) as $ownerId){
+        app_notification_create($db,$tenantId,(int)$ownerId,$eventKey,'system',$title,$body,$entityType,$entityId);
+    }
 }
 
 function app_subscription_worker_audit(PDO $db,string $action,int $subscriptionId,array $details): void {
@@ -91,6 +108,12 @@ try{
                 'tenant_id'=>(int)$sub['tenant_id'],'invoice_id'=>$invoiceId,
                 'amount_rial'=>$amount,'period_start'=>$start,'period_end'=>$dates['period_end']
             ]);
+            app_subscription_worker_notify_owner(
+                $db,(int)$sub['tenant_id'],'platform-renewal-invoice-'.$invoiceId,
+                'فاکتور تمدید اشتراک صادر شد',
+                'فاکتور تمدید اشتراک به مبلغ '.number_format($amount).' ریال صادر شد. مهلت پرداخت تا '.(string)$start.' است.',
+                'platform_invoice',$invoiceId
+            );
             $db->commit();
             $created++;
         }catch(Throwable $e){
@@ -129,6 +152,12 @@ try{
                     'tenant_id'=>(int)$sub['tenant_id'],'current_period_end'=>$sub['current_period_end'],
                     'grace_days'=>$graceDays
                 ]);
+                app_subscription_worker_notify_owner(
+                    $db,(int)$sub['tenant_id'],'platform-subscription-past-due-'.(int)$sub['id'],
+                    'اشتراک فروشگاه سررسید گذشته است',
+                    'مهلت پرداخت اشتراک به پایان رسیده است. پس از ثبت پرداخت، اشتراک دوباره فعال می‌شود.',
+                    'tenant_subscription',(int)$sub['id']
+                );
                 $pastDue++;
             }
             $db->commit();
