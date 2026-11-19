@@ -81,6 +81,7 @@ declare(strict_types=1);
 
     <section id="platformBillingSection" class="platform-billing-panel" hidden>
       <div class="platform-section-heading"><h2>اشتراک‌ها و امور مالی SaaS</h2><span>مدیریت سراسری</span></div>
+      <button id="platformExportBilling" class="secondary-button" type="button">خروجی CSV فاکتورها</button>
       <div class="platform-billing-totals">
         <article><span>تعداد فاکتورها</span><strong id="platformInvoiceCount">۰</strong></article>
         <article><span>دریافت‌شده</span><strong id="platformCollected">۰</strong><small>تومان</small></article>
