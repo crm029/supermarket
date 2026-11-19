@@ -7,34 +7,45 @@ The root `index.php` provides a local storefront preview; live tenant catalogue,
 1. Create a database named `supermarket360` with utf8mb4.
 2. Import `database/schema.sql` using phpMyAdmin.
 3. For a disposable local demo only, import `database/demo-seed.sql`.
-4. Back up the database, then apply `database/migrations/2026_11_05_tenant_isolation.sql`. It adds tenant-aware composite foreign keys and scope triggers; it intentionally fails if legacy records contain cross-tenant references.
-5. Apply `database/migrations/2026_11_05_auth_sessions_otp.sql` to create OTP challenges, rate-limit buckets and database-backed sessions.
-6. Apply `database/migrations/2026_11_05_permissions.sql` to create the permission catalog and role grants.
-7. Apply `database/migrations/2026_11_05_customer_carts.sql` to create tenant-isolated persistent customer carts.
-8. Apply `database/migrations/2026_11_05_customer_address_management.sql` to enable safe address retirement while preserving order history.
-9. Apply `database/migrations/2026_11_05_barcode_stock_thresholds.sql` to enforce tenant-local barcode uniqueness and add product low-stock thresholds. Resolve duplicate existing barcodes before applying.
-10. Apply `database/migrations/2026_11_05_media_cleanup_queue.sql` to enable safe queued removal of unused media files.
-11. Apply `database/migrations/2026_11_05_delivery_zones.sql` to enable postal-code delivery zones and order-zone references.
-12. Apply `database/migrations/2026_11_05_pickup_slots.sql` to enable scheduled pickup slots and order-slot references.
-13. Apply `database/migrations/2026_11_05_coupons.sql` to enable tenant promotion coupons and order redemption snapshots.
-14. Apply `database/migrations/2026_11_05_product_variants.sql` to enable parent/child product variants with independent stock.
-15. Apply `database/migrations/2026_11_06_order_assignments.sql` to enable tenant-safe picker and courier assignments.
-16. Apply `database/migrations/2026_11_06_pos_cash_register.sql` after the stock-batches migration to enable POS permissions, cashier shifts and counter-sale records.
-17. Apply `database/migrations/2026_11_06_pos_refunds.sql` after the POS cash-register migration to enable audited cash refunds. Only store owners receive the refund permission by default; returned items stay pending inspection and are not automatically restocked.
-16. Apply `database/migrations/2026_11_06_pickup_handoff.sql` to enable dedicated pickup-handoff staff permission and recipient-confirmed in-person collection.
-17. Apply `database/migrations/2026_11_06_notifications.sql` to enable customer, staff and manager notification inboxes.
-17a. Apply `database/migrations/2026_11_19_notification_retention_index.sql` to optimize safe cleanup of old read notifications.
-18. Apply `database/migrations/2026_11_06_order_delivery_tracking.sql` to add the out-for-delivery state, tenant-scoped courier event history and recipient-confirmed delivery workflow.
-19. Apply `database/migrations/2026_11_06_order_wallet_refunds.sql` to enable audited full-order wallet-credit refunds and referral reward reversals.
-20. Apply `database/migrations/2026_11_06_domain_verification_challenge.sql` to enable expiring DNS TXT domain ownership challenges.
-21. Apply `database/migrations/2026_11_06_platform_payment_settings.sql` to create encrypted, platform-owner-only ZarinPal settings and snapshot the selected gateway mode/credential on each payment attempt.
-21. For an existing database, review and repair inconsistent tenant references before applying migrations. Never run schema or demo seed imports over a live production database.
-22. The demo seed configures the `localhost` domain for a disposable local demo. For a new tenant, use the platform dashboard and publish its generated DNS TXT challenge before activation.
-23. Configure `DB_HOST`, `DB_DATABASE`, `DB_USERNAME` and `DB_PASSWORD` in the PHP server environment. Set a unique `APP_KEY` of at least 32 characters. Keep all secrets out of Git.
-24. For local OTP testing, set `APP_ENV=local` and `SMS_PROVIDER=log`. The one-time code is written only to the PHP error log. This development driver is forbidden in production.
-25. Optionally set `MEDIA_BASE_URL` to the HTTPS base URL of your public media storage. Without it, media metadata is returned but image URLs are `null`.
-26. Route `/api/v1/*` to `api/v1/index.php` using the web server rewrite configuration, or call the PHP entry point directly while developing.
-
+4. Back up the database, then apply every migration below in the exact order shown. This is the same dependency-verified order used by the MySQL integration workflow; do not sort by filename because some later-named migrations must run before earlier-named feature migrations.
+5. Apply `database/migrations/2026_11_05_tenant_isolation.sql`.
+6. Apply `database/migrations/2026_11_05_auth_sessions_otp.sql`.
+7. Apply `database/migrations/2026_11_05_permissions.sql`.
+8. Apply `database/migrations/2026_11_06_platform_payment_settings.sql`.
+9. Apply `database/migrations/2026_11_19_platform_subscriptions.sql`.
+10. Apply `database/migrations/2026_11_19_subscription_plan_changes.sql`.
+11. Apply `database/migrations/2026_11_06_order_assignments.sql`.
+12. Apply `database/migrations/2026_11_06_pickup_handoff.sql`.
+13. Apply `database/migrations/2026_11_06_notifications.sql`.
+14. Apply `database/migrations/2026_11_19_notification_retention_index.sql`.
+15. Apply `database/migrations/2026_11_06_order_delivery_tracking.sql`.
+16. Apply `database/migrations/2026_11_06_order_wallet_refunds.sql`.
+17. Apply `database/migrations/2026_11_06_domain_verification_challenge.sql`.
+18. Apply `database/migrations/2026_11_05_customer_carts.sql`.
+19. Apply `database/migrations/2026_11_05_customer_address_management.sql`.
+20. Apply `database/migrations/2026_11_05_barcode_stock_thresholds.sql`.
+21. Apply `database/migrations/2026_11_05_media_cleanup_queue.sql`.
+22. Apply `database/migrations/2026_11_05_delivery_zones.sql`.
+23. Apply `database/migrations/2026_11_05_pickup_slots.sql`.
+24. Apply `database/migrations/2026_11_05_coupons.sql`.
+25. Apply `database/migrations/2026_11_05_product_variants.sql`.
+26. Apply `database/migrations/2026_11_05_supplier_purchase_orders.sql`.
+27. Apply `database/migrations/2026_11_05_supplier_returns.sql`.
+28. Apply `database/migrations/2026_11_05_stock_batches.sql`.
+29. Apply `database/migrations/2026_11_06_pos_cash_register.sql`.
+30. Apply `database/migrations/2026_11_06_pos_refunds.sql`.
+31. Apply `database/migrations/2026_11_08_pos_return_inspection.sql`.
+32. Apply `database/migrations/2026_11_08_pos_return_inspection_status.sql`.
+33. Apply `database/migrations/2026_11_05_expired_stock_writeoff.sql`.
+34. Apply `database/migrations/2026_11_05_seo_content_fields.sql`.
+35. Apply `database/migrations/2026_11_05_product_seo_slugs.sql`.
+36. Apply `database/migrations/2026_11_05_seo_url_redirects.sql`.
+37. For an existing database, review and repair inconsistent tenant references before applying migrations. Never run schema or demo seed imports over a live production database.
+38. The demo seed configures the `localhost` domain for a disposable local demo. For a new tenant, use the platform dashboard and publish its generated DNS TXT challenge before activation.
+39. Configure `DB_HOST`, `DB_DATABASE`, `DB_USERNAME` and `DB_PASSWORD` in the PHP server environment. Set a unique `APP_KEY` of at least 32 characters. Keep all secrets out of Git.
+40. For local OTP testing, set `APP_ENV=local` and `SMS_PROVIDER=log`. The one-time code is written only to the PHP error log. This development driver is forbidden in production.
+41. Optionally set `MEDIA_BASE_URL` to the HTTPS base URL of your public media storage. Without it, media metadata is returned but image URLs are `null`.
+42. Route `/api/v1/*` to `api/v1/index.php` using the web server rewrite configuration, or call the PHP entry point directly while developing.
 ## Create a local test account
 The sample seed contains no customer accounts. In a disposable local database, create one active test user with phpMyAdmin:
 
@@ -102,7 +113,7 @@ Employees with `orders.pick` and/or `orders.deliver` permissions open `staff.php
 Managers with `orders.refund` can issue a full refund to the customer's internal wallet from the order detail panel. The API requires one verified payment attempt for the full order amount, records an append-only wallet credit, reverses any referral reward associated with the qualifying order and marks the order refunded. This is store credit, not a bank-card or ZarinPal refund. Returned goods are not automatically restocked and must be inspected and received separately.
 
 ## Not production-ready yet
-Before real customers or money are involved, configure and test the merchant's live SMS and ZarinPal credentials, HTTPS domain, least-privilege database user, media storage, scheduled reservation worker, backups and monitoring. Complete sandbox and low-value live payment acceptance, refund/reconciliation procedures, security review and desktop/mobile acceptance tests. Platform super-admin tenant provisioning, DNS TXT verification, staff task center, notifications, full wallet-credit refunds and full-balance wallet checkout are implemented. Automated bank/gateway refunds, returned-stock intake and optional WebGL free movement remain unfinished. Never expose database errors or provider secrets to clients.
+Before real customers or money are involved, configure and test the merchant's live SMS and ZarinPal credentials, HTTPS domain, least-privilege database user, media storage, scheduled reservation worker, backups and monitoring. Complete sandbox and low-value live payment acceptance, refund/reconciliation procedures, security review and desktop/mobile acceptance tests. Platform super-admin tenant provisioning, DNS TXT verification, staff task center, notifications, full wallet-credit refunds and full-balance wallet checkout are implemented. Automated bank/gateway refunds remain unavailable until the selected provider's refund API is integrated and accepted. Returned POS stock inspection/restock and optional WebGL free movement are implemented; final merchant hardware and device acceptance remain rollout checks. Never expose database errors or provider secrets to clients.
 
 
 ## Reservation expiry worker
