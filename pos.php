@@ -51,7 +51,7 @@ declare(strict_types=1);
 <div class="pos-field"><label for="posCashReceived">وجه دریافتی (تومان)</label><input id="posCashReceived" type="number" min="0" step="1" required></div>
 <div class="pos-total"><span>باقی‌پول</span><span id="posChange">—</span></div>
 <div class="pos-field"><label for="posSaleNote">توضیح فاکتور</label><input id="posSaleNote" maxlength="255" placeholder="اختیاری"></div>
-<div class="pos-actions"><button id="posCompleteSale" class="pos-btn" type="submit">ثبت فروش نقدی</button></div>
+<div class="pos-actions"><button id="posCompleteSale" class="pos-btn" type="submit">ثبت فروش نقدی</button></div><p id="posReceiptLink" class="pos-receipt-link" hidden></p>
 </form>
 </div>
 </section>
