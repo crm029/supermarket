@@ -46,11 +46,32 @@ BEGIN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Cross-tenant invoice payment was accepted';
   END IF;
 END//
+
+
+CREATE PROCEDURE assert_invoice_payment_ledger_is_append_only()
+BEGIN
+  DECLARE update_rejected BOOLEAN DEFAULT FALSE;
+  DECLARE delete_rejected BOOLEAN DEFAULT FALSE;
+  BEGIN
+    DECLARE CONTINUE HANDLER FOR SQLSTATE '45000' SET update_rejected=TRUE;
+    UPDATE platform_invoice_payments SET note='tampered' WHERE id=(SELECT id FROM (SELECT id FROM platform_invoice_payments WHERE invoice_id=@billing_invoice LIMIT 1) AS chosen);
+  END;
+  BEGIN
+    DECLARE CONTINUE HANDLER FOR SQLSTATE '45000' SET delete_rejected=TRUE;
+    DELETE FROM platform_invoice_payments WHERE id=(SELECT id FROM (SELECT id FROM platform_invoice_payments WHERE invoice_id=@billing_invoice LIMIT 1) AS chosen);
+  END;
+  IF update_rejected=FALSE OR delete_rejected=FALSE THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Platform payment ledger allowed an update or delete';
+  END IF;
+END//
+
 DELIMITER ;
 
 CALL assert_platform_billing_ledger();
+CALL assert_invoice_payment_ledger_is_append_only();
 CALL assert_cross_tenant_billing_payment_rejected();
 DROP PROCEDURE assert_platform_billing_ledger;
 DROP PROCEDURE assert_cross_tenant_billing_payment_rejected;
+DROP PROCEDURE assert_invoice_payment_ledger_is_append_only;
 
 SELECT 'platform billing integration checks passed' AS result;
