@@ -134,7 +134,11 @@ Copy `.env.example` to `.env`; the application loads this file automatically wit
 Never commit a real merchant ID or other payment credentials. Payment attempts retain an encrypted snapshot of the merchant credential and selected gateway mode, so changing the global mode cannot redirect an in-flight sandbox payment to the live verification endpoint (or vice versa). Test success, cancellation, duplicate callbacks, delayed callbacks after reservation expiry, and the exact registered callback domain before enabling live payments.
 
 
-## Production OTP delivery (Kavenegar)
+## Production OTP delivery (0098 VIP or Kavenegar)
+
+For 0098 VIP, apply `database/migrations/2026_11_20_platform_sms_settings.sql`, sign in to `platform.php` with the platform-owner account, select ۰۰۹۸ VIP, keep sender `30005883803803` and domain `0098`, then enter the panel username and password. Credentials are encrypted with AES-256-GCM using `APP_KEY` and are never returned by the settings API. Keep `APP_KEY` stable and private; changing it makes previously encrypted credentials unreadable. The adapter sends OTP through the supplied HTTPS link using URL-encoded parameters and accepts only response code `0` as success. The 0098 panel must authorize the server IP and sender number. The service uses a GET URL because that is the provider's supplied interface; TLS verification is enforced, redirects are disabled, and request URLs/credentials are never logged.
+
+
 
 For production, set SMS_PROVIDER=kavenegar, KAVENEGAR_API_KEY to the private API key from the Kavenegar account, and KAVENEGAR_VERIFY_TEMPLATE to the approved verification-template name. The API key is used only server-side. Enable PHP cURL and verify the approved template sends the numeric OTP in its first token slot. Keep SMS_PROVIDER=log strictly for local development.
 
