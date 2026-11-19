@@ -11,7 +11,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Add local sample tenant seed and PHP syntax-check workflow.
 - [x] Run PHP syntax checks in GitHub Actions and resolve any failures.
 - [x] Validate schema and tenant isolation against MySQL 8 CI.
-- [ ] Validate MariaDB compatibility.
+- [x] Validate fresh schema, ordered migrations and key tenant/billing/POS SQL suites on MariaDB 10.11 in CI.
 - [ ] Verify XAMPP installation on a real local machine.
 
 ## Phase 1 — secure production foundation
