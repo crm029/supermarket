@@ -479,6 +479,8 @@ if [[ "$TENANT_STATUS" != "active" || "$DOMAIN_VERIFIED" != "1" ]]; then echo "V
 # SaaS plan, subscription, invoice, partial payment and renewal lifecycle.
 request GET /platform/billing 200 "" "$TOKEN"
 request GET /platform/usage 200 "" "$TOKEN"
+request GET /platform/billing/reconciliation 200 "" "$TOKEN"
+request GET /platform/billing/reconciliation 403 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
 request GET /platform/usage 403 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
 request GET /platform/billing 403 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
 CSV_STATUS="$(curl --silent --show-error --output /tmp/platform-billing.csv --dump-header /tmp/platform-billing.headers --write-out "%{http_code}" -H "Host: localhost" -H "Cookie: sm_session=$TOKEN" "$BASE_URL/platform/billing/export")"
