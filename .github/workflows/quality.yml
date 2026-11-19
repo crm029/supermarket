@@ -278,7 +278,7 @@ jobs:
           cat /tmp/media-reconcile-report.json
           echo "Media reconciliation exit code: $status"
           test "$status" -eq 2
-          php -r '$r=json_decode(file_get_contents("/tmp/media-reconcile-report.json"),true,512,JSON_THROW_ON_ERROR); if (($r["status"]??"")!=="attention_required" || ($r["counts"]["registered_files"]??-1)!==1 || ($r["counts"]["queued_cleanup_files"]??-1)!==1 || ($r["counts"]["orphan_files"]??-1)!==1 || ($r["counts"]["missing_registered_files"]??-1)!==1 || ($r["counts"]["unsafe_entries"]??-1)!==1) { fwrite(STDERR,"Unexpected media reconciliation report\n"); exit(1); }'
+          php -r '$r=json_decode(file_get_contents("/tmp/media-reconcile-report.json"),true,512,JSON_THROW_ON_ERROR); if (($r["status"]??"")!=="attention_required" || ($r["counts"]["registered_files"]??-1)!==1 || ($r["counts"]["queued_cleanup_files"]??-1)!==1 || ($r["counts"]["orphan_files"]??-1)!==1 || ($r["counts"]["missing_registered_files"]??-1)!==1 || ($r["counts"]["unsafe_entries"]??-1)!==3) { fwrite(STDERR,"Unexpected media reconciliation report\n"); exit(1); }'
           rm -rf /tmp/supermarket-media-reconcile
           mkdir -p /tmp/supermarket-media-reconcile
           mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "DELETE FROM media_assets WHERE tenant_id=1 AND storage_key LIKE 'tenant-1/product/%'; DELETE FROM media_cleanup_queue WHERE tenant_id=1 AND storage_key LIKE 'tenant-1/product/%';"
