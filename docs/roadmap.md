@@ -104,7 +104,8 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Platform plan catalog, configurable product/staff/media/monthly-order/storage-byte quotas, tenant subscriptions, 1/3/12-month invoices, scheduled renewal invoices, grace-period past-due state, owner in-app notices, partial/manual receipt ledger, finance CSV export, idempotency, tenant-safe foreign keys and platform audit events (MySQL/API CI coverage).
 - [x] Platform-wide tenant usage dashboard for active products, staff, media count, storage bytes and combined online/POS monthly orders, with plan-cap progress and platform permission checks (MySQL/API CI coverage).
 - [x] Idempotent in-app invoice reminders before due date and weekly while overdue, with bounded daily processing and MySQL worker integration tests.
-- [ ] Add automated recurring collection, self-service plan changes and full financial reconciliation reports.
+- [x] Platform finance reconciliation totals and anomaly detection for overpayments, paid/open status mismatches, missing/unexpected paid timestamps and void invoices with receipts (platform permission checks and API CI coverage).
+- [ ] Add automated recurring collection and self-service plan changes.
 - [x] Custom-domain ownership verification and tenant provisioning workflow.
 - [ ] Production DNS/HTTPS deployment, backups, monitoring and disaster recovery.
 - [x] Source-level security review and automated PHP/JavaScript/MySQL/API/tenant-isolation checks.
