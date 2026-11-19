@@ -229,3 +229,5 @@ The CI pipeline also checks the fresh schema, ordered migrations and key tenant/
 Store owners can open `subscription.php` to view their current plan and request a change. Platform finance administrators review the request, approve or reject it, and an approved change creates an invoice for the next billing period. The new plan is applied only after the invoice is fully paid; the existing plan remains in force while the request is pending or unpaid.
 
 Store owners can also review up to 50 tenant-scoped subscription invoices on `subscription.php`. The page displays live product, staff, media, storage and monthly order usage against plan limits, plus invoice totals, received amounts, remaining balances and payment state. Invoice history is read-only and does not accept or fabricate receipts.
+
+Store owners can schedule cancellation at the end of the current billing period and reverse it before expiry. Access continues until the period end. The daily subscription worker suppresses renewal invoices for scheduled cancellations and marks them cancelled at expiry; new writes are blocked after cancellation.
