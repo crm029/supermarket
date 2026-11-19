@@ -32,7 +32,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Read-only media-storage reconciliation CLI reports unregistered files, missing registered files, queued cleanup files and unsafe filesystem entries; MySQL CI verifies each classification.
 - [x] Bounded retention for completed media-cleanup queue records via `bin/prune-media-cleanup.php` (configurable 30–3650 days, 500-row batches and a 20-batch run cap; MySQL CI verifies old completed rows are pruned while recent and pending rows remain).
 - [x] Explicit platform-operator orphan review with tenant-scoped requests, reason and actor audit trail, revalidation of file path/symlinks and media-library references at approval, and enqueue-only approval; reconciliation remains read-only and never deletes or queues orphan files automatically.
-- [ ] Automated alert delivery for reconciliation issues and cleanup-worker failures.
+- [x] Combined scheduled media operations check runs the cleanup worker and read-only reconciliation, emits sanitized alert codes/counts, reports the total remaining queue backlog, and returns cron-mail/external-monitor exit statuses; production mail transport or monitor routing is configured during deployment.
 
 ## Phase 2 — catalog and commerce
 - [x] Basic tenant-scoped product list/create/update/deactivate API with permission checks.
