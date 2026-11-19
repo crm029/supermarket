@@ -53,11 +53,11 @@ BEGIN
   DECLARE update_rejected BOOLEAN DEFAULT FALSE;
   DECLARE delete_rejected BOOLEAN DEFAULT FALSE;
   BEGIN
-    DECLARE CONTINUE HANDLER FOR SQLSTATE '45000' SET update_rejected=TRUE;
+    DECLARE CONTINUE HANDLER FOR SQLEXCEPTION SET update_rejected=TRUE;
     UPDATE platform_invoice_payments SET note='tampered' WHERE id=(SELECT id FROM (SELECT id FROM platform_invoice_payments WHERE invoice_id=@billing_invoice LIMIT 1) AS chosen);
   END;
   BEGIN
-    DECLARE CONTINUE HANDLER FOR SQLSTATE '45000' SET delete_rejected=TRUE;
+    DECLARE CONTINUE HANDLER FOR SQLEXCEPTION SET delete_rejected=TRUE;
     DELETE FROM platform_invoice_payments WHERE id=(SELECT id FROM (SELECT id FROM platform_invoice_payments WHERE invoice_id=@billing_invoice LIMIT 1) AS chosen);
   END;
   IF update_rejected=FALSE OR delete_rejected=FALSE THEN
