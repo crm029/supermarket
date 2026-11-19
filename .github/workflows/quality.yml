@@ -36,6 +36,7 @@ jobs:
           php tests/auth-input.php
           php tests/admin-catalog-input.php
           php tests/media-url.php
+          php tests/media-orphan-input.php
           php tests/commerce-input.php
           php tests/payment-config.php
           php tests/wallet-input.php
