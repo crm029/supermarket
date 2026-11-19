@@ -522,7 +522,7 @@ function app_platform_invoice_record_payment(PDO $db,array $actorTenant,array $s
         $tenantLock->execute([$invoiceScope['tenant_id']]);
         $subscriptionLock=$db->prepare('SELECT id FROM tenant_subscriptions WHERE tenant_id=? AND id=? FOR UPDATE');
         $subscriptionLock->execute([$invoiceScope['tenant_id'],$invoiceScope['subscription_id']]);
-        $stmt=$db->prepare("SELECT id,tenant_id,subscription_id,amount_rial,status FROM platform_invoices WHERE id=? AND tenant_id=? FOR UPDATE");
+        $stmt=$db->prepare("SELECT id,tenant_id,subscription_id,amount_rial,status,subscription_change_request_id FROM platform_invoices WHERE id=? AND tenant_id=? FOR UPDATE");
         $stmt->execute([$invoiceId,$invoiceScope['tenant_id']]);$invoice=$stmt->fetch(PDO::FETCH_ASSOC);
         if(!$invoice){$db->rollBack();app_json(['error'=>'فاکتور پیدا نشد.'],404);}
         $existing=$db->prepare('SELECT invoice_id,amount_rial,method,reference FROM platform_invoice_payments WHERE idempotency_key=?');
@@ -550,6 +550,32 @@ function app_platform_invoice_record_payment(PDO $db,array $actorTenant,array $s
             $activate=$db->prepare("UPDATE tenant_subscriptions SET status='active',starts_at=COALESCE(starts_at,?),current_period_start=COALESCE(current_period_start,?),current_period_end=CASE WHEN current_period_end IS NULL OR current_period_end<? THEN ? ELSE current_period_end END WHERE id=? AND tenant_id=?");
             $period=$db->prepare('SELECT period_start,period_end FROM platform_invoices WHERE id=?');$period->execute([$invoiceId]);$dates=$period->fetch(PDO::FETCH_ASSOC);
             $activate->execute([$dates['period_start'],$dates['period_start'],$dates['period_end'],$dates['period_end'],$invoice['subscription_id'],$invoice['tenant_id']]);
+            if(!empty($invoice['subscription_change_request_id'])){
+                $change=$db->prepare(
+                    "SELECT requested_plan_id,requested_billing_period_months,approved_price_monthly_rial,status
+                     FROM platform_subscription_change_requests WHERE tenant_id=? AND id=? FOR UPDATE"
+                );
+                $change->execute([(int)$invoice['tenant_id'],(int)$invoice['subscription_change_request_id']);
+                $changeData=$change->fetch(PDO::FETCH_ASSOC);
+                if(!$changeData||$changeData['status']!=='invoiced'||empty($changeData['approved_price_monthly_rial'])){
+                    throw new RuntimeException('Paid plan-change invoice has no valid approved request.');
+                }
+                $apply=$db->prepare(
+                    'UPDATE tenant_subscriptions SET plan_id=?,billing_period_months=?,price_monthly_rial=? WHERE tenant_id=? AND id=?'
+                );
+                $apply->execute([
+                    (int)$changeData['requested_plan_id'],(int)$changeData['requested_billing_period_months'],
+                    (int)$changeData['approved_price_monthly_rial'],(int)$invoice['tenant_id'],(int)$invoice['subscription_id']
+                ]);
+                $mark=$db->prepare("UPDATE platform_subscription_change_requests SET status='applied' WHERE tenant_id=? AND id=? AND status='invoiced'");
+                $mark->execute([(int)$invoice['tenant_id'],(int)$invoice['subscription_change_request_id']]);
+                app_audit_log($db,(int)$actorTenant['id'],(int)$session['id'],'platform.subscription.plan_change_applied','subscription_change_request',(int)$invoice['subscription_change_request_id'],[
+                    'tenant_id'=>(int)$invoice['tenant_id'],'invoice_id'=>$invoiceId,'plan_id'=>(int)$changeData['requested_plan_id'],
+                    'billing_period_months'=>(int)$changeData['requested_billing_period_months']
+                ]);
+                app_notification_notify_role($db,(int)$invoice['tenant_id'],'store_owner','platform-plan-change-applied-'.(int)$invoice['subscription_change_request_id'],'system',
+                    'پلن جدید فروشگاه فعال شد','پرداخت فاکتور تغییر پلن کامل شد و پلن جدید روی اشتراک فروشگاه اعمال شد.','platform_invoice',$invoiceId);
+            }
         }
         app_audit_log($db,(int)$actorTenant['id'],(int)$session['id'],'platform.invoice.payment_recorded','platform_invoice',$invoiceId,['tenant_id'=>(int)$invoice['tenant_id'],'amount_rial'=>$amount,'method'=>$method,'reference'=>$reference,'fully_paid'=>$fullyPaid]);
         if($fullyPaid){
