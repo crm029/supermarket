@@ -165,7 +165,7 @@
   $("platformVerifyOtp").addEventListener("click",async()=>{
     try{
       const result=await api("auth/verify-otp",{method:"POST",body:JSON.stringify({mobile:$("platformMobile").value.trim(),code:$("platformOtpCode").value.trim()})});
-      currentUser=result.data.user;csrfToken=result.data.csrf_token;showDashboard();await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling()]);
+      currentUser=result.data.user;csrfToken=result.data.csrf_token;showDashboard();await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling(),loadUsage()]);
     }catch(error){message("platformLoginMessage",error.message,true);}
   });
   $("platformPaymentForm").addEventListener("submit",async event=>{
@@ -292,7 +292,7 @@
       message("platformBillingMessage",result.message);await loadBilling();
     }catch(error){message("platformBillingMessage",error.message,true);}
   });
-  $("platformReload").addEventListener("click",async()=>{await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling()]);});
+  $("platformReload").addEventListener("click",async()=>{await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling(),loadUsage()]);});
   $("platformLogout").addEventListener("click",async()=>{
     try{await api("auth/logout",{method:"POST",body:"{}",csrf:true});}catch(_){}
     currentUser=null;csrfToken="";showLogin();
