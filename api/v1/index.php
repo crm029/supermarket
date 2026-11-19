@@ -16,6 +16,7 @@ require_once dirname(__DIR__, 2) . '/app/platform.php';
 require_once dirname(__DIR__, 2) . '/app/notifications.php';
 require_once dirname(__DIR__, 2) . '/app/order_refunds.php';
 require_once dirname(__DIR__, 2) . '/app/inventory.php';
+require_once dirname(__DIR__, 2) . '/app/inventory_reconciliation.php';
 require_once dirname(__DIR__, 2) . '/app/admin_scenes.php';
 require_once dirname(__DIR__, 2) . '/app/reports.php';
 require_once dirname(__DIR__, 2) . '/app/wallet.php';
@@ -188,6 +189,12 @@ try {
         $session = app_auth_require($db, $tenant);
         app_auth_require_permission($db, $tenant, $session, 'inventory.read');
         app_inventory_stock_list($db, $tenant);
+    }
+
+    if ($path === '/admin/stock/reconciliation' && $method === 'GET') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_permission($db, $tenant, $session, 'inventory.read');
+        app_inventory_reconciliation($db, $tenant);
     }
 
     if ($path === '/admin/stock-movements' && $method === 'GET') {
