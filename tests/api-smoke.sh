@@ -797,6 +797,31 @@ EXPIRED_ALLOCATION_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root -
 if [[ "$EXPIRED_BATCH_RESERVED" != "0" || "$EXPIRED_ALLOCATION_COUNT" != "0" ]]; then echo "Reservation expiry worker did not release batch-level allocations"; exit 1; fi
 
 request POST /admin/stock/receipts 200 '{"warehouse_id":1,"product_id":'$PRODUCT_ID',"quantity":3,"reason":"رسید تست"}' "$TOKEN" "$CSRF"
+
+# Two simultaneous receipts must both post atomically to stock_levels and create matching lots.
+CONCURRENT_BEFORE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COALESCE(SUM(on_hand),0) FROM stock_levels WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
+parallel_receipt() {
+  local tag="$1"
+  curl --silent --show-error --output "/tmp/supermarket-concurrent-receipt-$tag.json" --write-out "%{http_code}" \\
+    -X POST -H "Host: localhost" -H "Accept: application/json" -H "Content-Type: application/json" \\
+    -H "Cookie: sm_session=$TOKEN" -H "X-CSRF-Token: $CSRF" \\
+    --data '{"warehouse_id":1,"product_id":'$PRODUCT_ID',"quantity":2,"reason":"رسید هم‌زمان تست"}' \\
+    "$BASE_URL/admin/stock/receipts" > "/tmp/supermarket-concurrent-receipt-$tag.status"
+}
+parallel_receipt a & RECEIPT_A_PID=$!
+parallel_receipt b & RECEIPT_B_PID=$!
+wait "$RECEIPT_A_PID"
+wait "$RECEIPT_B_PID"
+for tag in a b; do
+  if [[ "$(cat "/tmp/supermarket-concurrent-receipt-$tag.status")" != "200" ]]; then
+    echo "Concurrent stock receipt $tag did not succeed"; cat "/tmp/supermarket-concurrent-receipt-$tag.json"; exit 1
+  fi
+done
+CONCURRENT_AFTER="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COALESCE(SUM(on_hand),0) FROM stock_levels WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
+CONCURRENT_BATCH_TOTAL="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COALESCE(SUM(on_hand),0) FROM stock_batches WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
+if (( CONCURRENT_AFTER != CONCURRENT_BEFORE + 4 )) || [[ "$CONCURRENT_AFTER" != "$CONCURRENT_BATCH_TOTAL" ]]; then
+  echo "Concurrent receipts caused a lost update or stock/batch mismatch"; exit 1
+fi
 request POST /admin/stock/adjustments 200 '{"warehouse_id":1,"product_id":'$PRODUCT_ID',"quantity":-1,"reason":"اصلاح تست"}' "$TOKEN" "$CSRF"
 request POST /admin/warehouses 201 '{"title":"انبار انتقال تست","warehouse_type":"other"}' "$TOKEN" "$CSRF"
 NEW_WAREHOUSE_ID="$(assert_json created-id)"
@@ -823,7 +848,7 @@ assert_json inventory-reconciliation
 request GET /admin/stock/reconciliation 403 "" "$POS_TOKEN"
 
 TOTAL_STOCK="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT SUM(on_hand) FROM stock_levels WHERE tenant_id=1 AND product_id=$PRODUCT_ID")"
-if [[ "$TOTAL_STOCK" != "8" ]]; then echo "Expected 8 total units after wallet and pickup sales, receipt, adjustment and transfer; received $TOTAL_STOCK"; exit 1; fi
+if [[ "$TOTAL_STOCK" != "12" ]]; then echo "Expected 12 total units after wallet and pickup sales, manual and concurrent receipts, adjustment and transfer; received $TOTAL_STOCK"; exit 1; fi
 
 # Cashier POS: isolated permissions, shift lifecycle, cash sale, idempotency and stock posting.
 request GET /admin/pos/reports 200 "" "$TOKEN"
