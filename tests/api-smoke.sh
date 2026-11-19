@@ -410,6 +410,20 @@ assert_json() {
       if (empty($data["data"]["idempotent"]) || (int)($data["data"]["amount_rial"]??0)!==125000) exit(1);
       exit(0);
     }
+    if ($check === "subscription-invoices") {
+      $invoices=$data["data"]["invoices"]??[];
+      $invoiceId=(int)$argv[3];
+      foreach($invoices as $invoice){
+        if((int)($invoice["id"]??0)===$invoiceId){
+          if(($invoice["display_status"]??"")!=="paid" ||
+             (int)($invoice["amount_rial"]??-1)!==150000 ||
+             (int)($invoice["paid_rial"]??-1)!==150000 ||
+             (int)($invoice["balance_rial"]??-1)!==0) exit(1);
+          exit(0);
+        }
+      }
+      exit(1);
+    }
     if ($check === "pos-shift-closed") {
       $shift=$data["data"]??[];
       if (($shift["status"]??"")!=="closed" || (int)($shift["expected_cash_rial"]??-1)!==750000 ||
@@ -417,7 +431,7 @@ assert_json() {
       exit(0);
     }
     exit(0);
-  ' "$OUT" "$1" || { echo "JSON assertion failed: $1"; cat "$OUT"; exit 1; }
+  ' "$OUT" "$1" "${2:-}" || { echo "JSON assertion failed: $1"; cat "$OUT"; exit 1; }
 }
 
 for _ in $(seq 1 20); do
@@ -526,6 +540,8 @@ CHANGE_INVOICE_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-c
 PLAN_BEFORE_CHANGE_PAYMENT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT plan_id FROM tenant_subscriptions WHERE tenant_id=1 AND id=$MAIN_SUBSCRIPTION_ID")"
 if [[ "$PLAN_BEFORE_CHANGE_PAYMENT" != "$PLAN_ID" ]]; then echo "Plan changed before the change invoice was fully paid."; exit 1; fi
 request POST "/platform/invoices/$CHANGE_INVOICE_ID/payments" 200 '{"amount_rial":150000,"method":"bank_transfer","reference":"API-CI-PLAN-CHANGE","idempotency_key":"api-ci-plan-change-pay-0001"}' "$TOKEN" "$CSRF"
+request GET /admin/subscription 200 "" "$TOKEN"
+assert_json "subscription-invoices" "$CHANGE_INVOICE_ID"
 PLAN_CHANGE_STATE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT CONCAT(s.plan_id,'|',s.price_monthly_rial,'|',r.status,'|',i.status) FROM tenant_subscriptions s JOIN platform_subscription_change_requests r ON r.tenant_id=s.tenant_id AND r.subscription_id=s.id JOIN platform_invoices i ON i.subscription_change_request_id=r.id WHERE s.tenant_id=1 AND r.id=$CHANGE_REQUEST_ID")"
 IFS="|" read -r APPLIED_PLAN_ID APPLIED_MONTHLY_PRICE CHANGE_STATUS CHANGE_INVOICE_STATUS <<< "$PLAN_CHANGE_STATE"
 if [[ "$APPLIED_PLAN_ID" != "$UPGRADE_PLAN_ID" || "$APPLIED_MONTHLY_PRICE" != "150000" || "$CHANGE_STATUS" != "applied" || "$CHANGE_INVOICE_STATUS" != "paid" ]]; then echo "Paid plan-change invoice did not apply the new subscription plan: $PLAN_CHANGE_STATE"; exit 1; fi
