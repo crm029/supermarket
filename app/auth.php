@@ -54,6 +54,10 @@ function app_auth_hit_limit(PDO $db, int $tenantId, string $action, string $buck
     }
 }
 
+function app_sms_0098_response_success(string $response): bool {
+    return preg_match('/^0(?:\\.0+)?$/', trim($response)) === 1;
+}
+
 function app_auth_sms_ready(?PDO $db = null): bool {
     if ($db !== null && $db->query("SHOW TABLES LIKE 'platform_sms_settings'")->fetchColumn()) {
         $configured = $db->query('SELECT provider, sender_number, username_encrypted, password_encrypted FROM platform_sms_settings WHERE id=1')->fetch();
@@ -108,7 +112,7 @@ function app_auth_send_otp(PDO $db, string $mobile, string $code, int $challenge
         $response = curl_exec($curl); $error = curl_error($curl); $status = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE); curl_close($curl);
         if (!is_string($response) || $error !== '' || $status < 200 || $status >= 300) throw new RuntimeException('SMS provider connection failed (HTTP ' . $status . ').');
         $result = trim($response);
-        if (!preg_match('/^0(?:\\.0+)?$/', $result)) {
+        if (!app_sms_0098_response_success($result)) {
             $codeMap = ['1'=>'شماره گیرنده اشتباه است','2'=>'گیرنده تعریف نشده است','3'=>'فرستنده تعریف نشده است','4'=>'متن پیامک تنظیم نشده است','5'=>'نام کاربری تنظیم نشده است','6'=>'رمز عبور تنظیم نشده است','7'=>'دامنه تنظیم نشده است','8'=>'مجوز سرویس باطل شده است','9'=>'اعتبار پیامک کافی نیست','10'=>'برای این شماره لینک تعریف نشده است','11'=>'مجوز اتصال لینک وجود ندارد','12'=>'نام کاربری یا رمز عبور اشتباه است','13'=>'متن دارای کاراکتر غیرمجاز است','14'=>'سقف ارسال روزانه پر شده است','16'=>'ارسال با این شماره مجاز نیست','17'=>'خطای شماره پنل','18'=>'اعتبار پنل تمام شده است','19'=>'تنظیمات OTP انجام نشده است','20'=>'فرمت کد OTP صحیح نیست','21'=>'کد OTP تأیید نشده است','22'=>'اطلاعات مالک شماره تأیید نشده است','23'=>'مجوز ارسال به این پنل صادر نشده است','24'=>'IP سرور مجاز نیست'];
             $safeCode = preg_match('/^\\d+$/',$result) ? $result : 'unknown';
             throw new RuntimeException('0098 SMS error ' . $safeCode . ': ' . ($codeMap[$safeCode] ?? 'پاسخ نامعتبر سرویس پیامک'));
