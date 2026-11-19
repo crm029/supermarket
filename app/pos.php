@@ -95,6 +95,7 @@ function app_pos_create_sale(PDO $db,array $tenant,array $session): never {
         $existing=$db->prepare('SELECT id,sale_number,total_rial,cash_received_rial,change_rial,request_hash FROM pos_sales WHERE tenant_id=? AND cashier_user_id=? AND idempotency_key=? LIMIT 1');
         $existing->execute([$tenant['id'],$session['id'],$key]);$prior=$existing->fetch(PDO::FETCH_ASSOC);
         if($prior){if(!hash_equals((string)$prior['request_hash'],$requestHash)){$db->rollBack();app_json(['error'=>'کلید تکراری فروش با اطلاعات متفاوت استفاده شده است.'],409);}$db->commit();unset($prior['request_hash']);app_json(['data'=>$prior,'message'=>'این فروش قبلاً ثبت شده است.']);}
+        app_tenant_limit_guard($db,$tenant,'monthly_orders',1);
         $ids=array_keys($lines);sort($ids,SORT_NUMERIC);$marks=implode(',',array_fill(0,count($ids),'?'));
         $lock=$db->prepare("SELECT id FROM products WHERE tenant_id=? AND is_active=1 AND id IN ({$marks}) ORDER BY id FOR UPDATE");
         $lock->execute(array_merge([$tenant['id']],$ids));
