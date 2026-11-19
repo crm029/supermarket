@@ -85,6 +85,18 @@ CREATE TABLE platform_invoice_payments (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DELIMITER //
+CREATE TRIGGER trg_platform_invoice_immutable_fields
+BEFORE UPDATE ON platform_invoices
+FOR EACH ROW
+BEGIN
+  IF NEW.tenant_id<>OLD.tenant_id OR NEW.subscription_id<>OLD.subscription_id OR
+     NEW.invoice_number<>OLD.invoice_number OR NEW.period_start<>OLD.period_start OR
+     NEW.period_end<>OLD.period_end OR NEW.amount_rial<>OLD.amount_rial OR
+     NEW.due_at<>OLD.due_at OR NOT (NEW.created_by <=> OLD.created_by) THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Platform invoice financial fields are immutable';
+  END IF;
+END//
+
 CREATE TRIGGER trg_platform_invoice_payment_no_update
 BEFORE UPDATE ON platform_invoice_payments
 FOR EACH ROW
