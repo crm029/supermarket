@@ -296,6 +296,32 @@ jobs:
           php scripts/reconcile-media.php >/tmp/media-reconcile-clean.json
           php -r '$r=json_decode(file_get_contents("/tmp/media-reconcile-clean.json"),true,512,JSON_THROW_ON_ERROR); if (($r["status"]??"")!=="ok" || ($r["counts"]["files_scanned"]??-1)!==0) { fwrite(STDERR,"Clean media reconciliation did not return an empty healthy report\n"); exit(1); }'
 
+      - name: Verify combined media operations alerts and non-destructive behavior
+        env:
+          APP_ENV: testing
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: supermarket360
+          DB_USERNAME: root
+          DB_PASSWORD: root
+          MEDIA_STORAGE_PATH: /tmp/supermarket-media-ops
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/supermarket-media-ops/tenant-1/product
+          printf 'orphan' > /tmp/supermarket-media-ops/tenant-1/product/cccccccccccccccccccccccccccccccccccccccc.webp
+          ln -s /etc/hosts /tmp/supermarket-media-ops/tenant-1/product/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee.jpg
+          mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "INSERT INTO media_cleanup_queue (tenant_id,storage_key,status,attempts) VALUES (1,'tenant-1/product/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee.jpg','pending',0);"
+          set +e
+          php scripts/media-operations-check.php >/tmp/media-operations-alert.json
+          status=$?
+          set -e
+          test "$status" -eq 2
+          php -r '$r=json_decode(file_get_contents("/tmp/media-operations-alert.json"),true,512,JSON_THROW_ON_ERROR); $codes=array_column($r["alerts"]??[],"code"); if (($r["status"]??"")!=="attention_required" || !in_array("cleanup_queue_backlog",$codes,true) || !in_array("media_reconciliation_attention_required",$codes,true) || ($r["cleanup"]["pending_total"]??0)!==1 || ($r["reconciliation"]["orphan_files"]??0)!==1 || ($r["reconciliation"]["unsafe_entries"]??0)!==1) { fwrite(STDERR,"Combined media operations alert report was incomplete\n"); exit(1); } if (str_contains(file_get_contents("/tmp/media-operations-alert.json"),"tenant-1/")) { fwrite(STDERR,"Alert report leaked a storage key\n"); exit(1); }'
+          test -f /tmp/supermarket-media-ops/tenant-1/product/cccccccccccccccccccccccccccccccccccccccc.webp
+          test -L /tmp/supermarket-media-ops/tenant-1/product/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee.jpg
+          mysql --host=127.0.0.1 --user=root --password=root supermarket360 -N -e "SELECT COUNT(*) FROM media_cleanup_queue WHERE tenant_id=1 AND storage_key='tenant-1/product/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee.jpg' AND status='pending'" | grep -qx '1'
+          rm -rf /tmp/supermarket-media-ops
+          mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "DELETE FROM media_cleanup_queue WHERE tenant_id=1 AND storage_key='tenant-1/product/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee.jpg'"
+
       - name: Verify bounded notification retention
         env:
           APP_ENV: testing
