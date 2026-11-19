@@ -23,6 +23,7 @@ declare(strict_types=1);
   </section>
   <p id="subscriptionMessage" class="subscription-message" role="status" aria-live="polite">در حال دریافت اطلاعات اشتراک...</p>
   <section id="subscriptionCurrent" class="subscription-current" hidden></section>
+  <section id="subscriptionUsage" class="subscription-history" hidden><div class="subscription-section-heading"><h2>مصرف سهمیه‌های فروشگاه</h2><span id="subscriptionUsageMonth"></span></div><div id="subscriptionUsageGrid" class="subscription-usage-grid"></div></section>
   <section class="subscription-plans-section">
     <div class="subscription-section-heading"><h2>پلن‌های قابل انتخاب</h2><span>تغییر پلن پس از بررسی و پرداخت فاکتور اعمال می‌شود.</span></div>
     <div id="subscriptionPlans" class="subscription-plan-grid"></div>
