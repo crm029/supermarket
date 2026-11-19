@@ -101,7 +101,11 @@ function app_media_cleanup_process_one(PDO $db, array $item): bool {
         app_media_cleanup_mark($db,$queueId,false,'storage_path_not_configured');
         return false;
     }
-    if (is_link($root)) return null;
+    $rootLinkCheck = rtrim($root, "/\\\\");
+    if (is_link($root) || ($rootLinkCheck !== '' && is_link($rootLinkCheck))) {
+        app_media_cleanup_mark($db,$queueId,false,'unsafe_storage_root');
+        return false;
+    }
     $rootReal = realpath($root);
     if ($rootReal === false || !is_dir($rootReal)) {
         app_media_cleanup_mark($db,$queueId,false,'storage_root_unavailable');
