@@ -923,7 +923,7 @@ $db=app_db();
 $db->beginTransaction();
 try {
   $productId=(int)$argv[1];
-  $expired=gmdate("Y-m-d",time()-7*86400);
+  $expired=(string)$db->query("SELECT DATE_SUB(UTC_DATE(), INTERVAL 30 DAY)")->fetchColumn();
   app_stock_batch_add($db,1,1,$productId,1,"EXPIRED-POLICY-CI",$expired);
   try {
     app_stock_batch_consume($db,1,1,$productId,1);
