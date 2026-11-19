@@ -171,7 +171,7 @@ if ($mediaPath === '' || !str_starts_with($mediaPath, DIRECTORY_SEPARATOR)) {
     $fail('Media storage', 'MEDIA_STORAGE_PATH must be an absolute path outside the public web root.');
 } else {
     $realMediaPath = realpath($mediaPath);
-    if ($realMediaPath === false || !is_dir($realMediaPath) || !is_writable($realMediaPath)) {
+    if ($realMediaPath === false || is_link($mediaPath) || !is_dir($realMediaPath) || !is_writable($realMediaPath)) {
         $fail('Media storage', 'The configured storage directory must exist and be writable by PHP.');
     } else {
         $applicationRoot = realpath(APP_ROOT);
