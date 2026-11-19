@@ -56,3 +56,18 @@
 .platform-payment-warning{padding:12px 14px;border-right:3px solid #d89a34;background:#fff8e9;color:#765018!important;border-radius:8px}
 .platform-payment-panel input,.platform-payment-panel select{width:100%;min-height:46px;margin-top:8px;padding:10px 12px;border:1px solid #d6dfd9;border-radius:10px;background:#fff;font:inherit}
 @media(max-width:640px){.platform-payment-panel{padding:16px}.platform-payment-panel .platform-form-grid{grid-template-columns:1fr}}
+
+
+/* SaaS billing workspace */
+.platform-billing-panel{margin:24px 0;padding:22px;border:1px solid var(--line,#dce5df);border-radius:18px;background:var(--surface,#fff)}
+.platform-billing-totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}
+.platform-billing-totals article{padding:16px;border:1px solid var(--line,#dce5df);border-radius:14px;background:var(--surface-soft,#f7faf8)}
+.platform-billing-totals span,.platform-billing-totals small{display:block;color:var(--muted,#64756b);font-size:.85rem}
+.platform-billing-totals strong{display:block;margin:7px 0;font-size:1.35rem;font-variant-numeric:tabular-nums}
+.platform-billing-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin:20px 0}
+.platform-billing-columns>section{min-width:0}
+.platform-billing-columns h3,.platform-billing-panel h3{margin:12px 0}
+.platform-billing-panel .platform-create{margin:18px 0}
+.platform-billing-panel .platform-tenant{margin:10px 0}
+.platform-billing-panel button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:760px){.platform-billing-totals{grid-template-columns:1fr}.platform-billing-columns{grid-template-columns:1fr}.platform-billing-panel{padding:14px}}
