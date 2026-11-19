@@ -55,6 +55,7 @@ jobs:
           node --check assets/js/subscription.js
           node --check assets/js/notifications.js
           node --check assets/js/pos.js
+          node --check assets/js/pos-receipt.js
           node --check assets/js/pos-refunds.js
 
       - name: Check patch whitespace
