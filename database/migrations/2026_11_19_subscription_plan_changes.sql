@@ -32,3 +32,19 @@ ALTER TABLE platform_invoices
   ADD UNIQUE KEY uq_invoice_subscription_change (subscription_change_request_id),
   ADD CONSTRAINT fk_invoice_subscription_change FOREIGN KEY (subscription_change_request_id)
     REFERENCES platform_subscription_change_requests(id);
+
+DELIMITER //
+DROP TRIGGER IF EXISTS trg_platform_invoice_immutable_fields//
+CREATE TRIGGER trg_platform_invoice_immutable_fields
+BEFORE UPDATE ON platform_invoices
+FOR EACH ROW
+BEGIN
+  IF NEW.tenant_id<>OLD.tenant_id OR NEW.subscription_id<>OLD.subscription_id OR
+     NOT (NEW.subscription_change_request_id <=> OLD.subscription_change_request_id) OR
+     NEW.invoice_number<>OLD.invoice_number OR NEW.period_start<>OLD.period_start OR
+     NEW.period_end<>OLD.period_end OR NEW.amount_rial<>OLD.amount_rial OR
+     NEW.due_at<>OLD.due_at OR NOT (NEW.created_by <=> OLD.created_by) THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Platform invoice financial fields are immutable';
+  END IF;
+END//
+DELIMITER ;
