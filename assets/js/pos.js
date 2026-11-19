@@ -99,7 +99,8 @@ document.getElementById("posSaleForm").addEventListener("submit",async e=>{
   const button=document.getElementById("posCompleteSale");button.disabled=true;
   try{
     const result=await posRequest("admin/pos/sales",{method:"POST",csrf:true,body:JSON.stringify({items:posCart.map(p=>({product_id:p.product_id,quantity:p.quantity})),cash_received_rial:received,idempotency_key:crypto.randomUUID(),note:document.getElementById("posSaleNote").value})});
-    posMessage("فروش "+result.data.sale_number+" ثبت شد. باقی‌پول: "+posMoney(result.data.change_rial),"success");\n    const receiptLink=document.getElementById("posReceiptLink");receiptLink.hidden=false;receiptLink.innerHTML='<a target="_blank" rel="noopener" href="pos-receipt.php?sale_id='+Number(result.data.id)+'">مشاهده و چاپ رسید فروش</a>';
+    posMessage("فروش "+result.data.sale_number+" ثبت شد. باقی‌پول: "+posMoney(result.data.change_rial),"success");
+    const receiptLink=document.getElementById("posReceiptLink");receiptLink.hidden=false;receiptLink.innerHTML='<a target="_blank" rel="noopener" href="pos-receipt.php?sale_id='+Number(result.data.id)+'">مشاهده و چاپ رسید فروش</a>';
     posCart=[];document.getElementById("posCashReceived").value="";document.getElementById("posSaleNote").value="";posRenderCart();await posLoadShift();
   }catch(error){posMessage(error.message,"error");}
   finally{button.disabled=false;}
