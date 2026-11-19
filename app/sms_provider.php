@@ -38,6 +38,71 @@ function app_sms_settings(PDO $db): array {
     ];
 }
 
+
+function app_sms_0098_send_text(PDO $db, string $mobile, string $message): void {
+    if (!preg_match('/^09\\d{9}$/', $mobile)) throw new InvalidArgumentException('شماره مقصد پیامک معتبر نیست.');
+    if ($message === '' || mb_strlen($message, 'UTF-8') > 500) throw new InvalidArgumentException('متن پیامک معتبر نیست.');
+    if (!function_exists('curl_init')) throw new RuntimeException('PHP cURL extension is required for SMS delivery.');
+    $settings = app_sms_settings($db);
+    if ($settings['provider'] !== '0098vip' || !$settings['sender_number'] || !$settings['username'] || !$settings['password']) {
+        throw new RuntimeException('0098 SMS provider is not configured.');
+    }
+    $query = http_build_query([
+        'FROM' => $settings['sender_number'],
+        'TO' => $mobile,
+        'TEXT' => $message,
+        'USERNAME' => $settings['username'],
+        'PASSWORD' => $settings['password'],
+        'DOMAIN' => $settings['domain'],
+    ], '', '&', PHP_QUERY_RFC3986);
+    $curl = curl_init('https://www.0098vip.com/sendsmslink.aspx?' . $query);
+    curl_setopt_array($curl, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT => 12,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_SSL_VERIFYHOST => 2,
+        CURLOPT_HTTPHEADER => ['Accept: text/plain'],
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
+    ]);
+    $response = curl_exec($curl);
+    $error = curl_error($curl);
+    $status = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    curl_close($curl);
+    if (!is_string($response) || $error !== '' || $status < 200 || $status >= 300) {
+        throw new RuntimeException('SMS provider connection failed (HTTP ' . $status . ').');
+    }
+    $result = trim($response);
+    if (app_sms_0098_response_success($result)) return;
+    $codeMap = [
+        '1'=>'شماره گیرنده اشتباه است','2'=>'گیرنده تعریف نشده است','3'=>'فرستنده تعریف نشده است',
+        '4'=>'متن پیامک تنظیم نشده است','5'=>'نام کاربری تنظیم نشده است','6'=>'رمز عبور تنظیم نشده است',
+        '7'=>'دامنه تنظیم نشده است','8'=>'مجوز سرویس باطل شده است','9'=>'اعتبار پیامک کافی نیست',
+        '10'=>'برای این شماره لینک تعریف نشده است','11'=>'مجوز اتصال لینک وجود ندارد',
+        '12'=>'نام کاربری یا رمز عبور اشتباه است','13'=>'متن دارای کاراکتر غیرمجاز است',
+        '14'=>'سقف ارسال روزانه پر شده است','16'=>'ارسال با این شماره مجاز نیست',
+        '17'=>'خطای شماره پنل','18'=>'اعتبار پنل تمام شده است','19'=>'تنظیمات OTP انجام نشده است',
+        '20'=>'فرمت کد OTP صحیح نیست','21'=>'کد OTP تأیید نشده است',
+        '22'=>'اطلاعات مالک شماره تأیید نشده است','23'=>'مجوز ارسال به این پنل صادر نشده است',
+        '24'=>'IP سرور مجاز نیست'
+    ];
+    $safeCode = preg_match('/^\\d+$/', $result) ? $result : 'unknown';
+    throw new RuntimeException('0098 SMS error ' . $safeCode . ': ' . ($codeMap[$safeCode] ?? 'پاسخ نامعتبر سرویس پیامک'));
+}
+
+function app_sms_platform_test(PDO $db, array $tenant, array $session): never {
+    if (!app_auth_sms_ready($db)) app_json(['error'=>'ابتدا سرویس پیامک ۰۰۹۸ را با اطلاعات ورود معتبر فعال کنید.'],422);
+    $mobile = app_auth_mobile((string)($session['mobile'] ?? ''));
+    if ($mobile === null || empty($session['mobile_verified_at'])) app_json(['error'=>'برای آزمایش پیامک، شماره موبایل تأییدشده حساب مدیر لازم است.'],422);
+    app_auth_hit_limit($db,(int)$tenant['id'],'platform_sms_test',app_auth_hash('platform-sms-test-user:' . (int)$session['id']),2,3600);
+    app_sms_0098_send_text($db,$mobile,'پیامک آزمایشی سامانه Supermarket 360؛ اتصال سرویس پیامک با موفقیت برقرار شد.');
+    app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'platform.sms_provider.test_sent','platform_sms_settings',1,[
+        'provider'=>'0098vip','destination_masked'=>substr($mobile,0,4).'*****'.substr($mobile,-2)
+    ]);
+    app_json(['message'=>'پیامک آزمایشی با موفقیت به شماره تأییدشده حساب مدیر ارسال شد.','data'=>['destination_masked'=>substr($mobile,0,4).'*****'.substr($mobile,-2)]]);
+}
+
 function app_sms_platform_settings_read(PDO $db): never {
     $s=app_sms_settings($db);
     app_json(['data'=>[
