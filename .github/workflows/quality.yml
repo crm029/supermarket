@@ -143,6 +143,9 @@ jobs:
       - name: Verify SaaS billing schema and tenant isolation
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/platform-billing.sql
 
+      - name: Apply subscription plan change migration
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_19_subscription_plan_changes.sql
+
       - name: Apply order picker and courier assignment migration
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_06_order_assignments.sql
       - name: Apply customer pickup handoff migration
