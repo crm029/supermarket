@@ -26,7 +26,7 @@ echo "Billing worker owner recipients: $OWNER_ROLE_COUNT"
 test "$OWNER_ROLE_COUNT" = "1"
 SUB_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM tenant_subscriptions WHERE tenant_id=1 AND plan_id=$PLAN_ID ORDER BY id DESC LIMIT 1")"
 
-SUBSCRIPTION_BILLING_BATCH_SIZE=100 SUBSCRIPTION_BILLING_LEAD_DAYS=7 SUBSCRIPTION_GRACE_DAYS=7 php bin/process-subscription-billing.php >/tmp/subscription-worker-first.json
+SUBSCRIPTION_BILLING_BATCH_SIZE=100 SUBSCRIPTION_BILLING_LEAD_DAYS=7 SUBSCRIPTION_GRACE_DAYS=7 SUBSCRIPTION_REMINDER_LEAD_DAYS=3 php bin/process-subscription-billing.php >/tmp/subscription-worker-first.json
 php -r '$r=json_decode(file_get_contents("/tmp/subscription-worker-first.json"),true,512,JSON_THROW_ON_ERROR); if(($r["status"]??"")!=="ok"||($r["renewal_invoices_created"]??-1)!==1||($r["subscriptions_marked_past_due"]??-1)!==0){fwrite(STDERR,"Unexpected first subscription worker report\n");exit(1);}'
 SUBSCRIPTION_BILLING_BATCH_SIZE=100 SUBSCRIPTION_BILLING_LEAD_DAYS=7 SUBSCRIPTION_GRACE_DAYS=7 php bin/process-subscription-billing.php >/tmp/subscription-worker-second.json
 php -r '$r=json_decode(file_get_contents("/tmp/subscription-worker-second.json"),true,512,JSON_THROW_ON_ERROR); if(($r["status"]??"")!=="ok"||($r["renewal_invoices_created"]??-1)!==0){fwrite(STDERR,"Subscription worker duplicated a renewal invoice\n");exit(1);}'
@@ -35,6 +35,17 @@ test "$INVOICE_COUNT" = "1"
 RENEWAL_NOTICE_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM notifications WHERE tenant_id=1 AND event_key LIKE 'platform-renewal-invoice-%'")"
 echo "Renewal notifications: $RENEWAL_NOTICE_COUNT"
 test "$RENEWAL_NOTICE_COUNT" = "1"
+UPCOMING_NOTICE_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM notifications WHERE tenant_id=1 AND event_key LIKE 'platform-invoice-due-%'")"
+test "$UPCOMING_NOTICE_COUNT" = "1"
+
+
+mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "UPDATE platform_invoices SET due_at=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 DAY) WHERE subscription_id=$SUB_ID"
+SUBSCRIPTION_BILLING_BATCH_SIZE=100 SUBSCRIPTION_BILLING_LEAD_DAYS=7 SUBSCRIPTION_GRACE_DAYS=7 SUBSCRIPTION_REMINDER_LEAD_DAYS=3 php bin/process-subscription-billing.php >/tmp/subscription-worker-reminder-overdue.json
+OVERDUE_INVOICE_NOTICE_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM notifications WHERE tenant_id=1 AND event_key LIKE 'platform-invoice-overdue-%'")"
+test "$OVERDUE_INVOICE_NOTICE_COUNT" = "1"
+SUBSCRIPTION_BILLING_BATCH_SIZE=100 SUBSCRIPTION_BILLING_LEAD_DAYS=7 SUBSCRIPTION_GRACE_DAYS=7 SUBSCRIPTION_REMINDER_LEAD_DAYS=3 php bin/process-subscription-billing.php >/tmp/subscription-worker-reminder-repeat.json
+OVERDUE_INVOICE_NOTICE_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM notifications WHERE tenant_id=1 AND event_key LIKE 'platform-invoice-overdue-%'")"
+test "$OVERDUE_INVOICE_NOTICE_COUNT" = "1"
 
 mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "UPDATE tenant_subscriptions SET current_period_end=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 8 DAY) WHERE id=$SUB_ID AND tenant_id=1"
 SUBSCRIPTION_BILLING_BATCH_SIZE=100 SUBSCRIPTION_BILLING_LEAD_DAYS=7 SUBSCRIPTION_GRACE_DAYS=7 php bin/process-subscription-billing.php >/tmp/subscription-worker-overdue.json
@@ -45,5 +56,5 @@ PAST_DUE_NOTICE_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --sk
 echo "Past-due notifications: $PAST_DUE_NOTICE_COUNT"
 test "$PAST_DUE_NOTICE_COUNT" = "1"
 
-mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "DELETE FROM notifications WHERE tenant_id=1 AND (event_key LIKE 'platform-renewal-invoice-%' OR event_key LIKE 'platform-subscription-past-due-%'); DELETE FROM platform_invoices WHERE subscription_id=$SUB_ID; DELETE FROM tenant_subscriptions WHERE id=$SUB_ID AND tenant_id=1; DELETE FROM user_roles WHERE tenant_id=1 AND user_id=(SELECT id FROM users WHERE tenant_id=1 AND mobile='09129999991'); DELETE FROM users WHERE tenant_id=1 AND mobile='09129999991'"
+mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "DELETE FROM notifications WHERE tenant_id=1 AND (event_key LIKE 'platform-renewal-invoice-%' OR event_key LIKE 'platform-subscription-past-due-%' OR event_key LIKE 'platform-invoice-due-%' OR event_key LIKE 'platform-invoice-overdue-%'); DELETE FROM platform_invoices WHERE subscription_id=$SUB_ID; DELETE FROM tenant_subscriptions WHERE id=$SUB_ID AND tenant_id=1; DELETE FROM user_roles WHERE tenant_id=1 AND user_id=(SELECT id FROM users WHERE tenant_id=1 AND mobile='09129999991'); DELETE FROM users WHERE tenant_id=1 AND mobile='09129999991'"
 echo "Subscription renewal and grace-period worker checks passed"
