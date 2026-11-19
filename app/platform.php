@@ -416,6 +416,13 @@ function app_platform_plan_update(PDO $db,array $actorTenant,array $session,int 
        $price===false||$price<1||$price>1000000000000||$active===null||!is_array($limits)||count($limits)>30){
         app_json(['error'=>'اطلاعات و وضعیت پلن معتبر نیست.'],422);
     }
+    foreach($limits as $key=>$value){
+        if(!is_string($key)||!preg_match('/^[a-z][a-z0-9_]{1,39}$/',$key)||
+           !(is_int($value)&&$value>=0)&&!is_bool($value)&&!is_string($value)){
+            app_json(['error'=>'محدودیت‌های پلن باید مقادیر ساده و معتبر داشته باشند.'],422);
+        }
+        if(is_string($value)&&mb_strlen($value)>100)app_json(['error'=>'مقدار محدودیت پلن بیش از حد طولانی است.'],422);
+    }
     $stmt=$db->prepare('UPDATE platform_plans SET name=?,description=?,monthly_price_rial=?,limits_json=?,is_active=? WHERE id=?');
     $stmt->execute([$name,$description,$price,json_encode($limits,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),$active?1:0,$planId]);
     if($stmt->rowCount()===0){
@@ -427,7 +434,7 @@ function app_platform_plan_update(PDO $db,array $actorTenant,array $session,int 
 }
 
 function app_platform_invoice_number(): string {
-    return 'SM360-'.gmdate('Ymd').'-'.strtoupper(bin2hex(random_bytes(4)));
+    return 'SM360-'.gmdate('Ymd').'-'.strtoupper(bin2hex(random_bytes(6)));
 }
 
 function app_platform_invoice_insert(PDO $db,int $tenantId,int $subscriptionId,int $months,int $amount,array $actorTenant,array $session): int {
@@ -468,10 +475,10 @@ function app_platform_subscription_assign(PDO $db,array $actorTenant,array $sess
 function app_platform_subscription_renew(PDO $db,array $actorTenant,array $session,int $subscriptionId): never {
     $db->beginTransaction();
     try{
-        $stmt=$db->prepare("SELECT id,tenant_id,status,billing_period_months,price_monthly_rial,current_period_end FROM tenant_subscriptions WHERE id=? FOR UPDATE");
+        $stmt=$db->prepare("SELECT s.id,s.tenant_id,s.status,s.billing_period_months,s.price_monthly_rial,s.current_period_end,t.status AS tenant_status FROM tenant_subscriptions s JOIN tenants t ON t.id=s.tenant_id WHERE s.id=? FOR UPDATE");
         $stmt->execute([$subscriptionId]);$sub=$stmt->fetch(PDO::FETCH_ASSOC);
         if(!$sub){$db->rollBack();app_json(['error'=>'اشتراک پیدا نشد.'],404);}
-        if(!in_array($sub['status'],['active','past_due'],true)){$db->rollBack();app_json(['error'=>'فقط اشتراک فعال یا سررسیدگذشته قابل تمدید است.'],409);}
+        if(!in_array($sub['status'],['active','past_due'],true)||$sub['tenant_status']==='suspended'){$db->rollBack();app_json(['error'=>'فقط اشتراک فعال فروشگاه غیرتعلیق‌شده قابل تمدید است.'],409);}
         $start=$sub['current_period_end']&&strtotime($sub['current_period_end'].' UTC')>time()?$sub['current_period_end']:gmdate('Y-m-d H:i:s');
         $months=(int)$sub['billing_period_months'];
         $dates=$db->query("SELECT ". $db->quote($start) ." AS period_start,DATE_ADD(". $db->quote($start) .",INTERVAL ".$months." MONTH) AS period_end")->fetch(PDO::FETCH_ASSOC);
