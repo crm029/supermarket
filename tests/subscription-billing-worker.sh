@@ -4,6 +4,17 @@ set -euo pipefail
 PLAN_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM platform_plans WHERE code='ci-billing' LIMIT 1")"
 test -n "$PLAN_ID"
 mysql --host=127.0.0.1 --user=root --password=root supermarket360 <<SQL
+INSERT INTO users (tenant_id,full_name,mobile,status,referral_code)
+VALUES (1,'CI Store Owner','09129999991','active','CIWORKEROWNER1')
+ON DUPLICATE KEY UPDATE status='active';
+SET @worker_owner=(SELECT id FROM users WHERE tenant_id=1 AND mobile='09129999991' LIMIT 1);
+INSERT INTO roles (tenant_id,role_key,title)
+VALUES (1,'store_owner','مالک فروشگاه')
+ON DUPLICATE KEY UPDATE title=VALUES(title);
+SET @worker_owner_role=(SELECT id FROM roles WHERE tenant_id=1 AND role_key='store_owner' LIMIT 1);
+INSERT IGNORE INTO user_roles (tenant_id,user_id,role_id) VALUES (1,@worker_owner,@worker_owner_role);
+SQL
+mysql --host=127.0.0.1 --user=root --password=root supermarket360 <<SQL
 INSERT INTO tenant_subscriptions
   (tenant_id,plan_id,status,billing_period_months,price_monthly_rial,starts_at,current_period_start,current_period_end)
 VALUES
@@ -29,5 +40,5 @@ test "$STATUS" = "past_due"
 PAST_DUE_NOTICE_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM notifications WHERE tenant_id=1 AND event_key LIKE 'platform-subscription-past-due-%'")"
 test "$PAST_DUE_NOTICE_COUNT" = "1"
 
-mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "DELETE FROM notifications WHERE tenant_id=1 AND (event_key LIKE 'platform-renewal-invoice-%' OR event_key LIKE 'platform-subscription-past-due-%'); DELETE FROM platform_invoices WHERE subscription_id=$SUB_ID; DELETE FROM tenant_subscriptions WHERE id=$SUB_ID AND tenant_id=1"
+mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "DELETE FROM notifications WHERE tenant_id=1 AND (event_key LIKE 'platform-renewal-invoice-%' OR event_key LIKE 'platform-subscription-past-due-%'); DELETE FROM platform_invoices WHERE subscription_id=$SUB_ID; DELETE FROM tenant_subscriptions WHERE id=$SUB_ID AND tenant_id=1; DELETE FROM user_roles WHERE tenant_id=1 AND user_id=(SELECT id FROM users WHERE tenant_id=1 AND mobile='09129999991'); DELETE FROM users WHERE tenant_id=1 AND mobile='09129999991'"
 echo "Subscription renewal and grace-period worker checks passed"
