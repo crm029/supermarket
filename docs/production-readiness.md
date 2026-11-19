@@ -58,6 +58,7 @@ Do not enable live checkout until all relevant boxes have been completed. No mer
 ## SaaS subscription billing
 
 - [ ] Apply `2026_11_19_platform_subscriptions.sql` after the platform payment settings and permissions migrations.
+- [ ] Apply `2026_11_19_subscription_plan_changes.sql` after platform subscriptions; test owner request, platform approval/rejection and full-payment-only plan application.
 - [ ] Grant `platform.billing.manage` only to trusted platform finance administrators; the migration grants it to the existing global platform_admin role.
 - [ ] Configure and review plan prices/limits in toman; the database stores all monetary amounts as integer rial.
 - [ ] Review the finance CSV export and reconcile it with the bank statement. Record bank/cash receipts only after checking the actual bank statement or receipt. Enter the bank reference; partial payments remain outstanding until the invoice is fully settled.
