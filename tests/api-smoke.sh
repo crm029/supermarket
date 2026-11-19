@@ -479,6 +479,10 @@ if [[ "$TENANT_STATUS" != "active" || "$DOMAIN_VERIFIED" != "1" ]]; then echo "V
 # SaaS plan, subscription, invoice, partial payment and renewal lifecycle.
 request GET /platform/billing 200 "" "$TOKEN"
 request GET /platform/billing 403 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
+CSV_STATUS="$(curl --silent --show-error --output /tmp/platform-billing.csv --dump-header /tmp/platform-billing.headers --write-out "%{http_code}" -H "Host: localhost" -H "Cookie: sm_session=$TOKEN" "$BASE_URL/platform/billing/export")"
+test "$CSV_STATUS" = "200"
+grep -qi '^content-type: text/csv' /tmp/platform-billing.headers
+grep -q 'invoice_number,tenant_name,status,amount_rial,paid_rial,balance_rial' /tmp/platform-billing.csv
 request POST /platform/plans 201 '{"code":"api-ci-basic","name":"پلن پایه تست","description":"پلن آزمایشی API","monthly_price_rial":120000,"limits":{"products":100,"staff":5}}' "$TOKEN" "$CSRF"
 PLAN_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM platform_plans WHERE code='api-ci-basic' LIMIT 1")"
 request POST "/platform/tenants/$NEW_TENANT_ID/subscription" 201 '{"plan_id":'$PLAN_ID',"billing_period_months":1}' "$TOKEN" "$CSRF"
