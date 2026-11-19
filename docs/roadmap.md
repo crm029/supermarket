@@ -25,7 +25,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Tenant staff role creation, permission assignment, employee role assignment/removal UI and API; staff-management privilege cannot be delegated.
 - [x] Platform super-admin authorization with OTP-verified accounts, global permission scope and owner-only payment configuration.
 - [x] Platform super-admin tenant provisioning, one-time DNS TXT domain challenges, expiry/attempt controls and verified-host activation.
-- [x] Secure tenant-scoped image upload with MIME, size, dimension and storage-key validation.
+- [x] Secure tenant-scoped image upload with MIME, size, dimension and storage-key validation plus symlink-resistant tenant/type directory resolution and automated negative tests.
 - [x] Store settings UI, branding controls, fulfillment availability, delivery fee, minimum order and reservation duration.
 - [x] Tenant media library browsing with usage counts and reusable media IDs.
 - [x] Safe unused media deletion with reference guards, tenant-safe paths and retryable cleanup queue.
