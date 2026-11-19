@@ -67,7 +67,7 @@ VALUES (NULL,'ci_platform_admin','مدیر پلتفرم CI');
 SET @api_platform_role_id=LAST_INSERT_ID();
 INSERT INTO role_permissions (role_scope_id,role_id,permission_id)
 SELECT 0,@api_platform_role_id,id FROM permissions
-WHERE scope='platform' AND permission_key IN ('platform.tenants.manage','platform.audit.read');
+WHERE scope='platform' AND permission_key IN ('platform.tenants.manage','platform.audit.read','platform.billing.manage');
 INSERT INTO user_roles (tenant_id,role_scope_id,user_id,role_id)
 VALUES (1,0,@api_user_one,@api_platform_role_id);
 
