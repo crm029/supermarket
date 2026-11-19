@@ -275,12 +275,10 @@ function app_media_upload(PDO $db, array $tenant, array $session): never {
     $root = realpath($storageRoot);
     if ($root === false || !is_writable($root)) app_json(['error' => 'فضای ذخیره‌سازی رسانه قابل نوشتن نیست.'], 503);
 
-    $tenantDir = $root . DIRECTORY_SEPARATOR . 'tenant-' . (int)$tenant['id'];
-    $typeDir = $tenantDir . DIRECTORY_SEPARATOR . $mediaType;
-    foreach ([$tenantDir, $typeDir] as $dir) {
-        if (!is_dir($dir) && !@mkdir($dir, 0750, true) && !is_dir($dir)) {
-            app_json(['error' => 'ساخت پوشه رسانه ممکن نشد.'], 503);
-        }
+    $tenantDir = app_media_ensure_child_directory($root, 'tenant-' . (int)$tenant['id']);
+    $typeDir = $tenantDir === null ? null : app_media_ensure_child_directory($tenantDir, $mediaType);
+    if ($tenantDir === null || $typeDir === null) {
+        app_json(['error' => 'مسیر ذخیره‌سازی تصویر ناامن یا غیرقابل‌نوشتن است.'], 503);
     }
 
     $filename = bin2hex(random_bytes(20)) . '.' . $types[$mime];
