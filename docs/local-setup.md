@@ -23,6 +23,7 @@ The root `index.php` provides a local storefront preview; live tenant catalogue,
 17. Apply `database/migrations/2026_11_06_pos_refunds.sql` after the POS cash-register migration to enable audited cash refunds. Only store owners receive the refund permission by default; returned items stay pending inspection and are not automatically restocked.
 16. Apply `database/migrations/2026_11_06_pickup_handoff.sql` to enable dedicated pickup-handoff staff permission and recipient-confirmed in-person collection.
 17. Apply `database/migrations/2026_11_06_notifications.sql` to enable customer, staff and manager notification inboxes.
+17a. Apply `database/migrations/2026_11_19_notification_retention_index.sql` to optimize safe cleanup of old read notifications.
 18. Apply `database/migrations/2026_11_06_order_delivery_tracking.sql` to add the out-for-delivery state, tenant-scoped courier event history and recipient-confirmed delivery workflow.
 19. Apply `database/migrations/2026_11_06_order_wallet_refunds.sql` to enable audited full-order wallet-credit refunds and referral reward reversals.
 20. Apply `database/migrations/2026_11_06_domain_verification_challenge.sql` to enable expiring DNS TXT domain ownership challenges.
@@ -209,3 +210,6 @@ Apply the variants migration after the coupons migration. Create a product as â€
 
 ## Media storage reconciliation
 Run `php scripts/reconcile-media.php` from the project root to compare generated tenant media files with `media_assets` and pending cleanup records. The command is read-only: it reports registered files, queued cleanup files, orphan files, missing registered files and unsafe filesystem entries as JSON. Exit codes: 0 = clean, 1 = configuration/runtime error, 2 = attention required. Schedule it daily and send non-zero exit codes and JSON output to monitoring; investigate before manually deleting any files. It scans only generated 40-character hexadecimal JPG/PNG/WebP filenames under recognized `tenant-{id}/{media-type}` directories.
+
+## Notification retention
+Run `php bin/prune-notifications.php` from CLI to delete only notifications that have already been read and are older than `NOTIFICATION_READ_RETENTION_DAYS` (default 180; allowed range 30â€“3650). Unread notifications are never removed. Each run deletes at most 20,000 rows in batches of 1,000 and prints a JSON report; `more_may_remain=true` means schedule another run. Configure a daily cron/Task Scheduler job and monitor its exit status and JSON output.
