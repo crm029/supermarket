@@ -37,6 +37,17 @@
       }).join("");
     }catch(error){box.innerHTML='<div class="platform-empty">'+escapeText(error.message)+'</div>';}
   }
+  async function loadOrphanReviews(){
+    const box=$("platformOrphanReviewList");
+    if(!box)return;
+    try{
+      const result=await api("platform/media-orphan-reviews");
+      const rows=result.data||[];
+      box.innerHTML=rows.length?rows.map(r=>'<article class="platform-tenant"><div class="platform-tenant-head"><div><strong>فروشگاه '+Number(r.tenant_id)+' · '+escapeText(r.tenant_name)+'</strong><p dir="ltr">'+escapeText(r.storage_key)+'</p><small>'+escapeText(r.reason)+' · درخواست‌دهنده: '+escapeText(r.requester_name)+' · '+escapeText(r.created_at)+'</small></div><span class="platform-status pending">در انتظار بررسی</span></div><div class="platform-change-actions"><button class="primary-button" data-approve-orphan="'+Number(r.id)+'">تأیید و افزودن به صف</button><button class="danger" data-reject-orphan="'+Number(r.id)+'">رد درخواست</button></div></article>').join(""):'<div class="platform-empty">درخواست در انتظار بررسی وجود ندارد.</div>';
+    }catch(error){
+      box.innerHTML='<div class="platform-empty">'+escapeText(error.message)+'</div>';
+    }
+  }
   async function loadPaymentSettings(){
     const section=$("platformPaymentSection");
     try{
@@ -185,7 +196,7 @@
     try{
       const me=await api("me");currentUser=me.data;
       const csrf=await api("auth/csrf");csrfToken=csrf.data.csrf_token;
-      showDashboard();await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling(),loadUsage(),loadReconciliation(),loadChangeRequests()]);
+      showDashboard();await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling(),loadUsage(),loadReconciliation(),loadChangeRequests(),loadOrphanReviews()]);
     }catch(error){
       showLogin();
       if(error.message!=="برای ادامه وارد حساب کاربری شوید.")message("platformLoginMessage",error.message,true);
@@ -260,6 +271,36 @@
         message("platformMessage",result.message);await loadTenants();
       }
     }catch(error){message("platformMessage",error.message,true);}
+  });
+  $("platformOrphanReviewForm").addEventListener("submit",async event=>{
+    event.preventDefault();
+    try{
+      const result=await api("platform/media-orphan-reviews",{method:"POST",csrf:true,body:JSON.stringify({
+        tenant_id:Number($("orphanTenantId").value),
+        storage_key:$("orphanStorageKey").value.trim(),
+        reason:$("orphanReviewReason").value.trim()
+      })});
+      message("platformOrphanReviewMessage",result.message);
+      $("platformOrphanReviewForm").reset();
+      await loadOrphanReviews();
+    }catch(error){message("platformOrphanReviewMessage",error.message,true);}
+  });
+  $("platformOrphanReviewList").addEventListener("click",async event=>{
+    const approve=event.target.closest("[data-approve-orphan]");
+    const reject=event.target.closest("[data-reject-orphan]");
+    if(!approve&&!reject)return;
+    const id=Number((approve||reject).dataset.approveOrphan||(approve||reject).dataset.rejectOrphan);
+    const action=approve?"approve":"reject";
+    const phrase=approve
+      ?"با تأیید، فایل پس از بررسی مجدد وارد صف پاک‌سازی می‌شود. worker آن را حذف خواهد کرد. ادامه می‌دهید؟"
+      :"درخواست رد شود؟ هیچ فایلی حذف نخواهد شد.";
+    if(!window.confirm(phrase))return;
+    try{
+      const result=await api("platform/media-orphan-reviews/"+id+"/"+action,{method:"POST",csrf:true,body:"{}"});
+      message("platformOrphanReviewMessage",result.message);
+      await loadOrphanReviews();
+      await loadAudit();
+    }catch(error){message("platformOrphanReviewMessage",error.message,true);}
   });
   $("platformCopyDnsValue").addEventListener("click",async()=>{
     try{await navigator.clipboard.writeText($("platformDnsRecordValue").textContent);message("platformMessage","مقدار TXT کپی شد.");}
