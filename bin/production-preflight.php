@@ -84,7 +84,10 @@ try {
         'role_permissions', 'auth_sessions', 'auth_challenges',
         'products', 'categories', 'stock_levels', 'stock_reservations',
         'orders', 'order_assignments', 'order_refunds', 'notifications',
-        'payment_attempts', 'platform_payment_settings', 'media_assets', 'wallet_accounts', 'wallet_entries', 'referral_events',
+        'payment_attempts', 'platform_payment_settings', 'media_assets', 'media_cleanup_queue',
+        'media_orphan_reviews', 'wallet_accounts', 'wallet_entries', 'referral_events',
+        'platform_plans', 'tenant_subscriptions', 'platform_invoices', 'platform_invoice_payments',
+        'platform_subscription_change_requests',
     ];
     $tableQuery = $db->prepare(
         'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?'
@@ -97,7 +100,22 @@ try {
     if ($missing !== []) {
         $fail('Database schema', 'Missing required tables: ' . implode(', ', $missing) . '. Apply the documented schema and migrations.');
     } else {
-        $pass('Database schema', count($requiredTables) . ' required core tables are present.');
+        $pass('Database schema', count($requiredTables) . ' required commerce, SaaS billing and operations tables are present.');
+    }
+
+    $engineQuery = $db->prepare(
+        "SELECT COUNT(*) FROM information_schema.tables
+         WHERE table_schema = DATABASE() AND table_name = ? AND UPPER(COALESCE(engine, '')) <> 'INNODB'"
+    );
+    $nonTransactionalTables = [];
+    foreach ($requiredTables as $table) {
+        $engineQuery->execute([$table]);
+        if ((int)$engineQuery->fetchColumn() !== 0) $nonTransactionalTables[] = $table;
+    }
+    if ($nonTransactionalTables !== []) {
+        $fail('Transactional table engines', 'These required tables are not InnoDB: ' . implode(', ', $nonTransactionalTables) . '. Restore InnoDB before enabling checkout or inventory writes.');
+    } else {
+        $pass('Transactional table engines', 'All required tables use InnoDB.');
     }
 
     $columnQuery = $db->prepare(
