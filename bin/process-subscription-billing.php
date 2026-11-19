@@ -26,18 +26,7 @@ function app_subscription_worker_int(string $key,int $default,int $min,int $max)
 
 
 function app_subscription_worker_notify_owner(PDO $db,int $tenantId,string $eventKey,string $title,string $body,string $entityType,int $entityId): void {
-    $owners=$db->prepare(
-        "SELECT DISTINCT u.id
-         FROM users u
-         JOIN user_roles ur ON ur.tenant_id=u.tenant_id AND ur.user_id=u.id
-         JOIN roles r ON r.role_scope_id=ur.role_scope_id AND r.id=ur.role_id
-         WHERE u.tenant_id=? AND u.status='active' AND r.role_key='store_owner'
-         ORDER BY u.id"
-    );
-    $owners->execute([$tenantId]);
-    foreach($owners->fetchAll(PDO::FETCH_COLUMN) as $ownerId){
-        app_notification_create($db,$tenantId,(int)$ownerId,$eventKey,'system',$title,$body,$entityType,$entityId);
-    }
+    app_notification_notify_role($db,$tenantId,'store_owner',$eventKey,'system',$title,$body,$entityType,$entityId);
 }
 
 function app_subscription_worker_audit(PDO $db,string $action,int $subscriptionId,array $details): void {
