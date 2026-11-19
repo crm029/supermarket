@@ -505,6 +505,29 @@ if [[ "$BILLING_INVOICE_STATUS" != "paid" || "$BILLING_SUBSCRIPTION_STATUS" != "
 request POST "/platform/tenants/$NEW_TENANT_ID/subscription" 409 '{"plan_id":'$PLAN_ID',"billing_period_months":1}' "$TOKEN" "$CSRF"
 request POST "/platform/subscriptions/$SUBSCRIPTION_ID/renew" 201 '{}' "$TOKEN" "$CSRF"
 request POST "/platform/subscriptions/$SUBSCRIPTION_ID/renew" 409 '{}' "$TOKEN" "$CSRF"
+request GET /admin/subscription 200 "" "$TOKEN"
+request GET /admin/subscription 403 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
+request POST /platform/plans 201 '{"code":"api-ci-pro","name":"پلن حرفه‌ای تست","description":"پلن ارتقای API","monthly_price_rial":150000,"limits":{"products":500,"staff":20,"media_assets":500,"monthly_orders":5000,"storage_bytes":5000000000}}' "$TOKEN" "$CSRF"
+UPGRADE_PLAN_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM platform_plans WHERE code='api-ci-pro' LIMIT 1")"
+request POST /admin/subscription/change-requests 201 '{"plan_id":'$UPGRADE_PLAN_ID',"billing_period_months":1}' "$TOKEN" "$CSRF"
+CHANGE_REQUEST_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM platform_subscription_change_requests WHERE tenant_id=1 AND subscription_id=$SUBSCRIPTION_ID ORDER BY id DESC LIMIT 1")"
+request POST /admin/subscription/change-requests 409 '{"plan_id":'$PLAN_ID',"billing_period_months":3}' "$TOKEN" "$CSRF"
+request GET /platform/subscription-change-requests 200 "" "$TOKEN"
+request GET /platform/subscription-change-requests 403 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
+request POST "/platform/subscription-change-requests/$CHANGE_REQUEST_ID/approve" 200 '{}' "$TOKEN" "$CSRF"
+request POST "/platform/subscription-change-requests/$CHANGE_REQUEST_ID/approve" 409 '{}' "$TOKEN" "$CSRF"
+CHANGE_INVOICE_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM platform_invoices WHERE subscription_change_request_id=$CHANGE_REQUEST_ID")"
+PLAN_BEFORE_CHANGE_PAYMENT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT plan_id FROM tenant_subscriptions WHERE tenant_id=1 AND id=$SUBSCRIPTION_ID")"
+if [[ "$PLAN_BEFORE_CHANGE_PAYMENT" != "$PLAN_ID" ]]; then echo "Plan changed before the change invoice was fully paid."; exit 1; fi
+request POST "/platform/invoices/$CHANGE_INVOICE_ID/payments" 200 '{"amount_rial":150000,"method":"bank_transfer","reference":"API-CI-PLAN-CHANGE","idempotency_key":"api-ci-plan-change-pay-0001"}' "$TOKEN" "$CSRF"
+PLAN_CHANGE_STATE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT CONCAT(s.plan_id,'|',s.price_monthly_rial,'|',r.status,'|',i.status) FROM tenant_subscriptions s JOIN platform_subscription_change_requests r ON r.tenant_id=s.tenant_id AND r.subscription_id=s.id JOIN platform_invoices i ON i.subscription_change_request_id=r.id WHERE s.tenant_id=1 AND r.id=$CHANGE_REQUEST_ID")"
+IFS="|" read -r APPLIED_PLAN_ID APPLIED_MONTHLY_PRICE CHANGE_STATUS CHANGE_INVOICE_STATUS <<< "$PLAN_CHANGE_STATE"
+if [[ "$APPLIED_PLAN_ID" != "$UPGRADE_PLAN_ID" || "$APPLIED_MONTHLY_PRICE" != "150000" || "$CHANGE_STATUS" != "applied" || "$CHANGE_INVOICE_STATUS" != "paid" ]]; then echo "Paid plan-change invoice did not apply the new subscription plan: $PLAN_CHANGE_STATE"; exit 1; fi
+request POST /admin/subscription/change-requests 201 '{"plan_id":'$PLAN_ID',"billing_period_months":3}' "$TOKEN" "$CSRF"
+REJECT_REQUEST_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT id FROM platform_subscription_change_requests WHERE tenant_id=1 AND subscription_id=$SUBSCRIPTION_ID ORDER BY id DESC LIMIT 1")"
+request POST "/platform/subscription-change-requests/$REJECT_REQUEST_ID/reject" 200 '{}' "$TOKEN" "$CSRF"
+request POST "/platform/subscription-change-requests/$REJECT_REQUEST_ID/reject" 409 '{}' "$TOKEN" "$CSRF"
+
 
 # Product quotas are applied at the write boundary and can be changed by the platform.
 request PUT "/platform/plans/$PLAN_ID" 200 '{"name":"پلن پایه تست","description":"پلن آزمایشی API","monthly_price_rial":120000,"limits":{"products":0,"staff":0,"media_assets":0,"monthly_orders":0,"storage_bytes":0},"is_active":true}' "$TOKEN" "$CSRF"
