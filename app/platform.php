@@ -467,6 +467,8 @@ function app_platform_subscription_assign(PDO $db,array $actorTenant,array $sess
         $insert->execute([$tenantId,$planId,$months,$monthly,$session['id']]);$subscriptionId=(int)$db->lastInsertId();
         $invoiceId=app_platform_invoice_insert($db,$tenantId,$subscriptionId,$months,$amount,$actorTenant,$session);
         app_audit_log($db,(int)$actorTenant['id'],(int)$session['id'],'platform.subscription.created','tenant_subscription',$subscriptionId,['tenant_id'=>$tenantId,'plan_id'=>$planId,'invoice_id'=>$invoiceId,'amount_rial'=>$amount,'months'=>$months]);
+        app_notification_notify_role($db,$tenantId,'store_owner','platform-invoice-issued-'.$invoiceId,'system',
+            'فاکتور اشتراک صادر شد','فاکتور اشتراک به مبلغ '.number_format($amount).' ریال صادر شد.','platform_invoice',$invoiceId);
         $db->commit();
         app_json(['data'=>['subscription_id'=>$subscriptionId,'invoice_id'=>$invoiceId,'amount_rial'=>$amount],'message'=>'اشتراک در انتظار پرداخت ایجاد و فاکتور صادر شد.'],201);
     }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
@@ -493,6 +495,8 @@ function app_platform_subscription_renew(PDO $db,array $actorTenant,array $sessi
         $insert->execute([(int)$sub['tenant_id'],(int)$sub['id'],app_platform_invoice_number(),$dates['period_start'],$dates['period_end'],$amount,$session['id']]);
         $invoiceId=(int)$db->lastInsertId();
         app_audit_log($db,(int)$actorTenant['id'],(int)$session['id'],'platform.subscription.renewal_invoiced','tenant_subscription',(int)$sub['id'],['tenant_id'=>(int)$sub['tenant_id'],'invoice_id'=>$invoiceId,'amount_rial'=>$amount,'months'=>$months]);
+        app_notification_notify_role($db,(int)$sub['tenant_id'],'store_owner','platform-invoice-issued-'.$invoiceId,'system',
+            'فاکتور تمدید اشتراک صادر شد','فاکتور تمدید اشتراک به مبلغ '.number_format($amount).' ریال صادر شد.','platform_invoice',$invoiceId);
         $db->commit();app_json(['data'=>['invoice_id'=>$invoiceId,'amount_rial'=>$amount],'message'=>'فاکتور تمدید صادر شد.'],201);
     }catch(PDOException $e){if($db->inTransaction())$db->rollBack();if((string)$e->getCode()==='23000')app_json(['error'=>'برای این دوره قبلاً فاکتور تمدید صادر شده است.'],409);throw $e;}
     catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
@@ -548,6 +552,10 @@ function app_platform_invoice_record_payment(PDO $db,array $actorTenant,array $s
             $activate->execute([$dates['period_start'],$dates['period_start'],$dates['period_end'],$dates['period_end'],$invoice['subscription_id'],$invoice['tenant_id']]);
         }
         app_audit_log($db,(int)$actorTenant['id'],(int)$session['id'],'platform.invoice.payment_recorded','platform_invoice',$invoiceId,['tenant_id'=>(int)$invoice['tenant_id'],'amount_rial'=>$amount,'method'=>$method,'reference'=>$reference,'fully_paid'=>$fullyPaid]);
+        if($fullyPaid){
+            app_notification_notify_role($db,(int)$invoice['tenant_id'],'store_owner','platform-invoice-paid-'.$invoiceId,'system',
+                'پرداخت اشتراک تأیید شد','پرداخت فاکتور اشتراک ثبت شد و اشتراک فروشگاه فعال است.','platform_invoice',$invoiceId);
+        }
         $db->commit();
         app_json(['data'=>['invoice_id'=>$invoiceId,'paid_rial'=>$newPaid,'remaining_rial'=>(int)$invoice['amount_rial']-$newPaid,'status'=>$fullyPaid?'paid':'issued'],'message'=>$fullyPaid?'دریافت کامل ثبت شد و اشتراک فعال شد.':'دریافت جزئی ثبت شد.']);
     }catch(PDOException $e){if($db->inTransaction())$db->rollBack();if((string)$e->getCode()==='23000')app_json(['error'=>'این کلید یکتا قبلاً استفاده شده است.'],409);throw $e;}
