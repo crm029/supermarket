@@ -188,6 +188,7 @@
     catch(_){message("platformMessage","کپی خودکار در دسترس نیست؛ مقدار TXT را دستی انتخاب و کپی کنید.",true);}
   });
 
+  $("platformExportBilling").addEventListener("click",()=>{window.location.href="api/v1/platform/billing/export";});
   $("platformPlanForm").addEventListener("submit",async event=>{
     event.preventDefault();
     let limits;
