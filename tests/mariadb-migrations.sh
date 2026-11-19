@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-DB=(mysql --host=127.0.0.1 --user=root --password=root supermarket360)
+DB=(mysql --skip-ssl --host=127.0.0.1 --user=root --password=root supermarket360)
 "${DB[@]}" < database/schema.sql
 "${DB[@]}" < database/demo-seed.sql
 
