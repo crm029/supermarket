@@ -53,6 +53,8 @@ try {
         }
     }
 } finally {
+    $typeLink = $root . DIRECTORY_SEPARATOR . 'tenant-42' . DIRECTORY_SEPARATOR . 'product';
+    if (is_link($typeLink)) @unlink($typeLink);
     foreach (glob($root . DIRECTORY_SEPARATOR . '*') ?: [] as $entry) {
         if (is_link($entry) || is_file($entry)) @unlink($entry);
         elseif (is_dir($entry)) @rmdir($entry);
