@@ -136,8 +136,8 @@ try {
     } else {
         $pass('Tenant domain', $activeDomainCount . ' verified active domain mapping(s) found.');
     }
-} catch (Throwable $error) {
-    $fail('Database connection', 'Connection or schema inspection failed: ' . $error->getMessage());
+} catch (Throwable) {
+    $fail('Database connection', 'Connection or schema inspection failed. Check server-side configuration and protected logs.');
 }
 
 $smsProvider = strtolower(trim((string)app_env('SMS_PROVIDER', 'disabled')));
@@ -160,8 +160,8 @@ try {
         app_payment_config($db);
         $pass('Payment gateway', 'Encrypted merchant credentials and Real mode are configured; provider acceptance still requires a real transaction.');
     }
-} catch (Throwable $error) {
-    $fail('Payment gateway', 'Platform gateway settings are unavailable or invalid: ' . $error->getMessage());
+} catch (Throwable) {
+    $fail('Payment gateway', 'Platform gateway settings are unavailable or invalid. Check server-side configuration and protected logs.');
 }
 
 $mediaPath = trim((string)(app_env('MEDIA_STORAGE_PATH') ?? ''));
