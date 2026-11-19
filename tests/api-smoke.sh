@@ -575,6 +575,11 @@ request POST /admin/subscription/resume 200 '{}' "$TOKEN" "$CSRF"
 REOPENED_STATE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT CONCAT(status,'|',cancel_at_period_end) FROM tenant_subscriptions WHERE tenant_id=1 AND id=$MAIN_SUBSCRIPTION_ID")"
 if [[ "$REOPENED_STATE" != "active|0" ]]; then echo "Subscription cancellation resume did not restore renewal: $REOPENED_STATE"; exit 1; fi
 request POST /admin/subscription/resume 409 '{}' "$TOKEN" "$CSRF"
+
+# A cancelled subscription must not silently fall back to the legacy unlimited quota path.
+mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "UPDATE tenant_subscriptions SET status='cancelled',cancel_at_period_end=0 WHERE tenant_id=1 AND id=$MAIN_SUBSCRIPTION_ID"
+request POST /admin/products 403 '{"sku":"CANCELLED-SUB-001","title":"محصول پس از لغو اشتراک","price_rial":1000,"is_active":true}' "$TOKEN" "$CSRF"
+mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "UPDATE tenant_subscriptions SET status='active' WHERE tenant_id=1 AND id=$MAIN_SUBSCRIPTION_ID"
 request POST "/platform/tenants/$NEW_TENANT_ID/suspend" 200 '{"reason":"تعلیق آزمایشی برای تست گردش مدیریت پلتفرم"}' "$TOKEN" "$CSRF"
 request POST /platform/tenants/1/suspend 409 '{"reason":"نباید فروشگاه میزبان تعلیق شود"}' "$TOKEN" "$CSRF"
 TENANT_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM tenants WHERE id=$NEW_TENANT_ID")"
