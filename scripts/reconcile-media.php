@@ -18,8 +18,10 @@ $isWindowsDrive = preg_match('/^[A-Za-z]:/', $root) === 1 && in_array(substr($ro
 if ($root === '' || !(str_starts_with($root, DIRECTORY_SEPARATOR) || $isWindowsDrive)) {
     media_reconcile_emit(['status'=>'configuration_error','error'=>'MEDIA_STORAGE_PATH must be an absolute path.'], 1);
 }
+$rootLinkCheck = rtrim($root, "/\\\\");
+$rootIsLink = is_link($root) || ($rootLinkCheck !== '' && is_link($rootLinkCheck));
 $rootReal = realpath($root);
-if ($rootReal === false || !is_dir($rootReal) || is_link($root)) {
+if ($rootReal === false || !is_dir($rootReal) || $rootIsLink) {
     media_reconcile_emit(['status'=>'configuration_error','error'=>'Media storage root is unavailable or unsafe.'], 1);
 }
 
