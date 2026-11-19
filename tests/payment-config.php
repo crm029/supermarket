@@ -16,6 +16,14 @@ if (!app_payment_authority_is_valid('S000000000000000000000000000000000000000000
     app_payment_authority_is_valid('bad authority', 'live')) {
     throw new RuntimeException('ZarinPal sandbox/live authority validation is incorrect.');
 }
+putenv('ZARINPAL_MERCHANT_ID=50cd6e57-81b9-4f2b-9aff-6ce699f4b56d');
+$projectSandbox = app_payment_config();
+if ($projectSandbox['merchant_id'] !== '50cd6e57-81b9-4f2b-9aff-6ce699f4b56d' ||
+    $projectSandbox['mode'] !== 'sandbox') {
+    throw new RuntimeException('The supplied project sandbox merchant configuration was not loaded.');
+}
+putenv('ZARINPAL_MERCHANT_ID=00000000-0000-0000-0000-000000000000');
+
 if ($config['callback_url'] !== 'https://market.example/subdir/api/v1/payments/zarinpal/callback' ||
     $config['request_url'] !== 'https://sandbox.zarinpal.com/pg/v4/payment/request.json' ||
     $config['verify_url'] !== 'https://sandbox.zarinpal.com/pg/v4/payment/verify.json' ||
