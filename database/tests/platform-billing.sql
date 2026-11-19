@@ -65,13 +65,27 @@ BEGIN
   END IF;
 END//
 
+
+CREATE PROCEDURE assert_invoice_financial_fields_are_immutable()
+BEGIN
+  DECLARE rejected BOOLEAN DEFAULT FALSE;
+  BEGIN
+    DECLARE CONTINUE HANDLER FOR SQLEXCEPTION SET rejected=TRUE;
+    UPDATE platform_invoices SET amount_rial=amount_rial+1 WHERE id=@billing_invoice;
+  END;
+  IF rejected=FALSE THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Platform invoice amount was mutable';
+  END IF;
+END//
 DELIMITER ;
 
 CALL assert_platform_billing_ledger();
+CALL assert_invoice_financial_fields_are_immutable();
 CALL assert_invoice_payment_ledger_is_append_only();
 CALL assert_cross_tenant_billing_payment_rejected();
 DROP PROCEDURE assert_platform_billing_ledger;
 DROP PROCEDURE assert_cross_tenant_billing_payment_rejected;
 DROP PROCEDURE assert_invoice_payment_ledger_is_append_only;
+DROP PROCEDURE assert_invoice_financial_fields_are_immutable;
 
 SELECT 'platform billing integration checks passed' AS result;
