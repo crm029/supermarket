@@ -56,7 +56,28 @@ function app_tenant_subscription_overview(PDO $db,array $tenant,array $session):
         foreach(['id','requested_plan_id','requested_billing_period_months','invoice_id','amount_rial'] as $key)$row[$key]=$row[$key]===null?null:(int)$row[$key];
     }
     unset($row);
-    app_json(['data'=>['subscription'=>$subscription,'plans'=>$plans,'change_requests'=>$history]]);
+    $invoiceQuery=$db->prepare(
+        "SELECT i.id,i.invoice_number,i.period_start,i.period_end,i.amount_rial,i.status,i.due_at,i.paid_at,
+          COALESCE(pay.paid_rial,0) AS paid_rial,
+          GREATEST(i.amount_rial-COALESCE(pay.paid_rial,0),0) AS balance_rial,
+          COALESCE(pay.payment_count,0) AS payment_count,p.name AS plan_name
+         FROM platform_invoices i
+         JOIN tenant_subscriptions s ON s.tenant_id=i.tenant_id AND s.id=i.subscription_id
+         JOIN platform_plans p ON p.id=s.plan_id
+         LEFT JOIN (
+           SELECT tenant_id,invoice_id,SUM(amount_rial) AS paid_rial,COUNT(*) AS payment_count
+           FROM platform_invoice_payments GROUP BY tenant_id,invoice_id
+         ) pay ON pay.tenant_id=i.tenant_id AND pay.invoice_id=i.id
+         WHERE i.tenant_id=? ORDER BY i.created_at DESC,i.id DESC LIMIT 50"
+    );
+    $invoiceQuery->execute([(int)$tenant['id']]);
+    $invoices=$invoiceQuery->fetchAll(PDO::FETCH_ASSOC);
+    foreach($invoices as &$invoice){
+        foreach(['id','amount_rial','paid_rial','balance_rial','payment_count'] as $key)$invoice[$key]=(int)$invoice[$key];
+        $invoice['display_status']=$invoice['status']==='void'?'void':($invoice['balance_rial']===0?'paid':($invoice['paid_rial']>0?'partial':'unpaid'));
+    }
+    unset($invoice);
+    app_json(['data'=>['subscription'=>$subscription,'plans'=>$plans,'change_requests'=>$history,'invoices'=>$invoices]]);
 }
 
 function app_tenant_subscription_change_request(PDO $db,array $tenant,array $session): never {
