@@ -195,6 +195,11 @@ jobs:
       - name: Apply media cleanup queue migration
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_05_media_cleanup_queue.sql
 
+      - name: Apply operator-reviewed orphan media migration
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_20_media_orphan_reviews.sql
+      - name: Verify operator-reviewed orphan media schema and permission
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/media-orphan-reviews.sql
+
       - name: Apply delivery zones migration
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_05_delivery_zones.sql
 
