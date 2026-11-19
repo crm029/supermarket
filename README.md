@@ -120,4 +120,4 @@ Store owners can review their subscription invoices and live quota usage, reques
 The cashier screen includes a permission-checked receipt preview with 58mm and 80mm browser-print layouts for POS sales. Printing uses the operating system's installed printer drivers; device-specific direct protocols are not part of this software release.
 
 
-Production acceptance: see [`docs/merchant-acceptance.md`](docs/merchant-acceptance.md) for the merchant SMS, payment, settlement and launch checklist.
+Production acceptance: see [`docs/merchant-acceptance.md`](docs/merchant-acceptance.md) for the merchant SMS, payment, settlement and launch checklist.\n\nMedia operations: see [`docs/media-operations.md`](docs/media-operations.md) for reconciliation monitoring, cleanup scheduling and bounded retention.
