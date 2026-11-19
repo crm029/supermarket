@@ -1052,6 +1052,9 @@ request POST /admin/pos/shifts 201 '{"warehouse_id":1,"opening_float_rial":50000
 POS_SHIFT_ID="$(assert_json created-id)"
 request GET /admin/pos/shift 200 "" "$POS_TOKEN"
 assert_json pos-shift-open
+request PUT "/platform/plans/$PLAN_ID" 200 '{"name":"پلن پایه تست","description":"پلن آزمایشی API","monthly_price_rial":120000,"limits":{"products":10000,"staff":1000,"media_assets":10000,"monthly_orders":0,"storage_bytes":10000000000},"is_active":true}' "$TOKEN" "$CSRF"
+request POST /admin/pos/sales 403 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"cash_received_rial":150000,"idempotency_key":"ci-pos-quota-denied-0001"}' "$POS_TOKEN" "$POS_CSRF"
+request PUT "/platform/plans/$PLAN_ID" 200 '{"name":"پلن پایه تست","description":"پلن آزمایشی API","monthly_price_rial":120000,"limits":{"products":10000,"staff":1000,"media_assets":10000,"monthly_orders":10000,"storage_bytes":10000000000},"is_active":true}' "$TOKEN" "$CSRF"
 POS_IDEMPOTENCY_KEY="ci-pos-sale-00000001"
 request POST /admin/pos/sales 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"cash_received_rial":150000,"idempotency_key":"'$POS_IDEMPOTENCY_KEY'"}' "$POS_TOKEN" "$POS_CSRF"
 POS_SALE_ID="$(assert_json pos-sale)"
