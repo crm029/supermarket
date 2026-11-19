@@ -274,8 +274,10 @@ function app_media_upload(PDO $db, array $tenant, array $session): never {
     if (!is_dir($storageRoot) && !@mkdir($storageRoot, 0750, true) && !is_dir($storageRoot)) {
         app_json(['error' => 'فضای ذخیره‌سازی رسانه در دسترس نیست.'], 503);
     }
+    $storageRootLinkCheck = rtrim($storageRoot, "/\\\\");
+    $storageRootIsLink = is_link($storageRoot) || ($storageRootLinkCheck !== '' && is_link($storageRootLinkCheck));
     $root = realpath($storageRoot);
-    if ($root === false || is_link($storageRoot) || !is_writable($root)) app_json(['error' => 'فضای ذخیره‌سازی رسانه قابل نوشتن نیست.'], 503);
+    if ($root === false || $storageRootIsLink || !is_writable($root)) app_json(['error' => 'فضای ذخیره‌سازی رسانه قابل نوشتن نیست.'], 503);
 
     $tenantDir = app_media_ensure_child_directory($root, 'tenant-' . (int)$tenant['id']);
     $typeDir = $tenantDir === null ? null : app_media_ensure_child_directory($tenantDir, $mediaType);
