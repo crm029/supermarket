@@ -268,13 +268,15 @@ function app_media_upload(PDO $db, array $tenant, array $session): never {
 
     $filename = bin2hex(random_bytes(20)) . '.' . $types[$mime];
     $destination = $typeDir . DIRECTORY_SEPARATOR . $filename;
-    if (!move_uploaded_file((string)$file['tmp_name'], $destination)) {
-        app_json(['error' => 'ذخیره تصویر روی سرور ناموفق بود.'], 500);
-    }
-    @chmod($destination, 0640);
-    $storageKey = 'tenant-' . (int)$tenant['id'] . '/' . $mediaType . '/' . $filename;
-
+    $db->beginTransaction();
     try {
+        app_tenant_limit_guard($db,$tenant,'media_assets',1);
+        if (!move_uploaded_file((string)$file['tmp_name'], $destination)) {
+            $db->rollBack();
+            app_json(['error' => 'ذخیره تصویر روی سرور ناموفق بود.'], 500);
+        }
+        @chmod($destination, 0640);
+        $storageKey = 'tenant-' . (int)$tenant['id'] . '/' . $mediaType . '/' . $filename;
         $stmt = $db->prepare(
             'INSERT INTO media_assets (tenant_id,media_type,storage_key,alt_text,width,height,metadata)
              VALUES (?,?,?,?,?,?,?)'
@@ -288,9 +290,11 @@ function app_media_upload(PDO $db, array $tenant, array $session): never {
         app_audit_log($db, (int)$tenant['id'], (int)$session['id'], 'media.uploaded', 'media_asset', $id, [
             'media_type' => $mediaType, 'width' => (int)$image[0], 'height' => (int)$image[1],
         ]);
+        $db->commit();
         app_json(['data' => app_media_public_data($db, (int)$tenant['id'], $id), 'message' => 'تصویر بارگذاری شد.'], 201);
     } catch (Throwable $e) {
-        @unlink($destination);
+        if($db->inTransaction())$db->rollBack();
+        if(is_file($destination))@unlink($destination);
         throw $e;
     }
 }
