@@ -53,9 +53,4 @@ CALL assert_cross_tenant_billing_payment_rejected();
 DROP PROCEDURE assert_platform_billing_ledger;
 DROP PROCEDURE assert_cross_tenant_billing_payment_rejected;
 
-DELETE FROM platform_invoice_payments WHERE invoice_id=@billing_invoice;
-DELETE FROM platform_invoices WHERE id=@billing_invoice;
-DELETE FROM tenant_subscriptions WHERE id=@billing_subscription;
-DELETE FROM platform_plans WHERE id=@billing_plan;
-
 SELECT 'platform billing integration checks passed' AS result;
