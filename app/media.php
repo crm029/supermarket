@@ -271,6 +271,7 @@ function app_media_upload(PDO $db, array $tenant, array $session): never {
     $db->beginTransaction();
     try {
         app_tenant_limit_guard($db,$tenant,'media_assets',1);
+        app_tenant_limit_guard($db,$tenant,'storage_bytes',$size);
         if (!move_uploaded_file((string)$file['tmp_name'], $destination)) {
             $db->rollBack();
             app_json(['error' => 'ذخیره تصویر روی سرور ناموفق بود.'], 500);
