@@ -87,6 +87,11 @@ declare(strict_types=1);
         <article><span>دریافت‌شده</span><strong id="platformCollected">۰</strong><small>تومان</small></article>
         <article><span>مانده فاکتورها</span><strong id="platformOutstanding">۰</strong><small>تومان</small></article>
       </div>
+      <section class="platform-reconciliation">
+        <div class="platform-section-heading"><h3>تطبیق مالی فاکتورها و دریافت‌ها</h3><span>کنترل مغایرت دفتر مالی</span></div>
+        <div id="platformReconciliationTotals" class="platform-billing-totals"></div>
+        <div id="platformReconciliationList" class="platform-tenant-list"><p>در حال بررسی دفتر مالی...</p></div>
+      </section>
       <section class="platform-usage-section">
         <div class="platform-section-heading"><h3>مصرف منابع فروشگاه‌ها</h3><span id="platformUsagePeriod">ماه جاری UTC</span></div>
         <div id="platformUsageTotals" class="platform-billing-totals"></div>
