@@ -170,7 +170,8 @@ function app_media_cleanup_process_pending(PDO $db, int $limit = 100): array {
     foreach ($rows as $row) {
         if (app_media_cleanup_process_one($db,$row)) $completed++;
     }
-    return ['checked'=>count($rows),'completed'=>$completed,'pending'=>count($rows)-$completed];
+    $pending = (int)$db->query("SELECT COUNT(*) FROM media_cleanup_queue WHERE status='pending'")->fetchColumn();
+    return ['checked'=>count($rows),'completed'=>$completed,'pending'=>$pending];
 }
 
 function app_admin_media_delete(PDO $db, array $tenant, array $session, int $mediaId): never {
