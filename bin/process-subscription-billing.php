@@ -157,12 +157,71 @@ try{
         }
     }
 
+
+    $reminderDays=app_subscription_worker_int('SUBSCRIPTION_REMINDER_LEAD_DAYS',3,1,14);
+    $reminderCandidates=$db->query(
+        "SELECT i.id,i.tenant_id,i.due_at FROM platform_invoices i
+         WHERE i.status='issued' AND i.due_at<=DATE_ADD(UTC_TIMESTAMP(),INTERVAL {$reminderDays} DAY)
+         ORDER BY i.due_at,i.id LIMIT {$batchSize}"
+    )->fetchAll(PDO::FETCH_ASSOC);
+    $upcomingReminders=0;
+    $overdueReminders=0;
+    foreach($reminderCandidates as $candidate){
+        $db->beginTransaction();
+        try{
+            $tenantLock=$db->prepare('SELECT id FROM tenants WHERE id=? FOR UPDATE');
+            $tenantLock->execute([(int)$candidate['tenant_id']]);
+            if(!$tenantLock->fetchColumn()){$db->rollBack();continue;}
+            $invoiceLock=$db->prepare(
+                "SELECT i.id,i.tenant_id,i.status,i.invoice_number,i.amount_rial,i.due_at,
+                  COALESCE((SELECT SUM(p.amount_rial) FROM platform_invoice_payments p
+                    WHERE p.tenant_id=i.tenant_id AND p.invoice_id=i.id),0) AS paid_rial
+                 FROM platform_invoices i WHERE i.tenant_id=? AND i.id=? FOR UPDATE"
+            );
+            $invoiceLock->execute([(int)$candidate['tenant_id'],(int)$candidate['id']]);
+            $invoice=$invoiceLock->fetch(PDO::FETCH_ASSOC);
+            if(!$invoice||$invoice['status']!=='issued'||
+               (int)$invoice['amount_rial']-(int)$invoice['paid_rial']<=0){
+                $db->commit();continue;
+            }
+            $remaining=(int)$invoice['amount_rial']-(int)$invoice['paid_rial'];
+            $isOverdue=strtotime((string)$invoice['due_at'].' UTC')<time();
+            if($isOverdue){
+                $week=gmdate('o-W');
+                $eventKey='platform-invoice-overdue-'.$invoice['id'].'-'.$week;
+                $title='یادآوری فاکتور معوق اشتراک';
+                $body='فاکتور '.$invoice['invoice_number'].' هنوز تسویه نشده است. مانده قابل پرداخت: '.number_format($remaining).' ریال.';
+                $overdueReminders++;
+            }else{
+                $eventKey='platform-invoice-due-'.$invoice['id'];
+                $title='یادآوری مهلت پرداخت اشتراک';
+                $body='مهلت پرداخت فاکتور '.$invoice['invoice_number'].' نزدیک است. مانده قابل پرداخت: '.number_format($remaining).' ریال.';
+                $upcomingReminders++;
+            }
+            app_subscription_worker_notify_owner(
+                $db,(int)$invoice['tenant_id'],$eventKey,$title,$body,'platform_invoice',(int)$invoice['id']
+            );
+            $db->commit();
+        }catch(Throwable $e){
+            if($db->inTransaction())$db->rollBack();
+            $errors++;
+            fwrite(STDERR,'Invoice reminder failed for invoice '.(int)$candidate['id'].': '.$e->getMessage().PHP_EOL);
+        }
+    }
+
     $moreRenewals=$db->query(
         "SELECT EXISTS(SELECT 1 FROM tenant_subscriptions s
           WHERE s.status='active' AND s.current_period_end>=DATE_SUB(UTC_TIMESTAMP(),INTERVAL {$graceDays} DAY)
             AND s.current_period_end<=DATE_ADD(UTC_TIMESTAMP(),INTERVAL {$leadDays} DAY)
             AND NOT EXISTS(SELECT 1 FROM platform_invoices i WHERE i.subscription_id=s.id AND i.period_start=s.current_period_end)
           LIMIT 1)"
+    )->fetchColumn();
+
+    $moreReminders=$db->query(
+        "SELECT EXISTS(SELECT 1 FROM platform_invoices i WHERE i.status='issued'
+          AND i.due_at<=DATE_ADD(UTC_TIMESTAMP(),INTERVAL {$reminderDays} DAY)
+          AND i.amount_rial>COALESCE((SELECT SUM(p.amount_rial) FROM platform_invoice_payments p
+            WHERE p.tenant_id=i.tenant_id AND p.invoice_id=i.id),0) LIMIT 1)"
     )->fetchColumn();
     $moreOverdue=$db->query(
         "SELECT EXISTS(SELECT 1 FROM tenant_subscriptions
@@ -173,11 +232,14 @@ try{
         'status'=>$errors===0?'ok':'attention_required',
         'renewal_invoices_created'=>$created,
         'subscriptions_marked_past_due'=>$pastDue,
+        'upcoming_invoice_reminders'=>$upcomingReminders,
+        'overdue_invoice_reminders'=>$overdueReminders,
         'errors'=>$errors,
         'batch_size'=>$batchSize,
         'lead_days'=>$leadDays,
         'grace_days'=>$graceDays,
-        'more_may_remain'=>(bool)$moreRenewals||(bool)$moreOverdue,
+        'reminder_lead_days'=>$reminderDays,
+        'more_may_remain'=>(bool)$moreRenewals||(bool)$moreOverdue||(bool)$moreReminders,
         'checked_at'=>gmdate('c')
     ];
     fwrite(STDOUT,json_encode($report,JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR).PHP_EOL);
