@@ -58,6 +58,33 @@ function app_notification_notify_permission(
     }
 }
 
+
+function app_notification_notify_role(
+    PDO $db,
+    int $tenantId,
+    string $roleKey,
+    string $eventKey,
+    string $type,
+    string $title,
+    string $body,
+    ?string $entityType = null,
+    ?int $entityId = null
+): void {
+    if(!preg_match('/^[a-z][a-z0-9_]{1,59}$/',$roleKey))throw new InvalidArgumentException('Invalid notification role.');
+    $stmt=$db->prepare(
+        "SELECT DISTINCT u.id
+         FROM users u
+         JOIN user_roles ur ON ur.tenant_id=u.tenant_id AND ur.user_id=u.id
+         JOIN roles r ON r.role_scope_id=ur.role_scope_id AND r.id=ur.role_id
+         WHERE u.tenant_id=? AND u.status='active' AND r.role_key=?
+         ORDER BY u.id"
+    );
+    $stmt->execute([$tenantId,$roleKey]);
+    foreach($stmt->fetchAll(PDO::FETCH_COLUMN) as $userId){
+        app_notification_create($db,$tenantId,(int)$userId,$eventKey,$type,$title,$body,$entityType,$entityId);
+    }
+}
+
 function app_notification_list(PDO $db, array $tenant, array $session): never {
     $unreadOnly=($_GET['unread']??'')==='1';
     $where='tenant_id=? AND user_id=?';
