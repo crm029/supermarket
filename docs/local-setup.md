@@ -248,3 +248,7 @@ Store owners can also review up to 50 tenant-scoped subscription invoices on `su
 Store owners can schedule cancellation at the end of the current billing period and reverse it before expiry. Access continues until the period end. The daily subscription worker suppresses renewal invoices for scheduled cancellations and marks them cancelled at expiry; new writes are blocked after cancellation.
 
 After a successful POS sale, use the receipt link to open `pos-receipt.php`. The page fetches the sale through the cashier/manager-authorized API and provides 58mm or 80mm browser-print layouts. Actual printer-driver and device acceptance still needs testing on the target hardware.
+
+
+### آزمایش اتصال پیامک ۰۰۹۸
+پس از ثبت نام کاربری و رمز عبور سرویس در پنل مالک پلتفرم، دکمه «ارسال پیامک آزمایشی به موبایل مدیر» فقط به شماره تأییدشده همان حساب ارسال می‌کند. مقصد از درخواست مرورگر دریافت نمی‌شود و امکان واردکردن شماره دلخواه وجود ندارد. ارسال آزمایشی به دو بار در هر ساعت برای هر حساب محدود شده و از اعتبار واقعی پنل پیامک استفاده می‌کند. برای آزمایش واقعی، ابتدا اعتبار و مجوز ارسال پنل و دسترسی IP سرور را بررسی کنید.
