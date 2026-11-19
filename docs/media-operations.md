@@ -30,6 +30,18 @@ Both retention workers have bounded batches and configurable retention between 3
 
 The reconciliation command is intentionally read-only. An orphan means a syntactically valid file under a tenant media directory has no matching media-library record and no pending cleanup record. Review the JSON report, tenant ownership, application logs and backups before any manual intervention. Do not run broad recursive deletion commands against the media root. A dedicated operator-approved orphan queueing workflow is not yet implemented.
 
+## Operator-approved orphan cleanup
+
+The platform dashboard provides a restricted **بررسی فایل‌های رسانه‌ای یتیم** panel for platform operators with the `platform.media.cleanup.manage` permission.
+
+1. Run the read-only reconciliation command and inspect the orphan key, tenant, application logs and backup status.
+2. Submit the exact tenant ID and storage key with a reason of at least five characters. The API accepts only the tenant's expected media-key shape and an existing regular file beneath the configured media root; symlinks and unsafe paths are refused.
+3. A second authorized operator action is required to approve or reject the pending request. Approval rechecks the file path and symlink status, confirms the key is still absent from `media_assets`, and confirms it is not already queued.
+4. Approval records the reviewer and timestamp and inserts a pending row into `media_cleanup_queue`. It does **not** delete the file in the request transaction. The existing cleanup worker performs deletion later and rechecks that the storage key has not been registered again.
+5. Rejected requests leave both the file and cleanup queue untouched. Requests are single-use; a storage key cannot be submitted again after a decision.
+
+All request and decision events are written to the platform audit log. Keep the reconciliation report and audit log access restricted because they include tenant identifiers and storage keys. The cleanup worker should be monitored; do not treat an approved request as proof that the file has already been deleted.
+
 ## Monitoring
 
 - Alert on reconciliation exit code `2` and any exit code `1`.
