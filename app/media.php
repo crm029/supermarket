@@ -211,6 +211,23 @@ function app_admin_media_delete(PDO $db, array $tenant, array $session, int $med
     ]);
 }
 
+function app_media_ensure_child_directory(string $root, string $child): ?string {
+    $rootReal = realpath($root);
+    if ($rootReal === false || !is_dir($rootReal) || $child === '' ||
+        $child === '.' || $child === '..' || basename($child) !== $child ||
+        str_contains($child, DIRECTORY_SEPARATOR) || str_contains($child, '/') || str_contains($child, '\\')) {
+        return null;
+    }
+    $candidate = rtrim($rootReal, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $child;
+    if (is_link($candidate)) return null;
+    if (!is_dir($candidate) && !@mkdir($candidate, 0750) && !is_dir($candidate)) return null;
+    clearstatcache(true, $candidate);
+    if (is_link($candidate)) return null;
+    $resolved = realpath($candidate);
+    if ($resolved === false || $resolved !== $candidate || !is_dir($resolved) || !is_writable($resolved)) return null;
+    return $resolved;
+}
+
 function app_media_upload(PDO $db, array $tenant, array $session): never {
     if (!isset($_FILES['file']) || !is_array($_FILES['file'])) {
         app_json(['error' => 'فایل تصویر ارسال نشده است.'], 422);
