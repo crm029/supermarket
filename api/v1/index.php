@@ -6,6 +6,7 @@ require_once dirname(__DIR__, 2) . '/app/auth.php';
 require_once dirname(__DIR__, 2) . '/app/policies.php';
 require_once dirname(__DIR__, 2) . '/app/admin_catalog.php';
 require_once dirname(__DIR__, 2) . '/app/media.php';
+require_once dirname(__DIR__, 2) . '/app/orphan_media.php';
 require_once dirname(__DIR__, 2) . '/app/commerce.php';
 require_once dirname(__DIR__, 2) . '/app/payments.php';
 require_once dirname(__DIR__, 2) . '/app/admin_orders.php';
@@ -168,6 +169,25 @@ try {
         app_auth_require_csrf($session);
         app_auth_require_platform_permission($db, $tenant, $session, 'platform.billing.manage');
         app_platform_invoice_record_payment($db, $tenant, $session, (int)$platformInvoicePaymentMatch[1]);
+    }
+
+    if ($path === '/platform/media-orphan-reviews') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_platform_permission($db, $tenant, $session, 'platform.media.cleanup.manage');
+        if ($method === 'GET') app_platform_orphan_review_list($db);
+        if ($method === 'POST') {
+            app_auth_require_csrf($session);
+            app_platform_orphan_review_create($db, $tenant, $session);
+        }
+        header('Allow: GET, POST');
+        app_json(['error' => 'روش درخواست برای این مسیر مجاز نیست.'], 405);
+    }
+
+    if (preg_match('#^/platform/media-orphan-reviews/([1-9][0-9]*)/(approve|reject)$#', $path, $orphanReviewMatch) && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_require_platform_permission($db, $tenant, $session, 'platform.media.cleanup.manage');
+        app_platform_orphan_review_decide($db, $tenant, $session, (int)$orphanReviewMatch[1], $orphanReviewMatch[2] === 'approve');
     }
 
     if ($path === '/platform/audit' && $method === 'GET') {
