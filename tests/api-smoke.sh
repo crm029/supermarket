@@ -492,7 +492,8 @@ if [[ "$PARTIAL_TOTAL" != "40000" ]]; then echo "Idempotent partial SaaS payment
 request POST "/platform/invoices/$INVOICE_ID/payments" 200 '{"amount_rial":80000,"method":"bank_transfer","reference":"API-CI-FINAL","idempotency_key":"api-ci-payment-final-0002"}' "$TOKEN" "$CSRF"
 request POST "/platform/invoices/$INVOICE_ID/payments" 200 '{"amount_rial":80000,"method":"bank_transfer","reference":"API-CI-FINAL","idempotency_key":"api-ci-payment-final-0002"}' "$TOKEN" "$CSRF"
 BILLING_STATE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT CONCAT(i.status,'|',s.status,'|',COALESCE(s.current_period_end,'NULL'),'|',(SELECT COUNT(*) FROM platform_invoice_payments p WHERE p.invoice_id=i.id)) FROM platform_invoices i JOIN tenant_subscriptions s ON s.id=i.subscription_id WHERE i.id=$INVOICE_ID")"
-if [[ "$BILLING_STATE" != paid\|active\|*\|2 ]]; then echo "SaaS invoice settlement did not activate subscription exactly once: $BILLING_STATE"; exit 1; fi
+IFS="|" read -r BILLING_INVOICE_STATUS BILLING_SUBSCRIPTION_STATUS BILLING_PERIOD_END BILLING_PAYMENT_COUNT <<< "$BILLING_STATE"
+if [[ "$BILLING_INVOICE_STATUS" != "paid" || "$BILLING_SUBSCRIPTION_STATUS" != "active" || -z "$BILLING_PERIOD_END" || "$BILLING_PERIOD_END" == "NULL" || "$BILLING_PAYMENT_COUNT" != "2" ]]; then echo "SaaS invoice settlement did not activate subscription exactly once: $BILLING_STATE"; exit 1; fi
 request POST "/platform/tenants/$NEW_TENANT_ID/subscription" 409 '{"plan_id":'$PLAN_ID',"billing_period_months":1}' "$TOKEN" "$CSRF"
 request POST "/platform/subscriptions/$SUBSCRIPTION_ID/renew" 201 '{}' "$TOKEN" "$CSRF"
 request POST "/platform/subscriptions/$SUBSCRIPTION_ID/renew" 409 '{}' "$TOKEN" "$CSRF"
