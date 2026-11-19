@@ -118,3 +118,6 @@ Platform SaaS billing includes plan management, product/staff/media/monthly-orde
 Store owners can review their subscription invoices and live quota usage, request a plan change, or schedule/reverse cancellation at the end of the paid billing period.
 
 The cashier screen includes a permission-checked receipt preview with 58mm and 80mm browser-print layouts for POS sales. Printing uses the operating system's installed printer drivers; device-specific direct protocols are not part of this software release.
+
+
+Production acceptance: see [`docs/merchant-acceptance.md`](docs/merchant-acceptance.md) for the merchant SMS, payment, settlement and launch checklist.
