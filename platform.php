@@ -79,6 +79,24 @@ declare(strict_types=1);
       <p id="platformPaymentMessage" class="platform-message" role="status" aria-live="polite"></p>
     </section>
 
+    <section id="platformSmsSection" class="platform-payment-panel" hidden>
+      <div class="platform-section-heading"><h2>تنظیمات پیامک سراسری</h2><span class="platform-owner-only">فقط مالک پلتفرم</span></div>
+      <p>اطلاعات ورود رمزنگاری می‌شوند. رمز ذخیره‌شده هرگز دوباره در پنل یا API نمایش داده نمی‌شود؛ برای تغییر رمز، مقدار جدید وارد کنید.</p>
+      <form id="platformSmsForm">
+        <div class="platform-form-grid">
+          <label>سرویس پیامک<select id="platformSmsProvider"><option value="disabled">غیرفعال</option><option value="0098vip">۰۰۹۸ VIP</option><option value="kavenegar">Kavenegar</option></select></label>
+          <label>شماره فرستنده (FROM)<input id="platformSmsSender" type="text" maxlength="20" dir="ltr" value="30005883803803"></label>
+          <label>نام کاربری<input id="platformSmsUsername" type="text" maxlength="128" autocomplete="off" dir="ltr"></label>
+          <label>رمز عبور<input id="platformSmsPassword" type="password" maxlength="256" autocomplete="new-password" dir="ltr" placeholder="برای حفظ رمز فعلی خالی بگذارید"></label>
+          <label>دامنه<input id="platformSmsDomain" type="text" value="0098" readonly dir="ltr"></label>
+        </div>
+        <p id="platformSmsStatus" class="platform-payment-status">در حال دریافت وضعیت پیامک...</p>
+        <p class="platform-payment-warning">شماره فرستنده از اطلاعات ارائه‌شده تنظیم شده است. ارسال آزمایشی پس از ثبت اطلاعات ورود و تأیید حساب پنل انجام شود.</p>
+        <button class="primary-button" type="submit">ذخیره تنظیمات پیامک</button>
+      </form>
+      <p id="platformSmsMessage" class="platform-message" role="status" aria-live="polite"></p>
+    </section>
+
     <section id="platformBillingSection" class="platform-billing-panel" hidden>
       <div class="platform-section-heading"><h2>اشتراک‌ها و امور مالی SaaS</h2><span>مدیریت سراسری</span></div>
       <button id="platformExportBilling" class="secondary-button" type="button">خروجی CSV فاکتورها</button>
