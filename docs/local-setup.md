@@ -213,3 +213,7 @@ Run `php scripts/reconcile-media.php` from the project root to compare generated
 
 ## Notification retention
 Run `php bin/prune-notifications.php` from CLI to delete only notifications that have already been read and are older than `NOTIFICATION_READ_RETENTION_DAYS` (default 180; allowed range 30–3650). Unread notifications are never removed. Each run deletes at most 20,000 rows in batches of 1,000 and prints a JSON report; `more_may_remain=true` means schedule another run. Configure a daily cron/Task Scheduler job and monitor its exit status and JSON output.
+
+## SaaS plans, subscriptions and finance
+
+Apply `database/migrations/2026_11_19_platform_subscriptions.sql` after the platform payment settings and permission migrations. In `platform.php`, a platform billing administrator can create monthly plans (prices are entered in toman and stored as integer rial), assign 1-, 3- or 12-month subscriptions, issue renewal invoices and record bank-transfer/cash/other receipts. A subscription remains pending until its invoice is fully paid. Partial receipts are append-only, idempotency-key protected and cannot exceed the invoice balance. Plan price and subscription price are snapshots; changing a plan does not rewrite an existing contract. Configure a real online SaaS payment gateway separately before automating customer self-service payments.
