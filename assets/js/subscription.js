@@ -19,7 +19,7 @@
     const box=$("subscriptionCurrent");
     if(!sub){box.hidden=false;box.innerHTML="<h2>اشتراک فعالی ثبت نشده است</h2><p>برای فعال‌سازی فروشگاه با پشتیبانی پلتفرم تماس بگیرید.</p>";return;}
     box.hidden=false;
-    box.innerHTML='<h2>وضعیت فعلی</h2><div class="subscription-current-grid"><article><span>پلن</span><strong>'+esc(sub.plan_name)+'</strong></article><article><span>وضعیت</span><strong>'+esc(status(sub.status))+'</strong></article><article><span>قیمت ماهانه</span><strong>'+toman(sub.price_monthly_rial)+'</strong></article><article><span>دوره پرداخت</span><strong>'+fa.format(sub.billing_period_months)+' ماه</strong></article><article><span>شروع دوره</span><strong>'+esc(sub.current_period_start||"—")+'</strong></article><article><span>پایان دوره</span><strong>'+esc(sub.current_period_end||"—")+'</strong></article></div>';
+    box.innerHTML='<h2>وضعیت فعلی</h2><div class="subscription-current-grid"><article><span>پلن</span><strong>'+esc(sub.plan_name)+'</strong></article><article><span>وضعیت</span><strong>'+esc(status(sub.status))+'</strong></article><article><span>قیمت ماهانه</span><strong>'+toman(sub.price_monthly_rial)+'</strong></article><article><span>دوره پرداخت</span><strong>'+fa.format(sub.billing_period_months)+' ماه</strong></article><article><span>شروع دوره</span><strong>'+esc(sub.current_period_start||"—")+'</strong></article><article><span>پایان دوره</span><strong>'+esc(sub.current_period_end||"—")+'</strong></article></div>'+(Number(sub.cancel_at_period_end)===1?'<p class="subscription-note">لغو برای پایان دوره زمان‌بندی شده است. تا '+esc(sub.current_period_end||"پایان دوره")+' دسترسی شما برقرار می‌ماند.</p><button id="subscriptionResumeButton" class="primary-button" type="button">لغو درخواست و ادامه اشتراک</button>':'<button id="subscriptionCancelButton" class="subscription-cancel-button" type="button">زمان‌بندی لغو در پایان دوره</button>');
   }
   function renderUsage(usage,sub,month){
     const box=$("subscriptionUsage");
@@ -77,6 +77,19 @@
       $("subscriptionMessage").textContent="";
     }catch(error){$("subscriptionMessage").textContent=error.message;}
   }
+  $("subscriptionCurrent").addEventListener("click",async event=>{
+    const cancel=event.target.closest("#subscriptionCancelButton");
+    const resume=event.target.closest("#subscriptionResumeButton");
+    if(!cancel&&!resume)return;
+    const action=cancel?"cancel":"resume";
+    const question=cancel?"اشتراک در پایان دوره لغو شود؟ تا تاریخ پایان دوره امکان استفاده باقی می‌ماند.":"درخواست لغو برداشته شود و تمدید اشتراک ادامه پیدا کند؟";
+    if(!window.confirm(question))return;
+    try{
+      const result=await api("admin/subscription/"+action,{method:"POST",csrf:true,body:"{}"});
+      $("subscriptionMessage").textContent=result.message||"درخواست ثبت شد.";
+      await load();
+    }catch(error){$("subscriptionMessage").textContent=error.message;}
+  });
   $("subscriptionRequestForm").addEventListener("submit",async event=>{
     event.preventDefault();
     try{
