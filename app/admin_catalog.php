@@ -163,8 +163,6 @@ function app_admin_product_create(PDO $db, array $tenant, array $session): never
     try {
         app_tenant_limit_guard($db,$tenant,'products',!empty($data['is_active'])?1:0);
         app_admin_validate_product_category($db, (int)$tenant['id'], $data);
-        $nextActive=array_key_exists('is_active',$data)?(bool)$data['is_active']:(bool)$current['is_active'];
-        if($nextActive&&!(bool)$current['is_active'])app_tenant_limit_guard($db,$tenant,'products',1);
         $stmt = $db->prepare(
             "INSERT INTO products
               (tenant_id, category_id, sku, barcode, title, brand, description, seo_title, seo_slug, seo_description,
