@@ -24,7 +24,9 @@
   function renderPlans(plans,sub){
     $("subscriptionPlans").innerHTML=plans.length?plans.map(p=>{
       const limits=p.limits||{};
-      const bytes=Number(limits.storage_bytes||0);\n      const storage=bytes>=1073741824?(bytes/1073741824).toFixed(1)+" گیگابایت":(bytes/1048576).toFixed(0)+" مگابایت";\n      const summary=[["محصول",limits.products],["کارمند",limits.staff],["رسانه",limits.media_assets],["سفارش ماهانه",limits.monthly_orders],["فضای ذخیره‌سازی",limits.storage_bytes===undefined?undefined:storage]];
+      const bytes=Number(limits.storage_bytes||0);
+      const storage=bytes>=1073741824?(bytes/1073741824).toFixed(1)+" گیگابایت":(bytes/1048576).toFixed(0)+" مگابایت";
+      const summary=[["محصول",limits.products],["کارمند",limits.staff],["رسانه",limits.media_assets],["سفارش ماهانه",limits.monthly_orders],["فضای ذخیره‌سازی",limits.storage_bytes===undefined?undefined:storage]];
       return '<article class="subscription-plan"><h3>'+esc(p.name)+'</h3><strong>'+toman(p.monthly_price_rial)+'</strong><p>ماهانه</p><p>'+esc(p.description||"")+'</p><ul>'+summary.filter(x=>x[1]!==undefined).map(x=>'<li>'+esc(x[0])+': '+fa.format(Number(x[1]))+'</li>').join("")+'</ul></article>';
     }).join(""):'<div>پلن فعالی برای انتخاب وجود ندارد.</div>';
     $("subscriptionPlanSelect").innerHTML=plans.map(p=>'<option value="'+Number(p.id)+'">'+esc(p.name)+' · '+toman(p.monthly_price_rial)+'</option>').join("");
