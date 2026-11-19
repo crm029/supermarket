@@ -101,6 +101,7 @@ function app_media_cleanup_process_one(PDO $db, array $item): bool {
         app_media_cleanup_mark($db,$queueId,false,'storage_path_not_configured');
         return false;
     }
+    if (is_link($root)) return null;
     $rootReal = realpath($root);
     if ($rootReal === false || !is_dir($rootReal)) {
         app_media_cleanup_mark($db,$queueId,false,'storage_root_unavailable');
@@ -273,7 +274,7 @@ function app_media_upload(PDO $db, array $tenant, array $session): never {
         app_json(['error' => 'فضای ذخیره‌سازی رسانه در دسترس نیست.'], 503);
     }
     $root = realpath($storageRoot);
-    if ($root === false || !is_writable($root)) app_json(['error' => 'فضای ذخیره‌سازی رسانه قابل نوشتن نیست.'], 503);
+    if ($root === false || is_link($storageRoot) || !is_writable($root)) app_json(['error' => 'فضای ذخیره‌سازی رسانه قابل نوشتن نیست.'], 503);
 
     $tenantDir = app_media_ensure_child_directory($root, 'tenant-' . (int)$tenant['id']);
     $typeDir = $tenantDir === null ? null : app_media_ensure_child_directory($tenantDir, $mediaType);
