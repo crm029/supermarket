@@ -18,7 +18,7 @@ function app_tenant_limit_guard(PDO $db, array $tenant, string $key, int $increm
         "SELECT p.limits_json
          FROM tenant_subscriptions s
          JOIN platform_plans p ON p.id=s.plan_id
-         WHERE s.tenant_id=? AND s.status='active'
+         WHERE s.tenant_id=? AND s.status IN ('active','past_due')
          ORDER BY s.id DESC LIMIT 1 FOR UPDATE"
     );
     $stmt->execute([$tenantId]);
