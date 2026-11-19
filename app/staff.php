@@ -139,13 +139,23 @@ function app_admin_staff_assign_role(PDO $db, array $tenant, array $session): ne
     $roleRow = $role->fetch(PDO::FETCH_ASSOC);
     if (!$roleRow || $roleRow['role_key'] === 'store_owner') app_json(['error' => 'نقش انتخاب‌شده قابل تخصیص نیست.'], 404);
 
-    $assign = $db->prepare('INSERT IGNORE INTO user_roles (tenant_id,role_scope_id,user_id,role_id) VALUES (?,?,?,?)');
-    $assign->execute([$tenant['id'],$tenant['id'],$userId,$roleId]);
-    if ($assign->rowCount() !== 1) app_json(['error' => 'این نقش قبلاً به کاربر اختصاص داده شده است.'], 409);
-    app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'staff.role.assigned','user',(int)$userId,[
-        'role_id' => (int)$roleId
-    ]);
-    app_json(['data' => ['user_id' => (int)$userId,'role_id' => (int)$roleId], 'message' => 'نقش به کاربر اختصاص یافت.'], 201);
+    $existing=$db->prepare('SELECT 1 FROM user_roles WHERE tenant_id=? AND user_id=? AND role_id=? LIMIT 1');
+    $existing->execute([$tenant['id'],$userId,$roleId]);
+    if($existing->fetchColumn())app_json(['error'=>'این نقش قبلاً به کاربر اختصاص داده شده است.'],409);
+    $db->beginTransaction();
+    try{
+        $hasRole=$db->prepare('SELECT COUNT(*) FROM user_roles WHERE tenant_id=? AND user_id=?');
+        $hasRole->execute([$tenant['id'],$userId]);
+        app_tenant_limit_guard($db,$tenant,'staff',(int)$hasRole->fetchColumn()===0?1:0);
+        $assign = $db->prepare('INSERT IGNORE INTO user_roles (tenant_id,role_scope_id,user_id,role_id) VALUES (?,?,?,?)');
+        $assign->execute([$tenant['id'],$tenant['id'],$userId,$roleId]);
+        if ($assign->rowCount() !== 1) {$db->rollBack();app_json(['error' => 'این نقش قبلاً به کاربر اختصاص داده شده است.'], 409);}
+        app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'staff.role.assigned','user',(int)$userId,[
+            'role_id' => (int)$roleId
+        ]);
+        $db->commit();
+        app_json(['data' => ['user_id' => (int)$userId,'role_id' => (int)$roleId], 'message' => 'نقش به کاربر اختصاص یافت.'], 201);
+    }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
 }
 
 function app_admin_staff_remove_role(PDO $db, array $tenant, array $session, int $userId, int $roleId): never {
