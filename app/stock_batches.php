@@ -33,12 +33,15 @@ function app_stock_batch_add(PDO $db, int $tenantId, int $warehouseId, int $prod
 }
 
 /** Consume only unreserved stock, oldest expiry first; NULL expiry is last. */
-function app_stock_batch_consume(PDO $db, int $tenantId, int $warehouseId, int $productId, int $quantity, ?int $receiptItemId = null): array {
+function app_stock_batch_consume(PDO $db, int $tenantId, int $warehouseId, int $productId, int $quantity, ?int $receiptItemId = null, bool $allowExpired = false): array {
     if ($quantity < 1) throw new InvalidArgumentException('Batch consumption must be positive.');
     $sql = 'SELECT id,batch_number,expiry_date,on_hand,reserved,unit_cost_rial,receipt_item_id
             FROM stock_batches
             WHERE tenant_id=? AND warehouse_id=? AND product_id=? AND on_hand>reserved';
     $params = [$tenantId,$warehouseId,$productId];
+    // Normal stock consumption must never silently sell, transfer, or adjust away
+    // expired goods. Supplier returns may explicitly consume the original lot.
+    if (!$allowExpired) $sql .= ' AND (expiry_date IS NULL OR expiry_date>=UTC_DATE())';
     if ($receiptItemId !== null) { $sql .= ' AND receipt_item_id=?'; $params[] = $receiptItemId; }
     $sql .= ' ORDER BY (expiry_date IS NULL),expiry_date,received_at,id FOR UPDATE';
     $stmt = $db->prepare($sql);
