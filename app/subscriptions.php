@@ -32,6 +32,23 @@ function app_tenant_subscription_overview(PDO $db,array $tenant,array $session):
         $subscription['limits']=json_decode((string)$subscription['limits_json'],true)?:new stdClass();
         unset($subscription['limits_json']);
     }
+    $usageQuery=$db->prepare(
+        "SELECT
+          (SELECT COUNT(*) FROM products WHERE tenant_id=? AND is_active=1) AS products,
+          (SELECT COUNT(DISTINCT u.id) FROM users u
+             JOIN user_roles ur ON ur.tenant_id=u.tenant_id AND ur.user_id=u.id
+             JOIN roles r ON r.role_scope_id=ur.role_scope_id AND r.id=ur.role_id
+             WHERE u.tenant_id=? AND r.tenant_id=? AND u.status='active' AND r.role_key<>'customer') AS staff,
+          (SELECT COUNT(*) FROM media_assets WHERE tenant_id=?) AS media_assets,
+          (SELECT COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(metadata,'$.size')) AS UNSIGNED)),0) FROM media_assets WHERE tenant_id=?) AS storage_bytes,
+          ((SELECT COUNT(*) FROM orders WHERE tenant_id=? AND status<>'cancelled' AND created_at>=DATE_FORMAT(UTC_DATE(),'%Y-%m-01') AND created_at<DATE_ADD(DATE_FORMAT(UTC_DATE(),'%Y-%m-01'),INTERVAL 1 MONTH))
+           +(SELECT COUNT(*) FROM pos_sales WHERE tenant_id=? AND created_at>=DATE_FORMAT(UTC_DATE(),'%Y-%m-01') AND created_at<DATE_ADD(DATE_FORMAT(UTC_DATE(),'%Y-%m-01'),INTERVAL 1 MONTH))) AS monthly_orders"
+    );
+    $tenantId=(int)$tenant['id'];
+    $usageQuery->execute([$tenantId,$tenantId,$tenantId,$tenantId,$tenantId,$tenantId,$tenantId]);
+    $usageRow=$usageQuery->fetch(PDO::FETCH_ASSOC)?:[];
+    $usage=[];
+    foreach(['products','staff','media_assets','storage_bytes','monthly_orders'] as $key)$usage[$key]=(int)($usageRow[$key]??0);
     $plans=$db->query(
         "SELECT id,code,name,description,monthly_price_rial,limits_json
          FROM platform_plans WHERE is_active=1 ORDER BY sort_order,id"
@@ -79,7 +96,7 @@ function app_tenant_subscription_overview(PDO $db,array $tenant,array $session):
         $invoice['display_status']=$invoice['status']==='void'?'void':($invoice['balance_rial']===0?'paid':($invoice['paid_rial']>0?'partial':'unpaid'));
     }
     unset($invoice);
-    app_json(['data'=>['subscription'=>$subscription,'plans'=>$plans,'change_requests'=>$history,'invoices'=>$invoices]]);
+    app_json(['data'=>['subscription'=>$subscription,'plans'=>$plans,'change_requests'=>$history,'invoices'=>$invoices,'usage'=>$usage,'usage_month_utc'=>gmdate('Y-m')]]);
 }
 
 function app_tenant_subscription_change_request(PDO $db,array $tenant,array $session): never {
