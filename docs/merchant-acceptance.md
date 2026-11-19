@@ -24,6 +24,14 @@ This checklist is for the first real merchant deployment. Passing CI or configur
 
 ## 3. ZarinPal sandbox acceptance
 
+The application sandbox adapter uses these v4 endpoints:
+
+- Request: `https://sandbox.zarinpal.com/pg/v4/payment/request.json`
+- Verify: `https://sandbox.zarinpal.com/pg/v4/payment/verify.json`
+- Redirect: `https://sandbox.zarinpal.com/pg/StartPay/{authority}`
+
+Configure the sandbox merchant UUID in **Platform → تنظیمات درگاه پرداخت سراسری**, choose **Sandbox — آزمایشی**, and save. The merchant identifier is encrypted in the database; it must not be committed to Git or pasted into logs. Sandbox authorities must begin with uppercase `S`; callback validation now checks this against the saved payment-attempt mode. A sandbox payment must never be treated as proof of live settlement.
+
 - [ ] Select sandbox mode and use the merchant's sandbox credentials.
 - [ ] Complete a successful low-value test order and verify the provider reference, order amount and currency.
 - [ ] Verify that stock reservations are committed only after server-side payment verification.
