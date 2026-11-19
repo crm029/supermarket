@@ -29,6 +29,12 @@ if (!mkdir($root, 0700) || !mkdir($outside, 0700)) {
     throw new RuntimeException('Unable to create media path test directories.');
 }
 try {
+    $rootLink = $root . '-link';
+    if (function_exists('symlink') && @symlink($root, $rootLink)) {
+        if (app_media_ensure_child_directory($rootLink, 'tenant-44') !== null) {
+            throw new RuntimeException('A symlinked media storage root was accepted.');
+        }
+    }
     $safeTenant = app_media_ensure_child_directory($root, 'tenant-42');
     if ($safeTenant === null || !is_dir($safeTenant)) {
         throw new RuntimeException('Safe tenant media directory was not created.');
@@ -60,6 +66,7 @@ try {
         elseif (is_dir($entry)) @rmdir($entry);
     }
     @rmdir($root);
+    if (is_link($rootLink)) @unlink($rootLink);
     @rmdir($outside);
 }
 
