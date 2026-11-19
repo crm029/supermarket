@@ -15,16 +15,23 @@ function app_tenant_limit_guard(PDO $db, array $tenant, string $key, int $increm
     if(!$lock->fetchColumn())app_json(['error'=>'فروشگاه پیدا نشد.'],404);
 
     $stmt=$db->prepare(
-        "SELECT p.limits_json
+        "SELECT s.status,p.limits_json
          FROM tenant_subscriptions s
          JOIN platform_plans p ON p.id=s.plan_id
-         WHERE s.tenant_id=? AND s.status IN ('active','past_due')
+         WHERE s.tenant_id=? AND s.status IN ('active','past_due','pending_payment','cancelled','expired')
          ORDER BY s.id DESC LIMIT 1 FOR UPDATE"
     );
     $stmt->execute([$tenantId]);
-    $raw=$stmt->fetchColumn();
-    if($raw===false)return;
-    $limits=json_decode((string)$raw,true);
+    $subscription=$stmt->fetch(PDO::FETCH_ASSOC);
+    if(!$subscription)return;
+    if(in_array($subscription['status'],['pending_payment','cancelled','expired'],true)){
+        app_json([
+            'error'=>'اشتراک فروشگاه فعال نیست؛ برای ادامه فعالیت، اشتراک را تمدید یا فعال کنید.',
+            'code'=>'subscription_inactive',
+            'subscription_status'=>$subscription['status']
+        ],403);
+    }
+    $limits=json_decode((string)$subscription['limits_json'],true);
     if(!is_array($limits)||!array_key_exists($key,$limits))return;
     $limit=$limits[$key];
     if(is_string($limit)&&ctype_digit($limit))$limit=(int)$limit;
