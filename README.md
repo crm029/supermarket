@@ -29,7 +29,7 @@ Implemented and covered by repository tests:
 - GitHub Actions PHP/JavaScript validation and MySQL-backed schema, tenant isolation, authentication, commerce, wallet/referral, SEO and API integration checks.
 
 Still in progress or requiring real-environment acceptance:
-- Cashier POS page and API: shift opening/closing, barcode/SKU/product search, server-priced cash sales, FEFO batch stock deduction, idempotent sale requests, change calculation and shift cash reconciliation; cashier role creation/assignment uses the staff permission panel. Payment terminals, refunds and thermal printing remain pending.
+- POS software release is implemented and CI-tested: cashier page/API, shift opening/closing and cash reconciliation, barcode/SKU search, server-priced FEFO cash sales, idempotency, manager reports, audited cash refunds, returned-item inspection/restock-or-reject, and browser thermal receipt layouts for 58mm/80mm. Physical printer/scanner/acquirer acceptance is an optional merchant rollout check; direct ESC/POS, vendor SDK and bank-terminal integrations remain future work.
 - Real SMS account/template configuration, live-phone delivery and delivery-report acceptance.
 - Real ZarinPal sandbox/live transactions, settlement reconciliation and bank/gateway refund procedures.
 - Advanced referral fraud controls and merchant reward-policy approval.
@@ -57,7 +57,7 @@ Still in progress or requiring real-environment acceptance:
 - Visual demo: place the repository in XAMPP's `htdocs` and open the project root.
 - API: requires PHP 8.2+ with PDO MySQL, mbstring, cURL, OpenSSL and fileinfo; production domain onboarding also requires PHP DNS TXT lookup. See `docs/local-setup.md`.
 - Optional sample database: import `database/schema.sql`, then `database/demo-seed.sql` into a fresh local database. The sample domain is `localhost`.
-- After the existing 2026_11_05 migrations, apply in order: `2026_11_06_order_assignments.sql`, `2026_11_06_pos_cash_register.sql`, `2026_11_06_pickup_handoff.sql`, `2026_11_06_notifications.sql`, `2026_11_06_order_wallet_refunds.sql`, `2026_11_06_domain_verification_challenge.sql`, and `2026_11_06_platform_payment_settings.sql`. See `docs/local-setup.md` for the full sequence.
+- Apply every database migration in filename order after importing the base schema and demo seed. The authoritative current migration sequence and setup commands are maintained in `docs/local-setup.md`.
 
 ## Documentation
 
@@ -117,4 +117,4 @@ Platform SaaS billing includes plan management, product/staff/media/monthly-orde
 
 Store owners can review their subscription invoices and live quota usage, request a plan change, or schedule/reverse cancellation at the end of the paid billing period.
 
-The cashier screen can open a permission-checked receipt preview with 58mm and 80mm browser-print layouts for POS sales.
+The cashier screen includes a permission-checked receipt preview with 58mm and 80mm browser-print layouts for POS sales. Printing uses the operating system's installed printer drivers; device-specific direct protocols are not part of this software release.
