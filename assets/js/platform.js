@@ -388,7 +388,7 @@
       message("platformBillingMessage",result.message);await loadBilling();
     }catch(error){message("platformBillingMessage",error.message,true);}
   });
-  $("platformReload").addEventListener("click",async()=>{await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling(),loadUsage(),loadReconciliation(),loadChangeRequests()]);});
+  $("platformReload").addEventListener("click",async()=>{await Promise.all([loadTenants(),loadPaymentSettings(),loadBilling(),loadUsage(),loadReconciliation(),loadChangeRequests(),loadOrphanReviews()]);});
   $("platformLogout").addEventListener("click",async()=>{
     try{await api("auth/logout",{method:"POST",body:"{}",csrf:true});}catch(_){}
     currentUser=null;csrfToken="";showLogin();
