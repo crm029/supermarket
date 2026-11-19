@@ -28,3 +28,8 @@
 .subscription-status{display:inline-flex;padding:5px 10px;border-radius:99px;background:#edf2ee;font-size:.78rem}
 .subscription-message{min-height:24px;color:var(--muted,#64756b)}
 @media(max-width:760px){.subscription-current-grid,.subscription-plan-grid,.subscription-form-grid{grid-template-columns:1fr}.subscription-section-heading{align-items:flex-start;flex-direction:column}.subscription-shell{margin-top:22px}}
+
+.subscription-invoice{padding:15px;border:1px solid var(--line,#dce5df);border-radius:12px}
+.subscription-invoice-head{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.subscription-invoice-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px;color:var(--muted,#64756b);font-size:.84rem}
+@media(max-width:760px){.subscription-invoice-grid{grid-template-columns:1fr 1fr}}
