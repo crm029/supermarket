@@ -62,4 +62,4 @@ Do not enable live checkout until all relevant boxes have been completed. No mer
 - [ ] Configure and review plan prices/limits in toman; the database stores all monetary amounts as integer rial.
 - [ ] Record bank/cash receipts only after checking the actual bank statement or receipt. Enter the bank reference; partial payments remain outstanding until the invoice is fully settled.
 - [ ] Review open invoices and issue renewal invoices before each period ends. The current ledger does not automatically debit merchants or suspend overdue stores.
-- [ ] Configure a separate provider contract and verified webhook flow before enabling automated SaaS subscription payments.
+- [ ] Implement and test quota enforcement/usage metering; plan limit metadata is not yet enforced by catalogue or staff APIs.\n- [ ] Configure a separate provider contract and verified webhook flow before enabling automated SaaS subscription payments.
