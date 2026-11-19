@@ -214,30 +214,6 @@ jobs:
           extensions: pdo_mysql, mbstring
           coverage: none
 
-      - name: Create public API smoke fixtures
-        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/api-smoke-fixtures.sql
-
-      - name: Run tenant-aware HTTP API smoke tests
-        env:
-          APP_ENV: testing
-          APP_KEY: ci-test-secret-with-more-than-thirty-two-characters
-          DB_HOST: 127.0.0.1
-          DB_DATABASE: supermarket360
-          DB_USERNAME: root
-          DB_PASSWORD: root
-          MEDIA_BASE_URL: https://cdn.example.test/assets
-          MEDIA_STORAGE_PATH: /tmp/supermarket-media
-          TEST_DOMAIN_VERIFICATION_HOST: ci-platform-store.example.test
-          TEST_DOMAIN_VERIFICATION_TOKEN: ci-only-domain-proof-2026
-        run: |
-          set -euo pipefail
-          mkdir -p /tmp/supermarket-media
-          PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:8099 tests/php-router.php >/tmp/supermarket-api.log 2>&1 &
-          server_pid=$!
-          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
-          bash tests/api-smoke.sh
-          REFERRAL_REWARD_BASIS_POINTS=500 php tests/wallet-referral-integration.php
-
       - name: Verify read-only media storage reconciliation
         env:
           APP_ENV: testing
@@ -264,6 +240,30 @@ jobs:
           mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "DELETE FROM media_assets WHERE tenant_id=1 AND storage_key LIKE 'tenant-1/product/%'; DELETE FROM media_cleanup_queue WHERE tenant_id=1 AND storage_key LIKE 'tenant-1/product/%';"
           php scripts/reconcile-media.php >/tmp/media-reconcile-clean.json
           php -r '$r=json_decode(file_get_contents("/tmp/media-reconcile-clean.json"),true,512,JSON_THROW_ON_ERROR); if (($r["status"]??"")!=="ok" || ($r["counts"]["files_scanned"]??-1)!==0) { fwrite(STDERR,"Clean media reconciliation did not return an empty healthy report\n"); exit(1); }'
+
+      - name: Create public API smoke fixtures
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/api-smoke-fixtures.sql
+
+      - name: Run tenant-aware HTTP API smoke tests
+        env:
+          APP_ENV: testing
+          APP_KEY: ci-test-secret-with-more-than-thirty-two-characters
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: supermarket360
+          DB_USERNAME: root
+          DB_PASSWORD: root
+          MEDIA_BASE_URL: https://cdn.example.test/assets
+          MEDIA_STORAGE_PATH: /tmp/supermarket-media
+          TEST_DOMAIN_VERIFICATION_HOST: ci-platform-store.example.test
+          TEST_DOMAIN_VERIFICATION_TOKEN: ci-only-domain-proof-2026
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/supermarket-media
+          PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:8099 tests/php-router.php >/tmp/supermarket-api.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          bash tests/api-smoke.sh
+          REFERRAL_REWARD_BASIS_POINTS=500 php tests/wallet-referral-integration.php
 
       - name: Run tenant-aware SEO page smoke tests
         env:
