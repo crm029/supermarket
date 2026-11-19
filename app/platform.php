@@ -475,9 +475,15 @@ function app_platform_subscription_assign(PDO $db,array $actorTenant,array $sess
 function app_platform_subscription_renew(PDO $db,array $actorTenant,array $session,int $subscriptionId): never {
     $db->beginTransaction();
     try{
-        $stmt=$db->prepare("SELECT s.id,s.tenant_id,s.status,s.billing_period_months,s.price_monthly_rial,s.current_period_end,t.status AS tenant_status FROM tenant_subscriptions s JOIN tenants t ON t.id=s.tenant_id WHERE s.id=? FOR UPDATE");
-        $stmt->execute([$subscriptionId]);$sub=$stmt->fetch(PDO::FETCH_ASSOC);
-        if(!$sub){$db->rollBack();app_json(['error'=>'اشتراک پیدا نشد.'],404);}
+        $scope=$db->prepare('SELECT tenant_id FROM tenant_subscriptions WHERE id=?');
+        $scope->execute([$subscriptionId]);$tenantId=$scope->fetchColumn();
+        if(!$tenantId){$db->rollBack();app_json(['error'=>'اشتراک پیدا نشد.'],404);}
+        $tenantLock=$db->prepare('SELECT status FROM tenants WHERE id=? FOR UPDATE');
+        $tenantLock->execute([$tenantId]);$tenantStatus=$tenantLock->fetchColumn();
+        $stmt=$db->prepare('SELECT id,tenant_id,status,billing_period_months,price_monthly_rial,current_period_end FROM tenant_subscriptions WHERE id=? AND tenant_id=? FOR UPDATE');
+        $stmt->execute([$subscriptionId,$tenantId]);$sub=$stmt->fetch(PDO::FETCH_ASSOC);
+        if(!$sub||$tenantStatus===false){$db->rollBack();app_json(['error'=>'اشتراک یا فروشگاه پیدا نشد.'],404);}
+        $sub['tenant_status']=$tenantStatus;
         if(!in_array($sub['status'],['active','past_due'],true)||$sub['tenant_status']==='suspended'){$db->rollBack();app_json(['error'=>'فقط اشتراک فعال فروشگاه غیرتعلیق‌شده قابل تمدید است.'],409);}
         $start=$sub['current_period_end']&&strtotime($sub['current_period_end'].' UTC')>time()?$sub['current_period_end']:gmdate('Y-m-d H:i:s');
         $months=(int)$sub['billing_period_months'];
@@ -505,8 +511,15 @@ function app_platform_invoice_record_payment(PDO $db,array $actorTenant,array $s
     }
     $db->beginTransaction();
     try{
-        $stmt=$db->prepare("SELECT id,tenant_id,subscription_id,amount_rial,status FROM platform_invoices WHERE id=? FOR UPDATE");
-        $stmt->execute([$invoiceId]);$invoice=$stmt->fetch(PDO::FETCH_ASSOC);
+        $scope=$db->prepare('SELECT tenant_id,subscription_id FROM platform_invoices WHERE id=?');
+        $scope->execute([$invoiceId]);$invoiceScope=$scope->fetch(PDO::FETCH_ASSOC);
+        if(!$invoiceScope){$db->rollBack();app_json(['error'=>'فاکتور پیدا نشد.'],404);}
+        $tenantLock=$db->prepare('SELECT id FROM tenants WHERE id=? FOR UPDATE');
+        $tenantLock->execute([$invoiceScope['tenant_id']]);
+        $subscriptionLock=$db->prepare('SELECT id FROM tenant_subscriptions WHERE tenant_id=? AND id=? FOR UPDATE');
+        $subscriptionLock->execute([$invoiceScope['tenant_id'],$invoiceScope['subscription_id']]);
+        $stmt=$db->prepare("SELECT id,tenant_id,subscription_id,amount_rial,status FROM platform_invoices WHERE id=? AND tenant_id=? FOR UPDATE");
+        $stmt->execute([$invoiceId,$invoiceScope['tenant_id']]);$invoice=$stmt->fetch(PDO::FETCH_ASSOC);
         if(!$invoice){$db->rollBack();app_json(['error'=>'فاکتور پیدا نشد.'],404);}
         $existing=$db->prepare('SELECT invoice_id,amount_rial,method,reference FROM platform_invoice_payments WHERE idempotency_key=?');
         $existing->execute([$key]);$prior=$existing->fetch(PDO::FETCH_ASSOC);
