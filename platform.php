@@ -93,6 +93,7 @@ declare(strict_types=1);
           <label>نام پلن<input id="platformPlanName" required maxlength="120" placeholder="پایه"></label>
           <label>قیمت ماهانه (تومان)<input id="platformPlanPrice" type="number" min="0" max="100000000000" step="1" required></label>
           <label>توضیحات<input id="platformPlanDescription" maxlength="500" placeholder="مناسب فروشگاه‌های کوچک"></label>
+          <label>محدودیت‌های پلن (JSON)<textarea id="platformPlanLimits" rows="3" dir="ltr">{"products":100,"staff":5,"media_assets":100}</textarea></label>
         </div>
         <button class="primary-button" type="submit">ثبت پلن</button>
         <p id="platformPlanMessage" class="platform-message" role="status"></p>
