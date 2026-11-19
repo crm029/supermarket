@@ -41,7 +41,7 @@ function app_sms_settings(PDO $db): array {
 
 function app_sms_0098_send_text(PDO $db, string $mobile, string $message): void {
     if (!preg_match('/^09\\d{9}$/', $mobile)) throw new InvalidArgumentException('شماره مقصد پیامک معتبر نیست.');
-    if ($message === '' || mb_strlen($message, 'UTF-8') > 500) throw new InvalidArgumentException('متن پیامک معتبر نیست.');
+    if ($message === '' || strlen($message) > 2000) throw new InvalidArgumentException('متن پیامک معتبر نیست.');
     if (!function_exists('curl_init')) throw new RuntimeException('PHP cURL extension is required for SMS delivery.');
     $settings = app_sms_settings($db);
     if ($settings['provider'] !== '0098vip' || !$settings['sender_number'] || !$settings['username'] || !$settings['password']) {
