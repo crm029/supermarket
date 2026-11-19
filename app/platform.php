@@ -313,3 +313,212 @@ function app_platform_tenant_suspend(PDO $db, array $actorTenant, array $session
         throw $e;
     }
 }
+
+
+// --- SaaS plans, subscriptions and invoice ledger ----------------------------
+
+function app_platform_billing_months(mixed $value): ?int {
+    $months=filter_var($value,FILTER_VALIDATE_INT);
+    return in_array($months,[1,3,12],true)?$months:null;
+}
+
+function app_platform_billing_summary(PDO $db): never {
+    $plans=$db->query("SELECT id,code,name,description,monthly_price_rial,limits_json,is_active,sort_order FROM platform_plans ORDER BY sort_order,id")->fetchAll(PDO::FETCH_ASSOC);
+    foreach($plans as &$plan){
+        $plan['id']=(int)$plan['id'];
+        $plan['monthly_price_rial']=(int)$plan['monthly_price_rial'];
+        $plan['is_active']=(bool)$plan['is_active'];
+        $plan['limits']=json_decode((string)$plan['limits_json'],true)?:new stdClass();
+        unset($plan['limits_json']);
+    }
+    unset($plan);
+    $tenants=$db->query(
+        "SELECT t.id,t.name,t.slug,t.status,
+          s.id AS subscription_id,s.status AS subscription_status,s.plan_id,s.billing_period_months,
+          s.price_monthly_rial,s.starts_at,s.current_period_start,s.current_period_end,
+          p.name AS plan_name,
+          (SELECT i.id FROM platform_invoices i WHERE i.tenant_id=t.id AND i.subscription_id=s.id AND i.status='issued' ORDER BY i.id DESC LIMIT 1) AS open_invoice_id
+         FROM tenants t
+         LEFT JOIN tenant_subscriptions s ON s.id=(
+           SELECT s2.id FROM tenant_subscriptions s2 WHERE s2.tenant_id=t.id
+           ORDER BY CASE s2.status WHEN 'active' THEN 0 WHEN 'pending_payment' THEN 1 WHEN 'past_due' THEN 2 ELSE 3 END,s2.id DESC LIMIT 1
+         )
+         LEFT JOIN platform_plans p ON p.id=s.plan_id
+         ORDER BY t.id DESC LIMIT 500"
+    )->fetchAll(PDO::FETCH_ASSOC);
+    foreach($tenants as &$tenant){
+        foreach(['id','subscription_id','plan_id','billing_period_months','price_monthly_rial','open_invoice_id'] as $key){
+            $tenant[$key]=$tenant[$key]===null?null:(int)$tenant[$key];
+        }
+    }
+    unset($tenant);
+    $invoices=$db->query(
+        "SELECT i.id,i.tenant_id,i.subscription_id,i.invoice_number,i.period_start,i.period_end,
+          i.amount_rial,i.status,i.due_at,i.paid_at,t.name AS tenant_name,
+          COALESCE(SUM(pay.amount_rial),0) AS paid_rial
+         FROM platform_invoices i JOIN tenants t ON t.id=i.tenant_id
+         LEFT JOIN platform_invoice_payments pay ON pay.tenant_id=i.tenant_id AND pay.invoice_id=i.id
+         GROUP BY i.id,i.tenant_id,i.subscription_id,i.invoice_number,i.period_start,i.period_end,
+          i.amount_rial,i.status,i.due_at,i.paid_at,t.name
+         ORDER BY i.id DESC LIMIT 200"
+    )->fetchAll(PDO::FETCH_ASSOC);
+    foreach($invoices as &$invoice){
+        foreach(['id','tenant_id','subscription_id','amount_rial','paid_rial'] as $key)$invoice[$key]=(int)$invoice[$key];
+    }
+    unset($invoice);
+    $totals=$db->query(
+        "SELECT COUNT(*) AS invoice_count,
+          COALESCE(SUM(CASE WHEN status='paid' THEN amount_rial ELSE 0 END),0) AS collected_rial,
+          COALESCE(SUM(CASE WHEN status='issued' THEN amount_rial ELSE 0 END),0) AS outstanding_rial
+         FROM platform_invoices"
+    )->fetch(PDO::FETCH_ASSOC)?:[];
+    app_json(['data'=>[
+        'plans'=>$plans,'tenants'=>$tenants,'invoices'=>$invoices,
+        'totals'=>['invoice_count'=>(int)($totals['invoice_count']??0),'collected_rial'=>(int)($totals['collected_rial']??0),'outstanding_rial'=>(int)($totals['outstanding_rial']??0)]
+    ]]);
+}
+
+function app_platform_plan_create(PDO $db,array $actorTenant,array $session): never {
+    $body=app_auth_request_body();
+    $code=strtolower(trim((string)($body['code']??'')));
+    $name=trim((string)($body['name']??''));
+    $description=trim((string)($body['description']??''));
+    $price=filter_var($body['monthly_price_rial']??null,FILTER_VALIDATE_INT);
+    $limits=$body['limits']??[];
+    if(!preg_match('/^[a-z0-9][a-z0-9_-]{1,39}$/',$code)||$name===''||mb_strlen($name)>120||
+       mb_strlen($description)>500||$price===false||$price<0||$price>1000000000000||
+       !is_array($limits)||count($limits)>30){
+        app_json(['error'=>'اطلاعات پلن معتبر نیست.'],422);
+    }
+    foreach($limits as $key=>$value){
+        if(!is_string($key)||!preg_match('/^[a-z][a-z0-9_]{1,39}$/',$key)||
+           !(is_int($value)&&$value>=0)&&!is_bool($value)&&!is_string($value)){
+            app_json(['error'=>'محدودیت‌های پلن باید مقادیر ساده و معتبر داشته باشند.'],422);
+        }
+        if(is_string($value)&&mb_strlen($value)>100)app_json(['error'=>'مقدار محدودیت پلن بیش از حد طولانی است.'],422);
+    }
+    $stmt=$db->prepare('INSERT INTO platform_plans (code,name,description,monthly_price_rial,limits_json) VALUES (?,?,?,?,?)');
+    try{$stmt->execute([$code,$name,$description,$price,json_encode($limits,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)]);}
+    catch(PDOException $e){if((string)$e->getCode()==='23000')app_json(['error'=>'کد این پلن قبلاً ثبت شده است.'],409);throw $e;}
+    $id=(int)$db->lastInsertId();
+    app_audit_log($db,(int)$actorTenant['id'],(int)$session['id'],'platform.plan.created','platform_plan',$id,['code'=>$code,'monthly_price_rial'=>$price]);
+    app_json(['data'=>['id'=>$id],'message'=>'پلن جدید ثبت شد.'],201);
+}
+
+function app_platform_plan_update(PDO $db,array $actorTenant,array $session,int $planId): never {
+    $body=app_auth_request_body();
+    $name=trim((string)($body['name']??''));
+    $description=trim((string)($body['description']??''));
+    $price=filter_var($body['monthly_price_rial']??null,FILTER_VALIDATE_INT);
+    $active=filter_var($body['is_active']??null,FILTER_VALIDATE_BOOLEAN,FILTER_NULL_ON_FAILURE);
+    $limits=$body['limits']??[];
+    if($name===''||mb_strlen($name)>120||mb_strlen($description)>500||
+       $price===false||$price<0||$price>1000000000000||$active===null||!is_array($limits)||count($limits)>30){
+        app_json(['error'=>'اطلاعات و وضعیت پلن معتبر نیست.'],422);
+    }
+    $stmt=$db->prepare('UPDATE platform_plans SET name=?,description=?,monthly_price_rial=?,limits_json=?,is_active=? WHERE id=?');
+    $stmt->execute([$name,$description,$price,json_encode($limits,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),$active?1:0,$planId]);
+    if($stmt->rowCount()===0){
+        $exists=$db->prepare('SELECT id FROM platform_plans WHERE id=?');$exists->execute([$planId]);
+        if(!$exists->fetchColumn())app_json(['error'=>'پلن پیدا نشد.'],404);
+    }
+    app_audit_log($db,(int)$actorTenant['id'],(int)$session['id'],'platform.plan.updated','platform_plan',$planId,['monthly_price_rial'=>$price,'is_active'=>$active]);
+    app_json(['data'=>['id'=>$planId,'is_active'=>$active],'message'=>'پلن به‌روزرسانی شد.']);
+}
+
+function app_platform_invoice_number(): string {
+    return 'SM360-'.gmdate('Ymd').'-'.strtoupper(bin2hex(random_bytes(4)));
+}
+
+function app_platform_invoice_insert(PDO $db,int $tenantId,int $subscriptionId,int $months,int $amount,array $actorTenant,array $session): int {
+    $dates=$db->query("SELECT UTC_TIMESTAMP() AS period_start,DATE_ADD(UTC_TIMESTAMP(),INTERVAL ".$months." MONTH) AS period_end")->fetch(PDO::FETCH_ASSOC);
+    $stmt=$db->prepare(
+        "INSERT INTO platform_invoices (tenant_id,subscription_id,invoice_number,period_start,period_end,amount_rial,status,due_at,created_by)
+         VALUES (?,?,?,?,?,?,'issued',DATE_ADD(UTC_TIMESTAMP(),INTERVAL 7 DAY),?)"
+    );
+    $stmt->execute([$tenantId,$subscriptionId,app_platform_invoice_number(),$dates['period_start'],$dates['period_end'],$amount,$session['id']]);
+    return (int)$db->lastInsertId();
+}
+
+function app_platform_subscription_assign(PDO $db,array $actorTenant,array $session,int $tenantId): never {
+    $body=app_auth_request_body();
+    $planId=filter_var($body['plan_id']??null,FILTER_VALIDATE_INT);
+    $months=app_platform_billing_months($body['billing_period_months']??1);
+    if($planId===false||$planId<1||$months===null)app_json(['error'=>'پلن یا دوره پرداخت معتبر نیست.'],422);
+    $db->beginTransaction();
+    try{
+        $tenant=$db->prepare('SELECT id,status FROM tenants WHERE id=? FOR UPDATE');$tenant->execute([$tenantId]);$tenantRow=$tenant->fetch(PDO::FETCH_ASSOC);
+        if(!$tenantRow){$db->rollBack();app_json(['error'=>'فروشگاه پیدا نشد.'],404);}
+        if($tenantRow['status']==='suspended'){$db->rollBack();app_json(['error'=>'برای فروشگاه تعلیق‌شده اشتراک جدید صادر نمی‌شود.'],409);}
+        $active=$db->prepare("SELECT id FROM tenant_subscriptions WHERE tenant_id=? AND status IN ('pending_payment','active','past_due') ORDER BY id DESC LIMIT 1 FOR UPDATE");
+        $active->execute([$tenantId]);if($active->fetchColumn()){$db->rollBack();app_json(['error'=>'این فروشگاه اشتراک باز دارد؛ ابتدا وضعیت اشتراک فعلی را تعیین کنید.'],409);}
+        $plan=$db->prepare('SELECT id,monthly_price_rial FROM platform_plans WHERE id=? AND is_active=1 FOR UPDATE');$plan->execute([$planId]);$planRow=$plan->fetch(PDO::FETCH_ASSOC);
+        if(!$planRow){$db->rollBack();app_json(['error'=>'پلن فعال پیدا نشد.'],404);}
+        $monthly=(int)$planRow['monthly_price_rial'];$amount=$monthly*$months;
+        if($amount<0||$amount>PHP_INT_MAX){$db->rollBack();app_json(['error'=>'مبلغ فاکتور خارج از محدوده مجاز است.'],422);}
+        $insert=$db->prepare("INSERT INTO tenant_subscriptions (tenant_id,plan_id,status,billing_period_months,price_monthly_rial,created_by) VALUES (?,?,'pending_payment',?,?,?)");
+        $insert->execute([$tenantId,$planId,$months,$monthly,$session['id']]);$subscriptionId=(int)$db->lastInsertId();
+        $invoiceId=app_platform_invoice_insert($db,$tenantId,$subscriptionId,$months,$amount,$actorTenant,$session);
+        app_audit_log($db,(int)$actorTenant['id'],(int)$session['id'],'platform.subscription.created','tenant_subscription',$subscriptionId,['tenant_id'=>$tenantId,'plan_id'=>$planId,'invoice_id'=>$invoiceId,'amount_rial'=>$amount,'months'=>$months]);
+        $db->commit();
+        app_json(['data'=>['subscription_id'=>$subscriptionId,'invoice_id'=>$invoiceId,'amount_rial'=>$amount],'message'=>'اشتراک در انتظار پرداخت ایجاد و فاکتور صادر شد.'],201);
+    }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
+}
+
+function app_platform_subscription_renew(PDO $db,array $actorTenant,array $session,int $subscriptionId): never {
+    $db->beginTransaction();
+    try{
+        $stmt=$db->prepare("SELECT id,tenant_id,status,billing_period_months,price_monthly_rial,current_period_end FROM tenant_subscriptions WHERE id=? FOR UPDATE");
+        $stmt->execute([$subscriptionId]);$sub=$stmt->fetch(PDO::FETCH_ASSOC);
+        if(!$sub){$db->rollBack();app_json(['error'=>'اشتراک پیدا نشد.'],404);}
+        if(!in_array($sub['status'],['active','past_due'],true)){$db->rollBack();app_json(['error'=>'فقط اشتراک فعال یا سررسیدگذشته قابل تمدید است.'],409);}
+        $start=$sub['current_period_end']&&strtotime($sub['current_period_end'].' UTC')>time()?$sub['current_period_end']:gmdate('Y-m-d H:i:s');
+        $months=(int)$sub['billing_period_months'];
+        $dates=$db->query("SELECT ". $db->quote($start) ." AS period_start,DATE_ADD(". $db->quote($start) .",INTERVAL ".$months." MONTH) AS period_end")->fetch(PDO::FETCH_ASSOC);
+        $amount=(int)$sub['price_monthly_rial']*$months;
+        $insert=$db->prepare("INSERT INTO platform_invoices (tenant_id,subscription_id,invoice_number,period_start,period_end,amount_rial,status,due_at,created_by) VALUES (?,?,?,?,?,?,'issued',DATE_ADD(UTC_TIMESTAMP(),INTERVAL 7 DAY),?)");
+        $insert->execute([(int)$sub['tenant_id'],(int)$sub['id'],app_platform_invoice_number(),$dates['period_start'],$dates['period_end'],$amount,$session['id']]);
+        $invoiceId=(int)$db->lastInsertId();
+        app_audit_log($db,(int)$actorTenant['id'],(int)$session['id'],'platform.subscription.renewal_invoiced','tenant_subscription',(int)$sub['id'],['tenant_id'=>(int)$sub['tenant_id'],'invoice_id'=>$invoiceId,'amount_rial'=>$amount,'months'=>$months]);
+        $db->commit();app_json(['data'=>['invoice_id'=>$invoiceId,'amount_rial'=>$amount],'message'=>'فاکتور تمدید صادر شد.'],201);
+    }catch(PDOException $e){if($db->inTransaction())$db->rollBack();if((string)$e->getCode()==='23000')app_json(['error'=>'برای این دوره قبلاً فاکتور تمدید صادر شده است.'],409);throw $e;}
+    catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
+}
+
+function app_platform_invoice_record_payment(PDO $db,array $actorTenant,array $session,int $invoiceId): never {
+    $body=app_auth_request_body();
+    $amount=filter_var($body['amount_rial']??null,FILTER_VALIDATE_INT);
+    $method=(string)($body['method']??'bank_transfer');
+    $reference=trim((string)($body['reference']??''));
+    $note=trim((string)($body['note']??''));
+    $key=trim((string)($body['idempotency_key']??''));
+    if($amount===false||$amount<1||$amount>1000000000000||!in_array($method,['bank_transfer','cash','other'],true)||
+       mb_strlen($reference)>120||mb_strlen($note)>500||!preg_match('/^[A-Za-z0-9._:-]{16,100}$/',$key)){
+        app_json(['error'=>'مبلغ، روش دریافت، شناسه پیگیری یا کلید یکتا معتبر نیست.'],422);
+    }
+    $db->beginTransaction();
+    try{
+        $stmt=$db->prepare("SELECT id,tenant_id,subscription_id,amount_rial,status FROM platform_invoices WHERE id=? FOR UPDATE");
+        $stmt->execute([$invoiceId]);$invoice=$stmt->fetch(PDO::FETCH_ASSOC);
+        if(!$invoice){$db->rollBack();app_json(['error'=>'فاکتور پیدا نشد.'],404);}
+        if($invoice['status']!=='issued'){$db->rollBack();app_json(['error'=>'این فاکتور دیگر قابل دریافت وجه نیست.'],409);}
+        $sum=$db->prepare('SELECT COALESCE(SUM(amount_rial),0) FROM platform_invoice_payments WHERE tenant_id=? AND invoice_id=?');
+        $sum->execute([$invoice['tenant_id'],$invoiceId]);$paid=(int)$sum->fetchColumn();
+        $due=(int)$invoice['amount_rial']-$paid;
+        if($amount>$due){$db->rollBack();app_json(['error'=>'مبلغ دریافت از مانده فاکتور بیشتر است.'],422);}
+        $payment=$db->prepare("INSERT INTO platform_invoice_payments (tenant_id,invoice_id,amount_rial,method,reference,idempotency_key,note,received_by) VALUES (?,?,?,?,?,?,?,?)");
+        $payment->execute([(int)$invoice['tenant_id'],$invoiceId,$amount,$method,$reference,$key,$note,(int)$session['id']]);
+        $newPaid=$paid+$amount;$fullyPaid=$newPaid===(int)$invoice['amount_rial'];
+        if($fullyPaid){
+            $update=$db->prepare("UPDATE platform_invoices SET status='paid',paid_at=UTC_TIMESTAMP() WHERE id=? AND tenant_id=? AND status='issued'");
+            $update->execute([$invoiceId,$invoice['tenant_id']]);
+            $activate=$db->prepare("UPDATE tenant_subscriptions SET status='active',starts_at=COALESCE(starts_at,?),current_period_start=COALESCE(current_period_start,?),current_period_end=CASE WHEN current_period_end IS NULL OR current_period_end<? THEN ? ELSE current_period_end END WHERE id=? AND tenant_id=?");
+            $period=$db->prepare('SELECT period_start,period_end FROM platform_invoices WHERE id=?');$period->execute([$invoiceId]);$dates=$period->fetch(PDO::FETCH_ASSOC);
+            $activate->execute([$dates['period_start'],$dates['period_start'],$dates['period_end'],$dates['period_end'],$invoice['subscription_id'],$invoice['tenant_id']]);
+        }
+        app_audit_log($db,(int)$actorTenant['id'],(int)$session['id'],'platform.invoice.payment_recorded','platform_invoice',$invoiceId,['tenant_id'=>(int)$invoice['tenant_id'],'amount_rial'=>$amount,'method'=>$method,'reference'=>$reference,'fully_paid'=>$fullyPaid]);
+        $db->commit();
+        app_json(['data'=>['invoice_id'=>$invoiceId,'paid_rial'=>$newPaid,'remaining_rial'=>(int)$invoice['amount_rial']-$newPaid,'status'=>$fullyPaid?'paid':'issued'],'message'=>$fullyPaid?'دریافت کامل ثبت شد و اشتراک فعال شد.':'دریافت جزئی ثبت شد.']);
+    }catch(PDOException $e){if($db->inTransaction())$db->rollBack();if((string)$e->getCode()==='23000')app_json(['error'=>'این کلید یکتا قبلاً استفاده شده است.'],409);throw $e;}
+    catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
+}
