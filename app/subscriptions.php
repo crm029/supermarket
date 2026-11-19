@@ -60,10 +60,12 @@ function app_tenant_subscription_overview(PDO $db,array $tenant,array $session):
         "SELECT i.id,i.invoice_number,i.period_start,i.period_end,i.amount_rial,i.status,i.due_at,i.paid_at,
           COALESCE(pay.paid_rial,0) AS paid_rial,
           GREATEST(i.amount_rial-COALESCE(pay.paid_rial,0),0) AS balance_rial,
-          COALESCE(pay.payment_count,0) AS payment_count,p.name AS plan_name
+          COALESCE(pay.payment_count,0) AS payment_count,COALESCE(cp.name,p.name) AS plan_name
          FROM platform_invoices i
          JOIN tenant_subscriptions s ON s.tenant_id=i.tenant_id AND s.id=i.subscription_id
          JOIN platform_plans p ON p.id=s.plan_id
+         LEFT JOIN platform_subscription_change_requests cr ON cr.id=i.subscription_change_request_id AND cr.tenant_id=i.tenant_id
+         LEFT JOIN platform_plans cp ON cp.id=cr.requested_plan_id
          LEFT JOIN (
            SELECT tenant_id,invoice_id,SUM(amount_rial) AS paid_rial,COUNT(*) AS payment_count
            FROM platform_invoice_payments GROUP BY tenant_id,invoice_id
