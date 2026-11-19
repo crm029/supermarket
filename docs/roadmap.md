@@ -85,6 +85,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] FEFO allocation is integration-tested against distinct near- and later-expiry lots through a real customer checkout reservation.
 - [x] Expired lots are excluded from normal stock consumption and transfers; the supplier-return path explicitly opts in to consume the original receipt lot, and normal exclusion is integration-tested.
 - [x] Expired-stock write-off integration test verifies batch and warehouse balance reconciliation, audit movement creation, and duplicate-write-off rejection.
+- [x] Supplier-return integration test follows a real purchase receipt and confirms an expired original lot can be returned only against its own receipt line with stock and movement-ledger reconciliation.
 - [x] Tenant-scoped CSV exports for orders and inventory movements, with date/status/warehouse/product filters, formula-injection protection and permission checks.
 - [x] Operational notifications.
 
