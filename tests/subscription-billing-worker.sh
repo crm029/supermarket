@@ -39,7 +39,7 @@ UPCOMING_NOTICE_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --sk
 test "$UPCOMING_NOTICE_COUNT" = "1"
 
 
-mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "UPDATE platform_invoices SET due_at=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 DAY) WHERE subscription_id=$SUB_ID"
+mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "INSERT INTO platform_invoices (tenant_id,subscription_id,invoice_number,period_start,period_end,amount_rial,status,due_at,created_by) VALUES (1,$SUB_ID,CONCAT('CI-OVERDUE-',$SUB_ID),DATE_SUB(UTC_TIMESTAMP(),INTERVAL 2 DAY),DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 DAY),10000,'issued',DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 DAY),NULL)"
 SUBSCRIPTION_BILLING_BATCH_SIZE=100 SUBSCRIPTION_BILLING_LEAD_DAYS=7 SUBSCRIPTION_GRACE_DAYS=7 SUBSCRIPTION_REMINDER_LEAD_DAYS=3 php bin/process-subscription-billing.php >/tmp/subscription-worker-reminder-overdue.json
 OVERDUE_INVOICE_NOTICE_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM notifications WHERE tenant_id=1 AND event_key LIKE 'platform-invoice-overdue-%'")"
 test "$OVERDUE_INVOICE_NOTICE_COUNT" = "1"
