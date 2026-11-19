@@ -1216,6 +1216,11 @@ assert_json registered-user
 REGISTERED_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM users WHERE tenant_id=1 AND mobile='09120000004'")"
 REFERRAL_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM referral_events re JOIN users u ON u.id=re.referred_user_id WHERE u.tenant_id=1 AND u.mobile='09120000004'")"
 if [[ "$REGISTERED_STATUS" != "active" || "$REFERRAL_COUNT" != "1" ]]; then echo "OTP registration or referral activation failed"; exit 1; fi
+# Closing the cashier shift must reconcile cash and block further sales until a new shift opens.
+request POST "/admin/pos/shifts/$POS_SHIFT_ID/close" 200 '{"counted_cash_rial":800000,"note":"تطبیق نهایی صندوق‌دار CI"}' "$POS_TOKEN" "$POS_CSRF"
+assert_json pos-shift-closed
+request POST /admin/pos/sales 409 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"cash_received_rial":150000,"idempotency_key":"ci-pos-closed-shift-01"}' "$POS_TOKEN" "$POS_CSRF"
+
 echo "HTTP API and commerce smoke tests passed."
 
 # Product variant integration coverage follows the same tenant-scoped checkout fixtures.
