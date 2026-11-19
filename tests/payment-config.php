@@ -10,6 +10,12 @@ putenv('ZARINPAL_SANDBOX=true');
 require_once dirname(__DIR__) . '/app/payments.php';
 
 $config = app_payment_config();
+if (!app_payment_authority_is_valid('S000000000000000000000000000000000000000000000000', 'sandbox') ||
+    app_payment_authority_is_valid('A000000000000000000000000000000000000000000000000', 'sandbox') ||
+    !app_payment_authority_is_valid('A000000000000000000000000000000000000000000000000', 'live') ||
+    app_payment_authority_is_valid('bad authority', 'live')) {
+    throw new RuntimeException('ZarinPal sandbox/live authority validation is incorrect.');
+}
 if ($config['callback_url'] !== 'https://market.example/subdir/api/v1/payments/zarinpal/callback' ||
     $config['request_url'] !== 'https://sandbox.zarinpal.com/pg/v4/payment/request.json' ||
     $config['verify_url'] !== 'https://sandbox.zarinpal.com/pg/v4/payment/verify.json' ||
