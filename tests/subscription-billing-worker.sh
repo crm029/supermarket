@@ -45,7 +45,7 @@ SUBSCRIPTION_BILLING_BATCH_SIZE=100 SUBSCRIPTION_BILLING_LEAD_DAYS=7 SUBSCRIPTIO
 OVERDUE_INVOICE_NOTICE_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM notifications WHERE tenant_id=1 AND event_key=CONCAT('platform-invoice-overdue-',$OVERDUE_INVOICE_ID,'-',DATE_FORMAT(UTC_DATE(),'%x-%v'))")"
 test "$OVERDUE_INVOICE_NOTICE_COUNT" = "1"
 SUBSCRIPTION_BILLING_BATCH_SIZE=100 SUBSCRIPTION_BILLING_LEAD_DAYS=7 SUBSCRIPTION_GRACE_DAYS=7 SUBSCRIPTION_REMINDER_LEAD_DAYS=3 php bin/process-subscription-billing.php >/tmp/subscription-worker-reminder-repeat.json
-OVERDUE_INVOICE_NOTICE_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM notifications WHERE tenant_id=1 AND event_key LIKE 'platform-invoice-overdue-%'")"
+OVERDUE_INVOICE_NOTICE_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM notifications WHERE tenant_id=1 AND event_key=CONCAT('platform-invoice-overdue-',$OVERDUE_INVOICE_ID,'-',DATE_FORMAT(UTC_DATE(),'%x-%v'))")"
 test "$OVERDUE_INVOICE_NOTICE_COUNT" = "1"
 
 mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "UPDATE tenant_subscriptions SET current_period_end=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 8 DAY) WHERE id=$SUB_ID AND tenant_id=1"
