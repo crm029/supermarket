@@ -179,6 +179,12 @@ function app_auth_register(PDO $db, array $tenant): never {
         if (!$referrerId) app_json(['error' => 'کد معرف معتبر نیست.'], 422);
     }
 
+    // Do not persist a caller-supplied name or referral before phone ownership is proven.
+    // Otherwise an attacker could pre-register another person's number and attach their own referral.
+    app_auth_prune($db, (int)$tenant['id']);
+    app_auth_hit_limit($db, (int)$tenant['id'], 'registration_phone', app_auth_hash('registration-phone:' . $mobile), 5, 3600);
+    app_auth_hit_limit($db, (int)$tenant['id'], 'registration_ip', app_auth_hash('registration-ip:' . (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown')), 30, 3600);
+
     $existing = $db->prepare('SELECT id, status FROM users WHERE tenant_id = ? AND mobile = ? LIMIT 1');
     $existing->execute([$tenant['id'], $mobile]);
     $row = $existing->fetch();
@@ -192,15 +198,78 @@ function app_auth_register(PDO $db, array $tenant): never {
     $code = strtoupper(substr(bin2hex(random_bytes(8)), 0, 10));
     $insert = $db->prepare(
         "INSERT INTO users (tenant_id, full_name, mobile, status, referral_code, referred_by_user_id)
-         VALUES (?, ?, ?, 'pending', ?, ?)"
+         VALUES (?, 'کاربر جدید', ?, 'pending', ?, NULL)"
     );
     try {
-        $insert->execute([$tenant['id'], $name, $mobile, $code, $referrerId]);
+        $insert->execute([$tenant['id'], $mobile, $code]);
     } catch (PDOException $e) {
         if ($e->getCode() === '23000') app_json(['error' => 'ثبت‌نام با این شماره امکان‌پذیر نیست.'], 409);
         throw $e;
     }
-    app_json(['message' => 'حساب اولیه ساخته شد؛ برای فعال‌سازی کد تأیید را درخواست کنید.'], 201);
+    app_json(['message' => 'حساب اولیه ساخته شد؛ پس از تأیید شماره، اطلاعات ثبت‌نام تکمیل می‌شود.'], 201);
+}
+
+function app_auth_complete_registration(PDO $db, array $tenant, array $session): never {
+    $body = app_auth_request_body();
+    $name = trim((string)($body['full_name'] ?? ''));
+    $referralCode = strtoupper(trim((string)($body['referral_code'] ?? '')));
+    if ($name === '' || mb_strlen($name) > 160 ||
+        ($referralCode !== '' && !preg_match('/^[A-Z0-9]{4,16}$/', $referralCode))) {
+        app_json(['error' => 'نام یا کد معرف معتبر نیست.'], 422);
+    }
+
+    $db->beginTransaction();
+    try {
+        $userQuery = $db->prepare(
+            'SELECT id, full_name, mobile, referral_code, referred_by_user_id, status, mobile_verified_at
+             FROM users WHERE tenant_id = ? AND id = ? FOR UPDATE'
+        );
+        $userQuery->execute([(int)$tenant['id'], (int)$session['id']]);
+        $user = $userQuery->fetch();
+        if (!$user || $user['status'] !== 'active' || empty($user['mobile_verified_at'])) {
+            $db->rollBack();
+            app_json(['error' => 'ابتدا شماره موبایل خود را تأیید کنید.'], 403);
+        }
+        if ($user['full_name'] !== 'کاربر جدید' || $user['referred_by_user_id'] !== null) {
+            $db->rollBack();
+            app_json(['error' => 'اطلاعات ثبت‌نام این حساب قبلاً تکمیل شده است.'], 409);
+        }
+
+        $referrerId = null;
+        if ($referralCode !== '') {
+            $referrer = $db->prepare(
+                "SELECT id FROM users WHERE tenant_id = ? AND referral_code = ? AND status = 'active' LIMIT 1"
+            );
+            $referrer->execute([(int)$tenant['id'], $referralCode]);
+            $referrerId = $referrer->fetchColumn();
+            if (!$referrerId || (int)$referrerId === (int)$user['id']) {
+                $db->rollBack();
+                app_json(['error' => 'کد معرف معتبر نیست.'], 422);
+            }
+        }
+
+        $update = $db->prepare(
+            'UPDATE users SET full_name = ?, referred_by_user_id = ? WHERE tenant_id = ? AND id = ?'
+        );
+        $update->execute([$name, $referrerId, (int)$tenant['id'], (int)$user['id']]);
+        if ($referrerId !== null) {
+            $referral = $db->prepare(
+                "INSERT IGNORE INTO referral_events (tenant_id, referrer_user_id, referred_user_id, status)
+                 VALUES (?, ?, ?, 'pending')"
+            );
+            $referral->execute([(int)$tenant['id'], (int)$referrerId, (int)$user['id']]);
+        }
+        $db->commit();
+        app_json(['message' => 'اطلاعات ثبت‌نام با موفقیت تکمیل شد.', 'data' => ['user' => [
+            'id' => (int)$user['id'],
+            'full_name' => $name,
+            'mobile' => $user['mobile'],
+            'referral_code' => $user['referral_code'],
+        ]]]);
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        throw $e;
+    }
 }
 
 function app_auth_refresh_csrf(PDO $db, array $session): never {
