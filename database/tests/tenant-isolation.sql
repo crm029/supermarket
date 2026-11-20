@@ -116,3 +116,75 @@ DROP PROCEDURE assert_role_scope_change_rejected;
 DROP PROCEDURE assert_cross_tenant_audit_actor_rejected;
 
 SELECT 'tenant isolation integration checks passed' AS result;
+
+-- Media ownership must be enforced by composite tenant foreign keys, not only API validation.
+INSERT INTO media_assets (tenant_id,media_type,storage_key,alt_text,width,height)
+VALUES (1,'other','tenant-1/other/tenant-isolation-media.jpg','tenant-one-media',64,64);
+SET @tenant_one_media = LAST_INSERT_ID();
+
+DELIMITER //
+CREATE PROCEDURE assert_cross_tenant_category_media_rejected()
+BEGIN
+  DECLARE rejected BOOLEAN DEFAULT FALSE;
+  BEGIN
+    DECLARE CONTINUE HANDLER FOR SQLSTATE '23000' SET rejected = TRUE;
+    UPDATE categories SET image_media_id=@tenant_one_media WHERE tenant_id=2 AND id=20;
+  END;
+  IF rejected = FALSE THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cross-tenant category media reference was accepted';
+  END IF;
+END//
+
+CREATE PROCEDURE assert_cross_tenant_product_media_rejected()
+BEGIN
+  DECLARE rejected BOOLEAN DEFAULT FALSE;
+  BEGIN
+    DECLARE CONTINUE HANDLER FOR SQLSTATE '23000' SET rejected = TRUE;
+    INSERT INTO products
+      (tenant_id,category_id,sku,title,unit_label,price_rial,image_media_id,is_active)
+    VALUES
+      (2,20,'CROSS-TENANT-MEDIA','نباید ثبت شود','عدد',1000,@tenant_one_media,TRUE);
+  END;
+  IF rejected = FALSE THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cross-tenant product media reference was accepted';
+  END IF;
+END//
+
+CREATE PROCEDURE assert_cross_tenant_scene_media_rejected()
+BEGIN
+  DECLARE rejected BOOLEAN DEFAULT FALSE;
+  BEGIN
+    DECLARE CONTINUE HANDLER FOR SQLSTATE '23000' SET rejected = TRUE;
+    INSERT INTO store_scenes (tenant_id,title,scene_type,media_id,is_published)
+    VALUES (2,'صحنه نامعتبر','aisle_photo',@tenant_one_media,FALSE);
+  END;
+  IF rejected = FALSE THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cross-tenant scene media reference was accepted';
+  END IF;
+END//
+
+CREATE PROCEDURE assert_cross_tenant_scene_fallback_media_rejected()
+BEGIN
+  DECLARE rejected BOOLEAN DEFAULT FALSE;
+  BEGIN
+    DECLARE CONTINUE HANDLER FOR SQLSTATE '23000' SET rejected = TRUE;
+    INSERT INTO store_scenes (tenant_id,title,scene_type,fallback_media_id,is_published)
+    VALUES (2,'صحنه جایگزین نامعتبر','aisle_photo',@tenant_one_media,FALSE);
+  END;
+  IF rejected = FALSE THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cross-tenant scene fallback media reference was accepted';
+  END IF;
+END//
+DELIMITER ;
+
+CALL assert_cross_tenant_category_media_rejected();
+CALL assert_cross_tenant_product_media_rejected();
+CALL assert_cross_tenant_scene_media_rejected();
+CALL assert_cross_tenant_scene_fallback_media_rejected();
+
+DROP PROCEDURE assert_cross_tenant_category_media_rejected;
+DROP PROCEDURE assert_cross_tenant_product_media_rejected;
+DROP PROCEDURE assert_cross_tenant_scene_media_rejected;
+DROP PROCEDURE assert_cross_tenant_scene_fallback_media_rejected;
+
+SELECT 'cross-tenant media ownership checks passed' AS result;
