@@ -1216,6 +1216,8 @@ if [[ "$POS_SALE_COUNT" != "1" || "$POS_MOVEMENT_COUNT" != "1" ]]; then echo "PO
 
 request POST /admin/scenes 201 '{"title":"راهرو تست","scene_type":"aisle_photo","is_published":false}' "$TOKEN" "$CSRF"
 SCENE_ID="$(assert_json created-id)"
+request PATCH "/admin/scenes/$SCENE_ID" 200 '{"media_id":'$MEDIA_ID',"is_published":true}' "$TOKEN" "$CSRF"
+request PATCH "/admin/scenes/$SCENE_ID" 422 '{"media_id":null}' "$TOKEN" "$CSRF"
 request POST "/admin/scenes/$SCENE_ID/hotspots" 201 '{"label":"کالای تست","action":"product","product_id":'$PRODUCT_ID',"x":0.4,"y":0.6}' "$TOKEN" "$CSRF"
 HOTSPOT_ID="$(assert_json created-id)"
 request POST "/admin/scenes/$SCENE_ID/hotspots" 422 '{"label":"مختصات خارج از محدوده","action":"product","product_id":'$PRODUCT_ID',"x":1.1,"y":0.5}' "$TOKEN" "$CSRF"
