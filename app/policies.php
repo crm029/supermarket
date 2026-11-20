@@ -16,13 +16,14 @@ function app_auth_has_permission(PDO $db, array $tenant, array $session, string 
          JOIN permissions p ON p.id = rp.permission_id
          WHERE ur.tenant_id = :tenant
            AND ur.user_id = :user
-           AND r.tenant_id = :tenant
+           AND r.tenant_id = :role_tenant
            AND p.permission_key = :permission
            AND p.scope = 'tenant'
          LIMIT 1"
     );
     $stmt->execute([
         'tenant' => $tenant['id'],
+        'role_tenant' => $tenant['id'],
         'user' => $session['id'],
         'permission' => $permission,
     ]);
