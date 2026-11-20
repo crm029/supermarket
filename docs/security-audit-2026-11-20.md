@@ -26,7 +26,7 @@ Payment callback URLs are now built using the tenant's verified primary domain. 
 
 ### Regression coverage
 
-Automated tests now cover payment attempt state decisions, preservation of sandbox URLs after a platform mode switch, tenant-specific callback URL construction, unsafe callback-host rejection, OTP-gated registration profile completion, and the absence of unverified profile/referral values on pending accounts. Existing PHP, JavaScript, MySQL and MariaDB CI suites remain release gates.
+Automated tests now cover payment attempt state decisions, explicit rejection versus uncertain/malformed-success provider responses, preservation of sandbox URLs after a platform mode switch, tenant-specific callback URL construction (including local XAMPP ports), unsafe callback-host rejection, OTP-gated registration profile completion, CSRF and unauthenticated access rejection, and the absence of unverified profile/referral values on pending accounts. Existing PHP, JavaScript, MySQL and MariaDB CI suites remain release gates.
 
 ## Residual risks and production blockers
 
