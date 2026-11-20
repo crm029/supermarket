@@ -581,8 +581,12 @@ function renderScenes() {
     button.className = "scene-hotspot";
     button.textContent = hotspot.label || hotspot.product?.title || hotspot.category?.title || "مشاهده";
     const x = Number(hotspot.x), y = Number(hotspot.y);
-    button.style.left = (x <= 1 ? x * 100 : x) + "%";
-    button.style.top = (y <= 1 ? y * 100 : y) + "%";
+    // Ignore malformed coordinates and keep every interactive target inside the scene.
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    const left = clampNumber(x <= 1 && x >= 0 ? x * 100 : x, 0, 100);
+    const top = clampNumber(y <= 1 && y >= 0 ? y * 100 : y, 0, 100);
+    button.style.left = left + "%";
+    button.style.top = top + "%";
     button.setAttribute("aria-label", button.textContent);
     button.addEventListener("click", () => {
       if (hotspot.product?.id) openProduct(hotspot.product.id);
