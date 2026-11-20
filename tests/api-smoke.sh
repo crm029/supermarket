@@ -3,6 +3,7 @@ set -euo pipefail
 
 BASE_URL="http://127.0.0.1:8099/api/v1"
 OUT="/tmp/supermarket-api-response.json"
+HEADERS="/tmp/supermarket-api-headers.txt"
 TOKEN="$(printf 'S%.0s' {1..43})"
 CSRF="$(printf 'C%.0s' {1..43})"
 UNPRIVILEGED_TOKEN="$(printf 'T%.0s' {1..43})"
@@ -23,7 +24,7 @@ request() {
   local token="${5:-}"
   local csrf="${6:-}"
   local host="${7:-localhost}"
-  local args=(--silent --show-error --output "$OUT" --write-out "%{http_code}" -X "$method"
+  local args=(--silent --show-error --output "$OUT" --dump-header "$HEADERS" --write-out "%{http_code}" -X "$method"
     -H "Host: $host" -H "Accept: application/json")
   if [[ -n "$body" ]]; then
     args+=(-H "Content-Type: application/json" --data "$body")
@@ -227,7 +228,13 @@ assert_json() {
       exit(0);
     }
     if ($check === "registered-user") {
-      if (($data["data"]["user"]["mobile"] ?? "") !== "09120000004") exit(1);
+      if (($data["data"]["user"]["mobile"] ?? "") !== "09120000004" ||
+          ($data["data"]["user"]["full_name"] ?? "") !== "کاربر جدید") exit(1);
+      exit(0);
+    }
+    if ($check === "registered-profile") {
+      if (($data["data"]["user"]["mobile"] ?? "") !== "09120000004" ||
+          ($data["data"]["user"]["full_name"] ?? "") !== "مشتری ثبت‌نامی") exit(1);
       exit(0);
     }
     if ($check === "order-created") {
@@ -1214,11 +1221,18 @@ HOTSPOT_ID="$(assert_json created-id)"
 request GET "/admin/scenes/$SCENE_ID/hotspots" 200 "" "$TOKEN"
 request DELETE "/admin/hotspots/$HOTSPOT_ID" 200 "" "$TOKEN" "$CSRF"
 request POST /auth/register 201 '{"full_name":"مشتری ثبت‌نامی","mobile":"09120000004","referral_code":"APICUSTOMER1"}'
+PENDING_PROFILE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT CONCAT(full_name,':',COALESCE(referred_by_user_id,'NULL')) FROM users WHERE tenant_id=1 AND mobile='09120000004'")"
+if [[ "$PENDING_PROFILE" != "کاربر جدید:NULL" ]]; then echo "Unverified registration persisted caller-controlled profile data."; exit 1; fi
 request POST /auth/request-otp 202 '{"mobile":"09120000004"}'
 OTP_HASH="$(php -r 'echo hash_hmac("sha256", "123456", "ci-test-secret-with-more-than-thirty-two-characters");')"
 mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "INSERT INTO auth_challenges (tenant_id,mobile,purpose,otp_hash,attempts,expires_at) VALUES (1,'09120000004','login','$OTP_HASH',0,DATE_ADD(UTC_TIMESTAMP(), INTERVAL 5 MINUTE))"
 request POST /auth/verify-otp 200 '{"mobile":"09120000004","code":"123456"}'
 assert_json registered-user
+REGISTERED_TOKEN="$(sed -n 's/^Set-Cookie: sm_session=\\([^;]*\\).*/\\1/ip' "$HEADERS" | tail -n 1)"
+REGISTERED_CSRF="$(php -r '$d=json_decode(file_get_contents($argv[1]),true); echo $d["data"]["csrf_token"]??"";' "$OUT")"
+if [[ -z "$REGISTERED_TOKEN" || -z "$REGISTERED_CSRF" ]]; then echo "OTP verification did not issue session and CSRF credentials."; exit 1; fi
+request POST /auth/complete-registration 200 '{"full_name":"مشتری ثبت‌نامی","referral_code":"APICUSTOMER1"}' "$REGISTERED_TOKEN" "$REGISTERED_CSRF"
+assert_json registered-profile
 REGISTERED_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM users WHERE tenant_id=1 AND mobile='09120000004'")"
 REFERRAL_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM referral_events re JOIN users u ON u.id=re.referred_user_id WHERE u.tenant_id=1 AND u.mobile='09120000004'")"
 if [[ "$REGISTERED_STATUS" != "active" || "$REFERRAL_COUNT" != "1" ]]; then echo "OTP registration or referral activation failed"; exit 1; fi
