@@ -95,9 +95,9 @@ function app_admin_scene_update(PDO $db, array $tenant, array $session, int $sce
         $exists=$db->prepare('SELECT id,media_id FROM store_scenes WHERE tenant_id=? AND id=? FOR UPDATE');
         $exists->execute([$tenant['id'],$sceneId]);$current=$exists->fetch();
         if(!$current){$db->rollBack();app_json(['error'=>'صحنه پیدا نشد.'],404);}
-        $willPublish=$params['is_published']??null;
-        $nextMedia=$params['media_id']??($current['media_id']===null?null:(int)$current['media_id']);
-        if($willPublish===1&&$nextMedia===null){$db->rollBack();app_json(['error'=>'برای انتشار صحنه باید تصویر اصلی انتخاب شود.'],422);}
+        $nextPublished=$params['is_published']??(int)$current['is_published'];
+        $nextMedia=array_key_exists('media_id',$params)?$params['media_id']:($current['media_id']===null?null:(int)$current['media_id']);
+        if($nextPublished===1&&$nextMedia===null){$db->rollBack();app_json(['error'=>'برای انتشار صحنه باید تصویر اصلی انتخاب شود.'],422);}
         $update=$db->prepare('UPDATE store_scenes SET '.implode(',',$sets).' WHERE tenant_id=:tenant AND id=:id');
         $update->execute($params);
         app_audit_log($db,(int)$tenant['id'],(int)$session['id'],'scene.updated','store_scene',$sceneId,['fields'=>array_keys($body)]);
