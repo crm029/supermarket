@@ -171,14 +171,6 @@ function app_auth_register(PDO $db, array $tenant): never {
         app_json(['error' => 'نام، شماره موبایل یا کد معرف معتبر نیست.'], 422);
     }
 
-    $referrerId = null;
-    if ($referralCode !== '') {
-        $referrer = $db->prepare("SELECT id FROM users WHERE tenant_id = ? AND referral_code = ? AND status = 'active' LIMIT 1");
-        $referrer->execute([$tenant['id'], $referralCode]);
-        $referrerId = $referrer->fetchColumn();
-        if (!$referrerId) app_json(['error' => 'کد معرف معتبر نیست.'], 422);
-    }
-
     // Do not persist a caller-supplied name or referral before phone ownership is proven.
     // Otherwise an attacker could pre-register another person's number and attach their own referral.
     app_auth_prune($db, (int)$tenant['id']);
