@@ -335,7 +335,7 @@ function app_payment_start(PDO $db, array $tenant, array $session): never {
         $review = $db->prepare("UPDATE payment_attempts SET status = 'review' WHERE tenant_id = ? AND id = ? AND status = 'created'");
         $review->execute([$tenant['id'], $attemptId]);
         error_log('[supermarket360-payment] ' . $e->getMessage());
-        app_json(['error' => 'ارتباط با درگاه پرداخت برقرار نشد. کمی بعد دوباره تلاش کنید.'], 502);
+        app_json(['error' => 'ارتباط با درگاه قطع شد و نتیجه درخواست نامشخص است؛ برای جلوگیری از پرداخت تکراری، تا بررسی وضعیت تلاش قبلی دوباره پرداخت نکنید.'], 502);
     }
 }
 
