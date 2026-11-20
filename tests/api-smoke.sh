@@ -701,7 +701,7 @@ request PATCH "/admin/delivery-zones/$ZONE_ID" 200 '{"delivery_fee_rial":3000}' 
 request PUT "/platform/plans/$UPGRADE_PLAN_ID" 200 '{"name":"پلن حرفه‌ای تست","description":"پلن ارتقای API","monthly_price_rial":150000,"limits":{"products":10000,"staff":1000,"media_assets":10000,"monthly_orders":0,"storage_bytes":10000000000},"is_active":true}' "$TOKEN" "$CSRF"
 request POST /checkout 403 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}],"fulfillment":"delivery","address_id":'$ADDRESS_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 request PUT "/platform/plans/$UPGRADE_PLAN_ID" 200 '{"name":"پلن حرفه‌ای تست","description":"پلن ارتقای API","monthly_price_rial":150000,"limits":{"products":10000,"staff":1000,"media_assets":10000,"monthly_orders":10000,"storage_bytes":10000000000},"is_active":true}' "$TOKEN" "$CSRF"
-request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}],"fulfillment":"delivery","address_id":'$ADDRESS_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2,"price_rial":1,"unit_price_rial":1,"line_total_rial":2}],"fulfillment":"delivery","address_id":'$ADDRESS_ID',"subtotal_rial":2,"delivery_fee_rial":0,"total_rial":2}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 ORDER_ID="$(assert_json order-created)"
 request GET /me/notifications 200 "" "$CUSTOMER_TOKEN"
 assert_json order-notification
