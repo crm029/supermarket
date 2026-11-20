@@ -119,7 +119,7 @@ SELECT 'tenant isolation integration checks passed' AS result;
 
 -- Media ownership must be enforced by composite tenant foreign keys, not only API validation.
 INSERT INTO media_assets (tenant_id,media_type,storage_key,alt_text,width,height)
-VALUES (1,'other','tenant-1/other/ffffffffffffffffffffffffffffffffffffffff.jpg','tenant-one-media',64,64);
+VALUES (1,'product','tenant-1/product/ffffffffffffffffffffffffffffffffffffffff.jpg','tenant-one-media',64,64);
 SET @tenant_one_media = LAST_INSERT_ID();
 
 DELIMITER //
