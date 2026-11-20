@@ -116,7 +116,12 @@ function startFreeMovement(){
   try{
     freeWorld=buildFreeMovementWorld();const canvas=freeWorld.renderer.domElement;
     freeWorld.resizeHandler=()=>{if(!freeWorld)return;const width=Math.max(320,view.clientWidth),height=Math.max(210,view.clientHeight);freeWorld.camera.aspect=width/height;freeWorld.camera.updateProjectionMatrix();freeWorld.renderer.setSize(width,height);};
-    window.addEventListener("resize",freeWorld.resizeHandler);
+    if(typeof ResizeObserver==="function"){
+      freeWorld.resizeObserver=new ResizeObserver(()=>freeWorld?.resizeHandler?.());
+      freeWorld.resizeObserver.observe(view);
+    }else{
+      window.addEventListener("resize",freeWorld.resizeHandler);
+    }
     canvas.addEventListener("webglcontextlost",event=>{
       event.preventDefault();
       stopFreeMovement();
@@ -176,7 +181,13 @@ function stopFreeMovement(){
   cancelAnimationFrame(freeAnimationFrame);freeAnimationFrame=0;freeMovementKeys.clear();freePointerLook=null;
   const view=document.getElementById("aisleScene"),controls=document.getElementById("freeMovementControls");
   controls.hidden=true;view.classList.remove("free-movement-active","free-movement-fallback");view.querySelectorAll(".scene-hotspot").forEach(node=>node.hidden=false);
-  if(freeWorld){window.removeEventListener("resize",freeWorld.resizeHandler);freeWorld.renderer.dispose();freeWorld.renderer.domElement.remove();freeWorld.scene.traverse(object=>{if(object.geometry)object.geometry.dispose();if(object.material){const materials=Array.isArray(object.material)?object.material:[object.material];materials.forEach(material=>{if(material.map)material.map.dispose();material.dispose();});}});freeWorld=null;}
+  if(freeWorld){
+    freeWorld.resizeObserver?.disconnect();
+    if(freeWorld.resizeHandler)window.removeEventListener("resize",freeWorld.resizeHandler);
+    freeWorld.renderer.dispose();freeWorld.renderer.domElement.remove();
+    freeWorld.scene.traverse(object=>{if(object.geometry)object.geometry.dispose();if(object.material){const materials=Array.isArray(object.material)?object.material:[object.material];materials.forEach(material=>{if(material.map)material.map.dispose();material.dispose();});}});
+    freeWorld=null;
+  }
 }
 function refreshFreeMovementWorld(){
   if(movementMode==="free"&&freeWorld){stopFreeMovement();startFreeMovement();}
