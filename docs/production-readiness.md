@@ -20,8 +20,9 @@ The application code includes customer registration, catalogue management, inven
 
 ## SMS and payment
 
-- [ ] Set SMS_PROVIDER=kavenegar and configure the real KAVENEGAR_API_KEY and approved KAVENEGAR_VERIFY_TEMPLATE.
-- [ ] Confirm delivery, resend, expiry and rate-limit behaviour using a real phone before launch.
+- [ ] Choose one production OTP provider: configure Kavenegar's KAVENEGAR_API_KEY and approved KAVENEGAR_VERIFY_TEMPLATE, or select 0098 VIP in the platform panel and enter its sender, username and password. The 0098 credentials are encrypted at rest and must be tested with the verified platform-owner mobile.
+- [ ] Confirm delivery, resend, expiry and rate-limit behaviour using a real phone before launch. A successful 0098 response confirms provider acceptance, not handset delivery; check delivery reports separately when the provider makes them available.
+- [ ] The 0098 VIP adapter sends credentials in HTTPS query parameters as required by its supplied API contract. Disable full-URL logging in reverse proxies, outbound gateways and diagnostic tooling; never enable cURL verbose logging for SMS requests.
 - [ ] Apply `2026_11_06_platform_payment_settings.sql`; the platform owner enters the merchant ID in platform.php and selects Real mode. The credential is encrypted at rest and hidden from tenant managers/staff.
 - [ ] Keep APP_KEY stable and secret (it protects the encrypted merchant ID); register the exact HTTPS callback domain with the payment provider.
 - [ ] Complete sandbox and low-value live tests for success, cancellation, duplicate callbacks, delayed callbacks and provider outages.
