@@ -889,7 +889,7 @@ RACE_ORDER_IDS="$(php -r '
   echo $x;
 ' /tmp/sm360-checkout-race-a.json /tmp/sm360-checkout-race-b.json)"
 RACE_ORDER_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM orders WHERE tenant_id=1 AND id=$RACE_ORDER_IDS")"
-RACE_KEY_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM checkout_idempotency WHERE tenant_id=1 AND user_id=(SELECT id FROM users WHERE tenant_id=1 AND mobile='09120000992' LIMIT 1) AND idempotency_key='$RACE_KEY'")"
+RACE_KEY_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM checkout_idempotency WHERE tenant_id=1 AND user_id=(SELECT user_id FROM auth_sessions WHERE tenant_id=1 AND token_hash=SHA2(REPEAT('U',43),256) LIMIT 1) AND idempotency_key='$RACE_KEY'")"
 if [[ "$RACE_ORDER_COUNT" != "1" || "$RACE_KEY_COUNT" != "1" ]]; then
   echo "Concurrent checkout created duplicate order or idempotency records."
   exit 1
