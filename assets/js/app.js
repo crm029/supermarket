@@ -14,6 +14,7 @@ const escapeHTML=value=>String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;"
 const safeImageURL=value=>{try{const url=new URL(String(value),window.location.origin);return url.protocol==="https:"?url.href:"";}catch{return "";}};
 const cart=new Map();try{const saved=JSON.parse(localStorage.getItem("sm360_cart")||"[]");if(Array.isArray(saved))saved.forEach(([id,q])=>{if(Number.isInteger(Number(id))&&Number(id)>0&&Number.isInteger(Number(q))&&Number(q)>0&&Number(q)<=99)cart.set(Number(id),Number(q));});}catch(_){}let activeCategory="all";let aisleIndex=0;let zoom=1;
 let movementMode="guided";
+function syncMovementModeButtons(mode){document.querySelectorAll("[data-mode]").forEach(button=>{const selected=button.dataset.mode===mode;button.classList.toggle("active",selected);button.setAttribute("aria-pressed",selected?"true":"false");});}
 let freeWorld=null;
 let freeAnimationFrame=0;
 const freeMovementKeys=new Set();
@@ -111,7 +112,7 @@ function startFreeMovement(){
   const view=document.getElementById("aisleScene"),controls=document.getElementById("freeMovementControls");
   controls.hidden=false;view.classList.add("free-movement-active");view.classList.remove("free-movement-fallback");
   view.querySelectorAll(".scene-hotspot").forEach(node=>node.hidden=true);
-  if(!window.THREE){movementMode="tour";document.querySelectorAll("[data-mode]").forEach(button=>button.classList.toggle("active",button.dataset.mode==="tour"));view.classList.add("free-movement-fallback");controls.hidden=true;document.getElementById("freeMovementStatus").textContent="مرورگر امکان اجرای سه‌بعدی را فراهم نکرد؛ از تور تصویری و فلش‌های راهرو استفاده کن.";document.getElementById("modeHint").textContent="حالت سه‌بعدی روی این دستگاه در دسترس نیست؛ تور تصویری و راهنمای دسته‌ها همچنان فعال‌اند.";view.classList.remove("free-movement-active");return;}
+  if(!window.THREE){movementMode="tour";syncMovementModeButtons("tour");view.classList.add("free-movement-fallback");controls.hidden=true;document.getElementById("freeMovementStatus").textContent="مرورگر امکان اجرای سه‌بعدی را فراهم نکرد؛ از تور تصویری و فلش‌های راهرو استفاده کن.";document.getElementById("modeHint").textContent="حالت سه‌بعدی روی این دستگاه در دسترس نیست؛ تور تصویری و راهنمای دسته‌ها همچنان فعال‌اند.";view.classList.remove("free-movement-active");return;}
   if(freeWorld)return;
   try{
     freeWorld=buildFreeMovementWorld();const canvas=freeWorld.renderer.domElement;
@@ -126,7 +127,7 @@ function startFreeMovement(){
       event.preventDefault();
       stopFreeMovement();
       movementMode="tour";
-      document.querySelectorAll("[data-mode]").forEach(button=>button.classList.toggle("active",button.dataset.mode==="tour"));
+      syncMovementModeButtons("tour");
       view.classList.add("free-movement-fallback");
       document.getElementById("modeHint").textContent="ارتباط گرافیکی سه‌بعدی مرورگر قطع شد؛ برای ادامه از تور تصویری و راهنمای دسته‌ها استفاده کن.";
       document.getElementById("freeMovementStatus").textContent="حالت سه‌بعدی موقتاً در دسترس نیست.";
@@ -185,7 +186,7 @@ function startFreeMovement(){
       freeWorld.renderer.render(freeWorld.scene,freeWorld.camera);
     };
     animate();
-  }catch(error){stopFreeMovement();movementMode="tour";document.querySelectorAll("[data-mode]").forEach(button=>button.classList.toggle("active",button.dataset.mode==="tour"));view.classList.add("free-movement-fallback");document.getElementById("modeHint").textContent="اجرای سه‌بعدی در این دستگاه ممکن نشد؛ از تور تصویری یا راهنمای دسته‌ها استفاده کن.";console.warn("3D store mode unavailable",error);}
+  }catch(error){stopFreeMovement();movementMode="tour";syncMovementModeButtons("tour");view.classList.add("free-movement-fallback");document.getElementById("modeHint").textContent="اجرای سه‌بعدی در این دستگاه ممکن نشد؛ از تور تصویری یا راهنمای دسته‌ها استفاده کن.";console.warn("3D store mode unavailable",error);}
 }
 function stopFreeMovement(){
   cancelAnimationFrame(freeAnimationFrame);freeAnimationFrame=0;freeMovementKeys.clear();freePointerLook=null;
@@ -304,7 +305,7 @@ document.getElementById("prevAisle").addEventListener("click",()=>{if(publicScen
 document.getElementById("nextAisle").addEventListener("click",()=>{if(publicScenes.length){currentScene=(currentScene+1)%publicScenes.length;renderScenes();return;}const keys=Object.keys(categoryNames);selectCategory(keys[(aisleIndex+1)%keys.length]);});
 function setMovementMode(mode){
   movementMode=mode;
-  document.querySelectorAll("[data-mode]").forEach(button=>button.classList.toggle("active",button.dataset.mode===mode));
+  syncMovementModeButtons(mode);
   const hints={guided:"با انتخاب هر دسته، به قفسه مربوط هدایت می‌شی.",tour:"با کشیدن تصویر می‌تونی محیط واقعی فروشگاه رو تماشا کنی و نقاط راهنما رو انتخاب کنی.",free:"در سه راهروی متصل حرکت کن؛ برای رفتن به راهروی کناری از مسیر عرضی ابتدا یا انتهای فروشگاه عبور کن."};
   document.getElementById("modeHint").textContent=hints[mode];
   if(mode==="free")startFreeMovement();else stopFreeMovement();
