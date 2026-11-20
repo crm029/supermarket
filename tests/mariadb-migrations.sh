@@ -25,6 +25,7 @@ migrations=(
   2026_11_05_customer_address_management.sql
   2026_11_05_barcode_stock_thresholds.sql
   2026_11_05_media_cleanup_queue.sql
+  2026_11_20_media_orphan_reviews.sql
   2026_11_05_delivery_zones.sql
   2026_11_05_pickup_slots.sql
   2026_11_05_coupons.sql
