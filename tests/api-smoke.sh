@@ -7,6 +7,7 @@ HEADERS="/tmp/supermarket-api-headers.txt"
 TOKEN="$(printf 'S%.0s' {1..43})"
 CSRF="$(printf 'C%.0s' {1..43})"
 UNPRIVILEGED_TOKEN="$(printf 'T%.0s' {1..43})"
+UNPRIVILEGED_CSRF="$(printf 'D%.0s' {1..43})"
 CUSTOMER_TOKEN="$(printf 'U%.0s' {1..43})"
 CUSTOMER_CSRF="$(printf 'W%.0s' {1..43})"
 CHECKOUT_IDEMPOTENCY_KEY="ci-checkout-key-000000000001"
@@ -708,6 +709,22 @@ request POST /checkout 403 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}]
 request PUT "/platform/plans/$UPGRADE_PLAN_ID" 200 '{"name":"پلن حرفه‌ای تست","description":"پلن ارتقای API","monthly_price_rial":150000,"limits":{"products":10000,"staff":1000,"media_assets":10000,"monthly_orders":10000,"storage_bytes":10000000000},"is_active":true}' "$TOKEN" "$CSRF"
 request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2,"price_rial":1,"unit_price_rial":1,"line_total_rial":2}],"fulfillment":"delivery","address_id":'$ADDRESS_ID',"subtotal_rial":2,"delivery_fee_rial":0,"total_rial":2}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 ORDER_ID="$(assert_json order-created)"
+
+# Tenant two has valid manager permissions, but must not read or mutate tenant-one records.
+CROSS_TENANT_PRODUCT_TITLE_BEFORE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT title FROM products WHERE tenant_id=1 AND id=$PRODUCT_ID")"
+CROSS_TENANT_STOCK_BEFORE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT on_hand FROM stock_levels WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
+request GET "/me/orders/$ORDER_ID" 404 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
+request POST "/me/orders/$ORDER_ID/cancel" 404 "" "$UNPRIVILEGED_TOKEN" "$UNPRIVILEGED_CSRF" tenant-two.localhost
+request POST "/admin/orders/$ORDER_ID/transition" 404 '{"status":"accepted"}' "$UNPRIVILEGED_TOKEN" "$UNPRIVILEGED_CSRF" tenant-two.localhost
+request PATCH "/admin/products/$PRODUCT_ID" 404 '{"title":"تغییر غیرمجاز از فروشگاه دوم"}' "$UNPRIVILEGED_TOKEN" "$UNPRIVILEGED_CSRF" tenant-two.localhost
+request POST /admin/stock/receipts 422 '{"warehouse_id":1,"product_id":'$PRODUCT_ID',"quantity":99,"reason":"نباید از فروشگاه دیگر موجودی ثبت شود"}' "$UNPRIVILEGED_TOKEN" "$UNPRIVILEGED_CSRF" tenant-two.localhost
+CROSS_TENANT_PRODUCT_TITLE_AFTER="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT title FROM products WHERE tenant_id=1 AND id=$PRODUCT_ID")"
+CROSS_TENANT_STOCK_AFTER="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT on_hand FROM stock_levels WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
+if [[ "$CROSS_TENANT_PRODUCT_TITLE_AFTER" != "$CROSS_TENANT_PRODUCT_TITLE_BEFORE" || "$CROSS_TENANT_STOCK_AFTER" != "$CROSS_TENANT_STOCK_BEFORE" ]]; then
+  echo "Tenant-two API request modified tenant-one product or stock data."
+  exit 1
+fi
+
 request GET /me/notifications 200 "" "$CUSTOMER_TOKEN"
 assert_json order-notification
 NOTIFICATION_ID="$(assert_json notification-id)"
