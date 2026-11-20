@@ -12,25 +12,25 @@ A multi-tenant, white-label supermarket commerce platform with an immersive virt
 
 ## Current repository status
 
-The repository contains a substantial tenant-aware PHP commerce platform and an immersive virtual-storefront experience. The latest main-branch CI runs for PHP syntax and quality/security checks are passing. This is still an active development build and is **not approved for production launch** until real hosting, provider acceptance and operational release gates are completed.
+The repository contains a substantial tenant-aware PHP commerce platform and an immersive virtual-storefront experience. The repository includes PHP/JavaScript linting plus MySQL 8 and MariaDB 10.11 integration gates; check the Actions tab for the latest run status. This is still an active development build and is **not approved for production launch** until real hosting, provider acceptance and operational release gates are completed.
 
 Implemented and covered by repository tests:
 - Persian RTL responsive storefront with guided category navigation, photo-tour scenes, interactive hotspots and optional WebGL free movement through live category shelves, with a non-WebGL fallback.
 - Central MySQL multi-tenant architecture, verified-host tenant resolution, composite tenant-scope constraints and cross-tenant negative tests.
 - Platform-owner OTP access, tenant provisioning, one-time DNS TXT domain ownership challenges, tenant listing and audited platform actions.
 - Tenant-aware product/category SEO, canonical URLs, structured data, paginated category pages, sitemap index/product shards, robots rules and private-source path protection.
-- OTP registration/login foundation, rate limiting, hashed challenges, database-backed sessions, HttpOnly cookies and CSRF protection; Kavenegar Verify Lookup adapter is available when real credentials are configured.
+- OTP registration/login with rate limiting, hashed challenges, database-backed sessions, HttpOnly cookies and CSRF protection; registration profile/referral data is only attached after OTP verification. Kavenegar and platform-configured 0098 VIP SMS adapters are available when real credentials are configured.
 - Deny-by-default tenant permissions, seller dashboard, staff roles, permission management and audited catalogue operations.
 - Tenant media library, scene/hotspot authoring, read-only storage reconciliation (orphan/missing-file detection with CI coverage), multi-warehouse inventory, transfers/adjustments, supplier purchasing and returns, FEFO batch/expiry tracking, low-stock alerts and stock reservation workers.
 - Server-validated persistent carts, customer addresses, delivery zones, scheduled pickup, coupons, transactional checkout, order history/cancellation and guarded fulfilment transitions.
 - Picker/courier/pickup-handoff assignments, recipient-confirmed delivery and in-person pickup, customer shipment timeline, operational dashboard KPIs and in-app notifications.
-- ZarinPal v4 adapter with idempotent server-side verification, encrypted platform-owner-only merchant credentials and Sandbox/Real controls.
+- ZarinPal v4 adapter with idempotent server-side verification, encrypted platform-owner-only merchant credentials, tenant-specific verified-domain callbacks, gateway-mode snapshots and a manual-review state for uncertain provider outcomes.
 - Append-only wallet ledger, customer wallet checkout, idempotent settlement, transactional inventory commit, audited full-order wallet-credit refunds and first-paid-order referral rewards.
 - GitHub Actions PHP/JavaScript validation and MySQL-backed schema, tenant isolation, authentication, commerce, wallet/referral, SEO and API integration checks.
 
 Still in progress or requiring real-environment acceptance:
 - POS software release is implemented and CI-tested: cashier page/API, shift opening/closing and cash reconciliation, barcode/SKU search, server-priced FEFO cash sales, idempotency, manager reports, audited cash refunds, returned-item inspection/restock-or-reject, and browser thermal receipt layouts for 58mm/80mm. Physical printer/scanner/acquirer acceptance is an optional merchant rollout check; direct ESC/POS, vendor SDK and bank-terminal integrations remain future work.
-- Real SMS account/template configuration, live-phone delivery and delivery-report acceptance.
+- Real 0098 VIP/Kavenegar account configuration, live-phone delivery and delivery-report acceptance; 0098 VIP credentials are sent in the provider-required HTTPS query parameters, so infrastructure URL logging must be disabled.
 - Real ZarinPal sandbox/live transactions, settlement reconciliation and bank/gateway refund procedures.
 - Advanced referral fraud controls and merchant reward-policy approval.
 - Real-store photography, final media/CDN delivery and image-performance review; schedule `php scripts/reconcile-media.php` daily and alert on exit code 2 to detect storage/database drift.
@@ -57,7 +57,7 @@ Still in progress or requiring real-environment acceptance:
 - Visual demo: place the repository in XAMPP's `htdocs` and open the project root.
 - API: requires PHP 8.2+ with PDO MySQL, mbstring, cURL, OpenSSL and fileinfo; production domain onboarding also requires PHP DNS TXT lookup. See `docs/local-setup.md`.
 - Optional sample database: import `database/schema.sql`, then `database/demo-seed.sql` into a fresh local database. The sample domain is `localhost`.
-- Apply every database migration in filename order after importing the base schema and demo seed. The authoritative current migration sequence and setup commands are maintained in `docs/local-setup.md`.
+- Apply every database migration in the dependency-verified order in `docs/local-setup.md`; do not sort migrations by filename.
 
 ## Documentation
 
@@ -68,7 +68,7 @@ Still in progress or requiring real-environment acceptance:
 - `docs/tenant-onboarding.md` — merchant onboarding.
 - `docs/quality-gates.md` — release acceptance gates.
 - `docs/security.md` — security principles.
-- `docs/security-audit-2026-11-06.md` — current source-level security review and remaining production blockers.
+- `docs/security-audit-2026-11-20.md` — latest source-level security re-review and remaining production blockers.
 - `docs/roadmap.md` — delivery status.
 - `docs/seo.md` — tenant-aware SEO implementation and merchant launch checklist.
 
@@ -85,7 +85,7 @@ Real merchant photography, production domains, SMS credentials and payment-gatew
 - Customer registration uses mobile OTP; the development-only log provider is not a production SMS service.
 - ZarinPal merchant credentials and Sandbox/Real selection are configured only by the platform owner in `platform.php`; the merchant ID is encrypted at rest and never returned in full by the API.
 - Checkout validates the cart on the server, saves the customer's delivery address, creates a pending-payment order and reserves stock for 20 minutes.
-- Configure the ZarinPal merchant ID and exact public callback origin before testing payment. See docs/local-setup.md.
+- Configure the ZarinPal merchant ID and verify that every tenant has a verified primary HTTPS domain for its callback. Uncertain payment attempts enter `review` and must be reconciled with the provider before another attempt. See docs/local-setup.md.
 - Schedule bin/expire-reservations.php every minute to release stock for unpaid orders.
 - Apply database/migrations/2026_11_06_notifications.sql after tenant isolation to enable the in-app inbox. Order creation, payment verification, status changes, assignments, task completion and customer cancellations create idempotent notifications.
 - Customers and staff can open notifications.php to view their own messages and mark them read.
