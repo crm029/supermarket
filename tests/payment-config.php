@@ -41,6 +41,10 @@ try {
     $invalidTenantHostRejected = true;
 }
 if (!$invalidTenantHostRejected) throw new RuntimeException('Unsafe tenant callback host was accepted.');
+$localTenantConfig = app_payment_config(null, null, 'localhost');
+if ($localTenantConfig['callback_url'] !== 'https://localhost/subdir/api/v1/payments/zarinpal/callback') {
+    throw new RuntimeException('Local XAMPP sandbox callback host was not supported.');
+}
 
 $encrypted = app_payment_merchant_encrypt('merchant-secret-1234');
 if (app_payment_merchant_decrypt($encrypted) !== 'merchant-secret-1234' || str_contains($encrypted, 'merchant-secret-1234')) {
