@@ -372,6 +372,17 @@ function app_payment_authority_is_valid(string $authority, string $mode): bool {
     return $mode !== 'sandbox' || str_starts_with($authority, 'S');
 }
 
+function app_payment_order_has_late_settlement(PDO $db, int $tenantId, int $orderId): bool {
+    $stmt = $db->prepare(
+        "SELECT 1 FROM audit_logs
+         WHERE tenant_id=? AND action='payment.paid_without_active_reservation'
+           AND entity_type='order' AND entity_id=?
+         LIMIT 1"
+    );
+    $stmt->execute([$tenantId,$orderId]);
+    return (bool)$stmt->fetchColumn();
+}
+
 function app_payment_callback(PDO $db, array $tenant): never {
     $authority = trim((string)($_GET['Authority'] ?? ''));
     $status = strtoupper(trim((string)($_GET['Status'] ?? '')));
@@ -391,7 +402,10 @@ function app_payment_callback(PDO $db, array $tenant): never {
         app_payment_redirect_result('failed');
     }
     if ($attempt['status'] === 'verified') {
-        app_payment_redirect_result('success', (int)$attempt['order_id']);
+        $result = app_payment_order_has_late_settlement($db, (int)$tenant['id'], (int)$attempt['order_id'])
+            ? 'review'
+            : 'success';
+        app_payment_redirect_result($result, (int)$attempt['order_id']);
     }
     if ($status !== 'OK') {
         $fail = $db->prepare("UPDATE payment_attempts SET status = 'failed' WHERE id = ? AND status <> 'verified'");
@@ -462,7 +476,7 @@ function app_payment_callback(PDO $db, array $tenant): never {
                 'پرداخت سفارش دریافت شد',$paymentBody,'order',(int)$order['id']);
         }
         $db->commit();
-        app_payment_redirect_result('success', (int)$order['id']);
+        app_payment_redirect_result($reservationResult['committed'] ? 'success' : 'review', (int)$order['id']);
     } catch (Throwable $e) {
         if ($db->inTransaction()) $db->rollBack();
         error_log('[supermarket360-payment-callback] ' . $e->getMessage());
