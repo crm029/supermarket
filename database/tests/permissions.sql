@@ -98,4 +98,32 @@ CALL assert_tenant_permission_is_scoped();
 DROP PROCEDURE assert_platform_permission_rejected;
 DROP PROCEDURE assert_tenant_permission_is_scoped;
 
+
+-- A global platform role must never inherit tenant-scoped permissions.
+INSERT INTO roles (tenant_id, role_key, title)
+VALUES (NULL, 'global_scope_negative_test', 'آزمون نقش سراسری');
+SET @global_scope_role = LAST_INSERT_ID();
+
+DELIMITER //
+CREATE PROCEDURE assert_global_role_cannot_receive_tenant_permission()
+BEGIN
+  DECLARE rejected BOOLEAN DEFAULT FALSE;
+  BEGIN
+    DECLARE CONTINUE HANDLER FOR SQLSTATE '45000' SET rejected = TRUE;
+    INSERT INTO role_permissions (role_scope_id, role_id, permission_id)
+    SELECT 0, @global_scope_role, id
+    FROM permissions
+    WHERE permission_key = 'catalog.products.manage' AND scope = 'tenant';
+  END;
+  IF rejected = FALSE THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Global platform role accepted a tenant-scoped permission';
+  END IF;
+END//
+DELIMITER ;
+
+CALL assert_global_role_cannot_receive_tenant_permission();
+DROP PROCEDURE assert_global_role_cannot_receive_tenant_permission;
+DELETE FROM roles WHERE id = @global_scope_role;
+
 SELECT 'permission model integration checks passed' AS result;
