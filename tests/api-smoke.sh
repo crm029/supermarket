@@ -185,6 +185,10 @@ assert_json() {
       exit(0);
     }
     if ($check === "staff-list") { if (!is_array($data["data"]["roles"] ?? null) || !is_array($data["data"]["staff"] ?? null)) exit(1); exit(0); }
+    if ($check === "tenant-media-empty" || $check === "tenant-scenes-empty") {
+      if (!array_key_exists("data", $data) || !is_array($data["data"]) || count($data["data"]) !== 0) exit(1);
+      exit(0);
+    }
     if ($check === "media-library") {
       $items = $data["data"] ?? [];
       if (!is_array($items) || count($items) < 2) exit(1);
@@ -718,6 +722,12 @@ request POST "/me/orders/$ORDER_ID/cancel" 404 "" "$UNPRIVILEGED_TOKEN" "$UNPRIV
 request POST "/admin/orders/$ORDER_ID/transition" 404 '{"status":"accepted"}' "$UNPRIVILEGED_TOKEN" "$UNPRIVILEGED_CSRF" tenant-two.localhost
 request PATCH "/admin/products/$PRODUCT_ID" 404 '{"title":"تغییر غیرمجاز از فروشگاه دوم"}' "$UNPRIVILEGED_TOKEN" "$UNPRIVILEGED_CSRF" tenant-two.localhost
 request POST /admin/stock/receipts 422 '{"warehouse_id":1,"product_id":'$PRODUCT_ID',"quantity":99,"reason":"نباید از فروشگاه دیگر موجودی ثبت شود"}' "$UNPRIVILEGED_TOKEN" "$UNPRIVILEGED_CSRF" tenant-two.localhost
+request GET /admin/media 200 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
+assert_json tenant-media-empty
+request GET /admin/scenes 200 "" "$UNPRIVILEGED_TOKEN" "" tenant-two.localhost
+assert_json tenant-scenes-empty
+request GET /scenes 200 "" "" "" tenant-two.localhost
+assert_json tenant-scenes-empty
 CROSS_TENANT_PRODUCT_TITLE_AFTER="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT title FROM products WHERE tenant_id=1 AND id=$PRODUCT_ID")"
 CROSS_TENANT_STOCK_AFTER="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT on_hand FROM stock_levels WHERE tenant_id=1 AND warehouse_id=1 AND product_id=$PRODUCT_ID")"
 if [[ "$CROSS_TENANT_PRODUCT_TITLE_AFTER" != "$CROSS_TENANT_PRODUCT_TITLE_BEFORE" || "$CROSS_TENANT_STOCK_AFTER" != "$CROSS_TENANT_STOCK_BEFORE" ]]; then
