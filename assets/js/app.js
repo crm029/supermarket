@@ -151,8 +151,18 @@ function startFreeMovement(){
       if(button.dataset.moveBound==="1")return;
       button.dataset.moveBound="1";
       const key=moveMap[button.dataset.move];
-      button.addEventListener("pointerdown",event=>{event.preventDefault();freeMovementKeys.add(key);});
-      ["pointerup","pointercancel","pointerleave"].forEach(type=>button.addEventListener(type,()=>freeMovementKeys.delete(key)));
+      button.addEventListener("pointerdown",event=>{
+        event.preventDefault();
+        freeMovementKeys.add(key);
+        try{button.setPointerCapture(event.pointerId);}catch(_){}
+      });
+      const releaseMoveKey=event=>{
+        freeMovementKeys.delete(key);
+        if(event?.pointerId!==undefined&&button.hasPointerCapture?.(event.pointerId)){
+          try{button.releasePointerCapture(event.pointerId);}catch(_){}
+        }
+      };
+      ["pointerup","pointercancel","lostpointercapture"].forEach(type=>button.addEventListener(type,releaseMoveKey));
     });
     focusFreeCategory(activeCategory==="all"?(Object.keys(freeCategoryPositions)[0]||"dairy"):activeCategory);
     const animate=()=>{
