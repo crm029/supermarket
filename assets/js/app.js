@@ -739,6 +739,22 @@ document.getElementById("registerButton").addEventListener("click", async () => 
 document.getElementById("requestOtpButton").addEventListener("click", async () => {
   try { await requestOtp(); } catch (error) { setFormMessage("accountMessage", error.message, "error"); }
 });
+async function completePendingRegistrationProfile() {
+  const name = document.getElementById("accountName").value.trim();
+  const referralCode = document.getElementById("accountReferral").value.trim();
+  if (!name) {
+    setFormMessage("accountMessage", "شماره تأیید شد؛ برای تکمیل ثبت‌نام نام و نام خانوادگی را وارد کن.", "error");
+    return false;
+  }
+  const result = await apiPost("auth/complete-registration", {
+    full_name: name,
+    referral_code: referralCode
+  }, true);
+  currentUser = result.data?.user || currentUser;
+  document.getElementById("completeRegistrationButton").hidden = true;
+  return true;
+}
+
 document.getElementById("verifyOtpButton").addEventListener("click", async () => {
   try {
     const result=await apiPost("auth/verify-otp",{
@@ -747,9 +763,27 @@ document.getElementById("verifyOtpButton").addEventListener("click", async () =>
     });
     csrfToken=result.data?.csrf_token||"";
     currentUser=result.data?.user||null;
+    if (currentUser?.full_name === "کاربر جدید") {
+      document.getElementById("completeRegistrationButton").hidden = false;
+      try {
+        if (!(await completePendingRegistrationProfile())) return;
+      } catch (error) {
+        setFormMessage("accountMessage", error.message, "error");
+        return;
+      }
+    }
     document.getElementById("accountButton").textContent=currentUser?.full_name||"حساب کاربری";
     document.getElementById("ordersButton").hidden=false;
     setFormMessage("accountMessage","ورود با موفقیت انجام شد.","success");
+    if(pendingCheckout){pendingCheckout=false;document.getElementById("accountDialog").close();startCheckout();}
+  } catch(error){setFormMessage("accountMessage",error.message,"error");}
+});
+document.getElementById("completeRegistrationButton").addEventListener("click", async () => {
+  try {
+    if (!(await completePendingRegistrationProfile())) return;
+    document.getElementById("accountButton").textContent=currentUser?.full_name||"حساب کاربری";
+    document.getElementById("ordersButton").hidden=false;
+    setFormMessage("accountMessage","ثبت‌نام با موفقیت تکمیل شد.","success");
     if(pendingCheckout){pendingCheckout=false;document.getElementById("accountDialog").close();startCheckout();}
   } catch(error){setFormMessage("accountMessage",error.message,"error");}
 });
