@@ -372,6 +372,10 @@ function app_payment_authority_is_valid(string $authority, string $mode): bool {
     return $mode !== 'sandbox' || str_starts_with($authority, 'S');
 }
 
+function app_payment_verified_result(bool $lateSettlement): string {
+    return $lateSettlement ? 'review' : 'success';
+}
+
 function app_payment_order_has_late_settlement(PDO $db, int $tenantId, int $orderId): bool {
     $stmt = $db->prepare(
         "SELECT 1 FROM audit_logs
@@ -402,9 +406,9 @@ function app_payment_callback(PDO $db, array $tenant): never {
         app_payment_redirect_result('failed');
     }
     if ($attempt['status'] === 'verified') {
-        $result = app_payment_order_has_late_settlement($db, (int)$tenant['id'], (int)$attempt['order_id'])
-            ? 'review'
-            : 'success';
+        $result = app_payment_verified_result(
+            app_payment_order_has_late_settlement($db, (int)$tenant['id'], (int)$attempt['order_id'])
+        );
         app_payment_redirect_result($result, (int)$attempt['order_id']);
     }
     if ($status !== 'OK') {
@@ -440,8 +444,13 @@ function app_payment_callback(PDO $db, array $tenant): never {
         $lockedAttempt = $lockAttempt->fetch();
         if (!$lockedAttempt) throw new RuntimeException('Payment attempt disappeared.');
         if ($lockedAttempt['status'] === 'verified') {
+            $lateSettlement = app_payment_order_has_late_settlement(
+                $db, (int)$tenant['id'], (int)$attempt['order_id']
+            );
             $db->commit();
-            app_payment_redirect_result('success', (int)$attempt['order_id']);
+            app_payment_redirect_result(
+                app_payment_verified_result($lateSettlement), (int)$attempt['order_id']
+            );
         }
 
         $reservationResult=app_stock_commit_order_reservations(
