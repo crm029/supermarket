@@ -11,6 +11,7 @@ migrations=(
   2026_11_05_permissions.sql
   2026_11_06_platform_payment_settings.sql
   2026_11_20_payment_attempt_review.sql
+  2026_11_20_checkout_idempotency.sql
   2026_11_20_platform_sms_settings.sql
   2026_11_19_platform_subscriptions.sql
   2026_11_19_subscription_plan_changes.sql
