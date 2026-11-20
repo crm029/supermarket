@@ -25,7 +25,7 @@ The application code includes customer registration, catalogue management, inven
 - [ ] The 0098 VIP adapter sends credentials in HTTPS query parameters as required by its supplied API contract. Disable full-URL logging in reverse proxies, outbound gateways and diagnostic tooling; never enable cURL verbose logging for SMS requests.
 - [ ] Apply `2026_11_06_platform_payment_settings.sql`; the platform owner enters the merchant ID in platform.php and selects Real mode. The credential is encrypted at rest and hidden from tenant managers/staff.
 - [ ] Keep APP_KEY stable and secret (it protects encrypted merchant and SMS credentials); back it up securely because changing it without re-encrypting stored credentials makes them unreadable. Register each tenant's verified primary HTTPS domain as the payment callback host and confirm DNS/TLS for every merchant domain.
-- [ ] Complete sandbox and low-value live tests for success, cancellation, duplicate callbacks, delayed callbacks and provider outages.
+- [ ] Complete sandbox and low-value live tests for success, cancellation, duplicate callbacks, delayed callbacks and provider outages. Any payment attempt left in `review` has an unknown external outcome and must be reconciled with the ZarinPal merchant dashboard before a retry; do not clear or retry it blindly.
 - [ ] Configure settlement reconciliation and a separate external gateway refund procedure; the internal wallet-credit refund flow does not reverse bank or ZarinPal payments.
 
 ## Refunds and wallet ledger
