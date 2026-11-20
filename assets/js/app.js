@@ -11,7 +11,7 @@ let products=[
 let categoryNames={all:"همه محصولات",dairy:"لبنیات و صبحانه",grocery:"خواربار و مواد غذایی",snacks:"تنقلات و خوراکی",drinks:"نوشیدنی‌ها",cleaning:"شوینده و بهداشتی",frozen:"مواد غذایی منجمد",fruit:"میوه و سبزیجات"};
 const money=n=>new Intl.NumberFormat("fa-IR").format(n)+" تومان";
 const escapeHTML=value=>String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
-const safeImageURL=value=>{try{const url=new URL(String(value),window.location.origin);return url.protocol==="https:"?url.href:"";}catch{return "";}};
+const safeImageURL=value=>{try{const url=new URL(String(value),window.location.origin);const isSecure=url.protocol==="https:";const isSameOrigin=url.origin===window.location.origin;return isSecure||isSameOrigin?url.href:"";}catch{return "";}};
 const cart=new Map();try{const saved=JSON.parse(localStorage.getItem("sm360_cart")||"[]");if(Array.isArray(saved))saved.forEach(([id,q])=>{if(Number.isInteger(Number(id))&&Number(id)>0&&Number.isInteger(Number(q))&&Number(q)>0&&Number(q)<=99)cart.set(Number(id),Number(q));});}catch(_){}let activeCategory="all";let aisleIndex=0;let zoom=1;
 let movementMode="guided";
 function syncMovementModeButtons(mode){document.querySelectorAll("[data-mode]").forEach(button=>{const selected=button.dataset.mode===mode;button.classList.toggle("active",selected);button.setAttribute("aria-pressed",selected?"true":"false");});}
