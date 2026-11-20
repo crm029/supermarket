@@ -673,8 +673,10 @@ assert_json category-seo-update
 request GET "/products/$PRODUCT_ID" 404 "" "" "" "tenant-two.localhost"
 
 
-request POST /cart/quote 200 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2}]}' 
+request POST /cart/quote 200 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":2,"price_rial":1,"unit_price_rial":1,"line_total_rial":2}],"subtotal_rial":2,"total_rial":2}' 
 assert_json cart-quote
+request POST /cart/quote 422 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":0}]}'
+request POST /cart/quote 422 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":60},{"product_id":'$PRODUCT_ID',"quantity":40}]}'
 request GET /me/wallet 200 "" "$CUSTOMER_TOKEN"
 assert_json wallet-summary
 request GET /me/cart 200 "" "$CUSTOMER_TOKEN"
