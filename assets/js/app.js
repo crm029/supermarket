@@ -577,8 +577,9 @@ function renderCategories(categories) {
 function renderScenes() {
   const scene = publicScenes[currentScene];
   const view = document.getElementById("aisleScene");
-  if (!scene || !scene.media || !scene.media.url) return;
-  const url = safeImageURL(scene.media.url);
+  if (!scene) return;
+  // Prefer the primary scene image, but retain the merchant-configured fallback.
+  const url = safeImageURL(scene.media?.url) || safeImageURL(scene.fallback_media?.url);
   if (!url) return;
   view.style.backgroundImage = "linear-gradient(180deg,#ffffff00 55%,#17241c88),url('" + url.replace(/'/g, "%27") + "')";
   view.style.backgroundSize = scene.scene_type === "panorama" ? "200% 100%" : "cover";
