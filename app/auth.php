@@ -266,8 +266,8 @@ function app_auth_complete_registration(PDO $db, array $tenant, array $session):
 
 function app_auth_refresh_csrf(PDO $db, array $session): never {
     $csrf = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
-    $stmt = $db->prepare('UPDATE auth_sessions SET csrf_hash = ? WHERE id = ? AND revoked_at IS NULL');
-    $stmt->execute([hash('sha256', $csrf), $session['session_id']]);
+    $stmt = $db->prepare('UPDATE auth_sessions SET csrf_hash = ? WHERE tenant_id = ? AND id = ? AND revoked_at IS NULL');
+    $stmt->execute([hash('sha256', $csrf), $session['tenant_id'], $session['session_id']]);
     app_json(['data' => ['csrf_token' => $csrf]]);
 }
 
@@ -464,7 +464,7 @@ function app_auth_current(PDO $db, array $tenant): ?array {
     if (!preg_match('/^[A-Za-z0-9_-]{43}$/', $token)) return null;
 
     $stmt = $db->prepare(
-        "SELECT s.id AS session_id, s.csrf_hash, u.id, u.full_name, u.mobile, u.mobile_verified_at, u.referral_code
+        "SELECT s.id AS session_id, s.tenant_id, s.csrf_hash, u.id, u.full_name, u.mobile, u.mobile_verified_at, u.referral_code
          FROM auth_sessions s
          JOIN users u ON u.id = s.user_id AND u.tenant_id = s.tenant_id
          WHERE s.tenant_id = ? AND s.token_hash = ? AND s.revoked_at IS NULL
@@ -475,8 +475,8 @@ function app_auth_current(PDO $db, array $tenant): ?array {
     $session = $stmt->fetch();
     if (!$session) return null;
 
-    $touch = $db->prepare('UPDATE auth_sessions SET last_seen_at = UTC_TIMESTAMP() WHERE id = ?');
-    $touch->execute([$session['session_id']]);
+    $touch = $db->prepare('UPDATE auth_sessions SET last_seen_at = UTC_TIMESTAMP() WHERE tenant_id = ? AND id = ?');
+    $touch->execute([$tenant['id'], $session['session_id']]);
     return $session;
 }
 
@@ -494,8 +494,8 @@ function app_auth_require_csrf(array $session): void {
 }
 
 function app_auth_logout(PDO $db, array $session): never {
-    $stmt = $db->prepare('UPDATE auth_sessions SET revoked_at = UTC_TIMESTAMP() WHERE id = ? AND revoked_at IS NULL');
-    $stmt->execute([$session['session_id']]);
+    $stmt = $db->prepare('UPDATE auth_sessions SET revoked_at = UTC_TIMESTAMP() WHERE tenant_id = ? AND id = ? AND revoked_at IS NULL');
+    $stmt->execute([$session['tenant_id'], $session['session_id']]);
     setcookie('sm_session', '', [
         'expires' => time() - 3600,
         'path' => '/',
