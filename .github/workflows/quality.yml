@@ -303,7 +303,7 @@ jobs:
           printf 'known' > /tmp/supermarket-media-reconcile/tenant-1/product/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg
           # The tenant-isolation SQL fixture registers this media row; give it a matching file
           # so this test only counts the deliberately missing product fixture below.
-          printf 'tenant fixture' > /tmp/supermarket-media-reconcile/tenant-1/other/tenant-isolation-media.jpg
+          printf 'tenant fixture' > /tmp/supermarket-media-reconcile/tenant-1/other/ffffffffffffffffffffffffffffffff.jpg
           printf 'orphan' > /tmp/supermarket-media-reconcile/tenant-1/product/cccccccccccccccccccccccccccccccccccccccc.webp
           printf 'queued' > /tmp/supermarket-media-reconcile/tenant-1/product/dddddddddddddddddddddddddddddddddddddddd.png
           ln -s /etc/hosts /tmp/supermarket-media-reconcile/tenant-1/product/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee.jpg
