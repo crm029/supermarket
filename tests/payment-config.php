@@ -39,6 +39,24 @@ $snapshot = app_payment_config(null, ['gateway_mode' => 'sandbox', 'merchant_id_
 if ($snapshot['merchant_id'] !== 'merchant-secret-1234' || $snapshot['mode'] !== 'sandbox') {
     throw new RuntimeException('Payment attempt credential snapshot was not restored correctly.');
 }
+if (app_payment_attempt_action(null) !== 'create' ||
+    app_payment_attempt_action(['status' => 'created']) !== 'pending' ||
+    app_payment_attempt_action(['status' => 'redirected', 'authority' => 'S123456']) !== 'reuse' ||
+    app_payment_attempt_action(['status' => 'verified']) !== 'paid' ||
+    app_payment_attempt_action(['status' => 'failed']) !== 'create') {
+    throw new RuntimeException('Payment attempt idempotency state handling is incorrect.');
+}
+putenv('APP_ENV=production');
+putenv('APP_BASE_URL=https://market.example');
+putenv('ZARINPAL_SANDBOX=false');
+$snapshotAfterModeSwitch = app_payment_config(null, [
+    'gateway_mode' => 'sandbox',
+    'merchant_id_encrypted' => $encrypted,
+]);
+if ($snapshotAfterModeSwitch['mode'] !== 'sandbox' ||
+    $snapshotAfterModeSwitch['start_pay'] !== 'https://sandbox.zarinpal.com/pg/StartPay/') {
+    throw new RuntimeException('Existing sandbox payment attempt did not preserve its original gateway environment.');
+}
 
 putenv('APP_ENV=testing');
 putenv('ZARINPAL_SANDBOX=false');
