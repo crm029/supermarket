@@ -16,6 +16,10 @@ The registration endpoint now creates a neutral pending profile without persisti
 
 The payment-start endpoint now treats a recent `created` attempt as in-flight and returns HTTP 409 rather than issuing another provider request. A previously redirected attempt is resumed using the gateway mode and encrypted merchant snapshot recorded on that attempt, not the platform's potentially changed current mode.
 
+### Uncertain payment outcome and retry safety
+
+A provider request can be accepted even when the application loses the response. Such a request must not be silently marked failed and retried, because the external payment outcome may be unknown. Stale in-flight attempts and transport exceptions now enter a dedicated `review` state; new attempts are blocked until an operator reconciles the attempt with the provider dashboard. Explicit provider rejections remain failed.
+
 ### Multi-tenant payment callback host
 
 Payment callback URLs are now built using the tenant's verified primary domain. This prevents a shared global application URL from routing callbacks to the wrong tenant resolver when multiple stores use separate verified domains. Host values are validated before constructing the callback URL.
