@@ -113,7 +113,12 @@ function app_payment_config(?PDO $db = null, ?array $attemptSnapshot = null, ?st
             throw new RuntimeException('Verified tenant callback host is invalid.');
         }
         $basePath = trim((string)($parts['path'] ?? ''), '/');
-        $callbackBaseUrl = strtolower((string)$parts['scheme']) . '://' . $tenantCallbackHost .
+        $callbackPort = '';
+        $isLocalTenantHost = $tenantCallbackHost === 'localhost' || filter_var($tenantCallbackHost, FILTER_VALIDATE_IP) !== false;
+        if (!$production && $isLocalTenantHost && isset($parts['port'])) {
+            $callbackPort = ':' . (int)$parts['port'];
+        }
+        $callbackBaseUrl = strtolower((string)$parts['scheme']) . '://' . $tenantCallbackHost . $callbackPort .
             ($basePath !== '' ? '/' . $basePath : '');
     }
     return [
