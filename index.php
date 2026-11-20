@@ -107,7 +107,7 @@ $seoJsonLd = $seoCanonical ? json_encode($seoStructuredData,JSON_UNESCAPED_UNICO
         <button class="category" data-category="frozen"><span>🧊</span> مواد غذایی منجمد <b>›</b></button>
         <button class="category" data-category="fruit"><span>🍎</span> میوه و سبزیجات <b>›</b></button>
       </div>
-      <div class="movement-box"><small>روش گشت‌وگذار</small><div class="movement-options"><button class="mode active" data-mode="guided">راهنمای دسته‌ها</button><button class="mode" data-mode="tour">تور تصویری</button><button class="mode" data-mode="free">حرکت آزاد</button></div><p id="modeHint">با انتخاب هر دسته، به قفسه مربوط هدایت می‌شی.</p></div>
+      <div class="movement-box"><small>روش گشت‌وگذار</small><div class="movement-options"><button class="mode active" data-mode="guided" aria-pressed="true">راهنمای دسته‌ها</button><button class="mode" data-mode="tour" aria-pressed="false">تور تصویری</button><button class="mode" data-mode="free" aria-pressed="false">حرکت آزاد</button></div><p id="modeHint">با انتخاب هر دسته، به قفسه مربوط هدایت می‌شی.</p></div>
     </aside>
 
     <section class="aisle-view" aria-label="محیط فروشگاه">
