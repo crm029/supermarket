@@ -52,7 +52,8 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] CLI worker to release expired stock reservations and cancel unpaid orders.
 - [x] ZarinPal server-side verification, order state transitions and customer order detail/cancellation.
 - [x] Payment callbacks resolve to each tenant's verified primary domain; redirected attempts retain their original merchant and sandbox/live mode, concurrent in-flight requests cannot create duplicate attempts, and uncertain gateway outcomes enter a manual-review state instead of being retried automatically.
-- [ ] Live provider acceptance and settlement reconciliation; courier assignment, customer delivery tracking and operational delivery workflow are implemented.
+- [x] Courier assignment, customer delivery tracking and operational delivery workflow (MySQL/API integration tests verified).
+- [ ] Live provider acceptance and settlement reconciliation (requires merchant sandbox/live account and settlement statement).
 
 ## Phase 3 — immersive storefront
 - [x] Merchant scene/media editor API and admin UI.
