@@ -61,6 +61,17 @@ VALUES
   (1,@api_user_one,SHA2(REPEAT('S',43),256),SHA2(REPEAT('C',43),256),DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 DAY)),
   (2,@api_user_two,SHA2(REPEAT('T',43),256),SHA2(REPEAT('D',43),256),DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 DAY));
 
+-- Tenant-two manager session for explicit cross-tenant object access tests.
+INSERT INTO roles (tenant_id,role_key,title)
+VALUES (2,'ci_tenant_two_manager','مدیر فروشگاه دوم برای آزمون جداسازی')
+ON DUPLICATE KEY UPDATE title=VALUES(title);
+SET @api_tenant_two_manager_role=(SELECT id FROM roles WHERE tenant_id=2 AND role_key='ci_tenant_two_manager' LIMIT 1);
+INSERT IGNORE INTO role_permissions (role_scope_id,role_id,permission_id)
+SELECT 2,@api_tenant_two_manager_role,id FROM permissions
+WHERE scope='tenant' AND permission_key IN ('orders.manage','inventory.manage','catalog.products.manage');
+INSERT IGNORE INTO user_roles (tenant_id,role_scope_id,user_id,role_id)
+VALUES (2,2,@api_user_two,@api_tenant_two_manager_role);
+
 -- The main API session also represents the tenant-one store owner for subscription self-service.
 INSERT INTO roles (tenant_id,role_key,title)
 VALUES (1,'store_owner','مالک فروشگاه')
