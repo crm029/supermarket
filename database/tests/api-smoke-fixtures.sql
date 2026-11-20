@@ -68,7 +68,7 @@ ON DUPLICATE KEY UPDATE title=VALUES(title);
 SET @api_tenant_two_manager_role=(SELECT id FROM roles WHERE tenant_id=2 AND role_key='ci_tenant_two_manager' LIMIT 1);
 INSERT IGNORE INTO role_permissions (role_scope_id,role_id,permission_id)
 SELECT 2,@api_tenant_two_manager_role,id FROM permissions
-WHERE scope='tenant' AND permission_key IN ('orders.manage','inventory.manage','catalog.products.manage');
+WHERE scope='tenant' AND permission_key IN ('orders.manage','inventory.manage','catalog.products.manage','media.manage');
 INSERT IGNORE INTO user_roles (tenant_id,role_scope_id,user_id,role_id)
 VALUES (2,2,@api_user_two,@api_tenant_two_manager_role);
 
