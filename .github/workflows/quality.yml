@@ -130,6 +130,9 @@ jobs:
       - name: Apply authentication migration
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_05_auth_sessions_otp.sql
 
+      - name: Clear unverified pending registration profile data
+        run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/migrations/2026_11_20_pending_registration_profile.sql
+
       - name: Run authentication schema tests
         run: mysql --host=127.0.0.1 --user=root --password=root supermarket360 < database/tests/auth-schema.sql
 
