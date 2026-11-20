@@ -1223,6 +1223,7 @@ request DELETE "/admin/hotspots/$HOTSPOT_ID" 200 "" "$TOKEN" "$CSRF"
 request POST /auth/register 201 '{"full_name":"مشتری ثبت‌نامی","mobile":"09120000004","referral_code":"APICUSTOMER1"}'
 PENDING_PROFILE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT CONCAT(full_name,':',COALESCE(referred_by_user_id,'NULL')) FROM users WHERE tenant_id=1 AND mobile='09120000004'")"
 if [[ "$PENDING_PROFILE" != "کاربر جدید:NULL" ]]; then echo "Unverified registration persisted caller-controlled profile data."; exit 1; fi
+request POST /auth/complete-registration 401 '{"full_name":"مهاجم","referral_code":"APICUSTOMER1"}'
 request POST /auth/request-otp 202 '{"mobile":"09120000004"}'
 OTP_HASH="$(php -r 'echo hash_hmac("sha256", "123456", "ci-test-secret-with-more-than-thirty-two-characters");')"
 mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "INSERT INTO auth_challenges (tenant_id,mobile,purpose,otp_hash,attempts,expires_at) VALUES (1,'09120000004','login','$OTP_HASH',0,DATE_ADD(UTC_TIMESTAMP(), INTERVAL 5 MINUTE))"
