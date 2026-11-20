@@ -30,6 +30,17 @@ if ($config['callback_url'] !== 'https://market.example/subdir/api/v1/payments/z
     $config['start_pay'] !== 'https://sandbox.zarinpal.com/pg/StartPay/') {
     throw new RuntimeException('ZarinPal sandbox configuration is incorrect.');
 }
+$tenantConfig = app_payment_config(null, null, 'shop.example.test');
+if ($tenantConfig['callback_url'] !== 'https://shop.example.test/subdir/api/v1/payments/zarinpal/callback') {
+    throw new RuntimeException('Payment callback did not use the verified tenant host.');
+}
+$invalidTenantHostRejected = false;
+try {
+    app_payment_config(null, null, 'evil.example.test/path');
+} catch (RuntimeException $e) {
+    $invalidTenantHostRejected = true;
+}
+if (!$invalidTenantHostRejected) throw new RuntimeException('Unsafe tenant callback host was accepted.');
 
 $encrypted = app_payment_merchant_encrypt('merchant-secret-1234');
 if (app_payment_merchant_decrypt($encrypted) !== 'merchant-secret-1234' || str_contains($encrypted, 'merchant-secret-1234')) {
