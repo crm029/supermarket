@@ -29,6 +29,7 @@ function app_payment_attempt_action(?array $attempt): string {
     if ($status === 'verified') return 'paid';
     if ($status === 'redirected' && !empty($attempt['authority'])) return 'reuse';
     if ($status === 'created') return 'pending';
+    if ($status === 'review') return 'review';
     return 'create';
 }
 
@@ -249,9 +250,10 @@ function app_payment_start(PDO $db, array $tenant, array $session): never {
             $db->rollBack();
             app_json(['error' => 'درگاه پرداخت هنوز پیکربندی نشده است.'], 503);
         }
-        // Recover attempts left in 'created' if the web process died before contacting the gateway.
+        // A process can die before or after the provider accepts a request. Never retry an
+        // old unresolved attempt automatically: its external outcome may be unknown.
         $expireStale = $db->prepare(
-            "UPDATE payment_attempts SET status='failed'
+            "UPDATE payment_attempts SET status='review'
              WHERE tenant_id=? AND order_id=? AND provider='zarinpal' AND status='created'
                AND created_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 2 MINUTE)"
         );
@@ -283,6 +285,10 @@ function app_payment_start(PDO $db, array $tenant, array $session): never {
         if ($previousAction === 'pending') {
             $db->rollBack();
             app_json(['error' => 'درخواست پرداخت قبلی هنوز در حال پردازش است؛ چند لحظه دیگر دوباره تلاش کنید.'], 409);
+        }
+        if ($previousAction === 'review') {
+            $db->rollBack();
+            app_json(['error' => 'نتیجه تلاش قبلی پرداخت مشخص نیست؛ برای جلوگیری از پرداخت تکراری، ابتدا وضعیت آن باید بررسی شود.'], 409);
         }
 
         $idempotency = 'order-' . $orderId . '-' . bin2hex(random_bytes(6));
@@ -326,8 +332,8 @@ function app_payment_start(PDO $db, array $tenant, array $session): never {
             'order_number' => $order['order_number'],
         ]]);
     } catch (Throwable $e) {
-        $fail = $db->prepare("UPDATE payment_attempts SET status = 'failed' WHERE tenant_id = ? AND id = ? AND status = 'created'");
-        $fail->execute([$tenant['id'], $attemptId]);
+        $review = $db->prepare("UPDATE payment_attempts SET status = 'review' WHERE tenant_id = ? AND id = ? AND status = 'created'");
+        $review->execute([$tenant['id'], $attemptId]);
         error_log('[supermarket360-payment] ' . $e->getMessage());
         app_json(['error' => 'ارتباط با درگاه پرداخت برقرار نشد. کمی بعد دوباره تلاش کنید.'], 502);
     }
