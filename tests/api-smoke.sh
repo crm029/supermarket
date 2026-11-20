@@ -847,6 +847,45 @@ MULTI_PAYMENT_REFUND_ORDER_ID="$(mysql --host=127.0.0.1 --user=root --password=r
 request POST "/admin/orders/$MULTI_PAYMENT_REFUND_ORDER_ID/refund-wallet" 409 '{"reason":"پرداخت‌های تأییدشده چندگانه باید دستی بررسی شوند"}' "$TOKEN" "$CSRF"
 MULTI_REFUND_STATE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT CONCAT(o.status,'|',(SELECT COUNT(*) FROM order_refunds r WHERE r.tenant_id=o.tenant_id AND r.order_id=o.id),'|',(SELECT COUNT(*) FROM wallet_entries w WHERE w.tenant_id=o.tenant_id AND w.source_type='order_refund' AND w.source_id=o.id)) FROM orders o WHERE o.tenant_id=1 AND o.id=$MULTI_PAYMENT_REFUND_ORDER_ID")"
 if [[ "$MULTI_REFUND_STATE" != "paid|0|0" ]]; then echo "Ambiguous payment refund created a refund or wallet credit."; exit 1; fi
+
+# Two simultaneous refund requests must serialize on the order and credit the wallet once.
+CONCURRENT_REFUND_ORDER_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "
+  SET @customer_id=(SELECT id FROM users WHERE tenant_id=1 AND mobile='09120000003' LIMIT 1);
+  INSERT INTO orders (tenant_id,user_id,order_number,status,fulfillment,subtotal_rial,discount_rial,delivery_fee_rial,total_rial)
+    VALUES (1,@customer_id,'CI-CONCURRENT-REFUND','paid','delivery',18000,0,0,18000);
+  SET @order_id=LAST_INSERT_ID();
+  INSERT INTO payment_attempts (tenant_id,order_id,provider,authority,idempotency_key,amount_rial,status,verified_at)
+    VALUES (1,@order_id,'ci',CONCAT('CI-CONCURRENT-REFUND-',@order_id),CONCAT('ci-concurrent-refund-',@order_id),18000,'verified',UTC_TIMESTAMP());
+  SELECT @order_id;
+")"
+parallel_refund() {
+  local tag="$1"
+  curl --silent --show-error --output "/tmp/supermarket-refund-race-$tag.json" --write-out "%{http_code}" \
+    -X POST -H "Host: localhost" -H "Accept: application/json" -H "Content-Type: application/json" \
+    -H "Cookie: sm_session=$TOKEN" -H "X-CSRF-Token: $CSRF" \
+    --data '{"reason":"بازپرداخت هم‌زمان برای آزمون کنترل تراکنش"}' \
+    "$BASE_URL/admin/orders/$CONCURRENT_REFUND_ORDER_ID/refund-wallet" > "/tmp/supermarket-refund-race-$tag.status"
+}
+parallel_refund a & REFUND_A_PID=$!
+parallel_refund b & REFUND_B_PID=$!
+wait "$REFUND_A_PID"
+wait "$REFUND_B_PID"
+REFUND_RACE_A="$(cat /tmp/supermarket-refund-race-a.status)"
+REFUND_RACE_B="$(cat /tmp/supermarket-refund-race-b.status)"
+if ! { [[ "$REFUND_RACE_A" == "201" && "$REFUND_RACE_B" == "409" ]] || [[ "$REFUND_RACE_A" == "409" && "$REFUND_RACE_B" == "201" ]]; }; then
+  echo "Concurrent refund requests did not produce exactly one success and one conflict: $REFUND_RACE_A / $REFUND_RACE_B"
+  cat /tmp/supermarket-refund-race-a.json /tmp/supermarket-refund-race-b.json
+  exit 1
+fi
+CONCURRENT_REFUND_STATE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "
+  SELECT CONCAT(o.status,'|',(SELECT COUNT(*) FROM order_refunds r WHERE r.tenant_id=o.tenant_id AND r.order_id=o.id),
+    '|',(SELECT COUNT(*) FROM wallet_entries w WHERE w.tenant_id=o.tenant_id AND w.source_type='order_refund' AND w.source_id=o.id))
+  FROM orders o WHERE o.tenant_id=1 AND o.id=$CONCURRENT_REFUND_ORDER_ID
+")"
+if [[ "$CONCURRENT_REFUND_STATE" != "refunded|1|1" ]]; then
+  echo "Concurrent refund created an inconsistent refund ledger: $CONCURRENT_REFUND_STATE"
+  exit 1
+fi
 request POST /admin/coupons 201 '{"code":"WELCOME10","title":"تخفیف خوش‌آمدگویی","discount_type":"percentage","discount_value":10,"max_discount_rial":15000,"minimum_order_rial":1,"usage_limit":1,"per_user_limit":1,"starts_at":"2020-01-01T00:00","ends_at":"2030-01-01T00:00","is_active":true}' "$TOKEN" "$CSRF"
 COUPON_ID="$(assert_json created-id)"
 request POST /admin/coupons 409 '{"code":"WELCOME10","title":"کد تکراری","discount_type":"percentage","discount_value":10,"minimum_order_rial":1,"per_user_limit":1,"starts_at":"2020-01-01T00:00","ends_at":"2030-01-01T00:00","is_active":true}' "$TOKEN" "$CSRF"
