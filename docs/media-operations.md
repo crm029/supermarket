@@ -32,7 +32,7 @@ The platform dashboard provides a restricted **بررسی فایل‌های رس
 
 1. Run the read-only reconciliation command and inspect the orphan key, tenant, application logs and backup status.
 2. Submit the exact tenant ID and storage key with a reason of at least five characters. The API accepts only the tenant's expected media-key shape and an existing regular file beneath the configured media root; symlinks and unsafe paths are refused.
-3. A second authorized operator action is required to approve or reject the pending request. Approval rechecks the file path and symlink status, confirms the key is still absent from `media_assets`, and confirms it is not already queued.
+3. A different authorized operator (not the requester) must approve or reject the pending request; self-approval is rejected. Approval rechecks the file path and symlink status, confirms the key is still absent from `media_assets`, and confirms it is not already queued.
 4. Approval records the reviewer and timestamp and inserts a pending row into `media_cleanup_queue`. It does **not** delete the file in the request transaction. The existing cleanup worker performs deletion later and rechecks that the storage key has not been registered again.
 5. Rejected requests leave both the file and cleanup queue untouched. Requests are single-use; a storage key cannot be submitted again after a decision.
 
