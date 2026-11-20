@@ -1218,6 +1218,9 @@ request POST /admin/scenes 201 '{"title":"راهرو تست","scene_type":"aisle
 SCENE_ID="$(assert_json created-id)"
 request POST "/admin/scenes/$SCENE_ID/hotspots" 201 '{"label":"کالای تست","action":"product","product_id":'$PRODUCT_ID',"x":0.4,"y":0.6}' "$TOKEN" "$CSRF"
 HOTSPOT_ID="$(assert_json created-id)"
+request POST "/admin/scenes/$SCENE_ID/hotspots" 422 '{"label":"مختصات خارج از محدوده","action":"product","product_id":'$PRODUCT_ID',"x":1.1,"y":0.5}' "$TOKEN" "$CSRF"
+request POST "/admin/scenes/$SCENE_ID/hotspots" 422 '{"label":"مختصات منفی","action":"product","product_id":'$PRODUCT_ID',"x":-0.1,"y":0.5}' "$TOKEN" "$CSRF"
+request POST "/admin/scenes/$SCENE_ID/hotspots" 422 '{"label":"مختصات نامعتبر","action":"product","product_id":'$PRODUCT_ID',"x":0.5,"y":"NaN"}' "$TOKEN" "$CSRF"
 request GET "/admin/scenes/$SCENE_ID/hotspots" 200 "" "$TOKEN"
 request DELETE "/admin/hotspots/$HOTSPOT_ID" 200 "" "$TOKEN" "$CSRF"
 request POST /auth/register 201 '{"full_name":"مشتری ثبت‌نامی","mobile":"09120000004","referral_code":"APICUSTOMER1"}'
