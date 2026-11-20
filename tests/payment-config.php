@@ -45,6 +45,12 @@ $localTenantConfig = app_payment_config(null, null, 'localhost');
 if ($localTenantConfig['callback_url'] !== 'https://localhost/subdir/api/v1/payments/zarinpal/callback') {
     throw new RuntimeException('Local XAMPP sandbox callback host was not supported.');
 }
+putenv('APP_BASE_URL=http://localhost:8099/subdir');
+$localPortConfig = app_payment_config(null, null, 'localhost');
+if ($localPortConfig['callback_url'] !== 'http://localhost:8099/subdir/api/v1/payments/zarinpal/callback') {
+    throw new RuntimeException('Local payment callback did not preserve the configured development port.');
+}
+putenv('APP_BASE_URL=https://market.example/subdir');
 
 $encrypted = app_payment_merchant_encrypt('merchant-secret-1234');
 if (app_payment_merchant_decrypt($encrypted) !== 'merchant-secret-1234' || str_contains($encrypted, 'merchant-secret-1234')) {
