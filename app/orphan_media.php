@@ -83,14 +83,22 @@ function app_platform_orphan_review_create(PDO $db, array $tenant, array $sessio
     app_json(['message'=>'درخواست بررسی ثبت شد؛ هیچ فایلی حذف یا وارد صف پاک‌سازی نشد.'],201);
 }
 
+function app_platform_orphan_review_reviewer_allowed(int $requestedBy, int $reviewerId): bool {
+    return $requestedBy > 0 && $reviewerId > 0 && $requestedBy !== $reviewerId;
+}
+
 function app_platform_orphan_review_decide(PDO $db, array $tenant, array $session, int $reviewId, bool $approve): never {
     $db->beginTransaction();
     try {
-        $stmt=$db->prepare("SELECT id,tenant_id,storage_key,reason,status FROM media_orphan_reviews WHERE id=? FOR UPDATE");
+        $stmt=$db->prepare("SELECT id,tenant_id,storage_key,reason,status,requested_by FROM media_orphan_reviews WHERE id=? FOR UPDATE");
         $stmt->execute([$reviewId]);
         $review=$stmt->fetch(PDO::FETCH_ASSOC);
         if(!$review){$db->rollBack();app_json(['error'=>'درخواست پیدا نشد.'],404);}
         if($review['status']!=='pending'){$db->rollBack();app_json(['error'=>'این درخواست قبلاً بررسی شده است.'],409);}
+        if(!app_platform_orphan_review_reviewer_allowed((int)$review['requested_by'],(int)$session['id'])){
+            $db->rollBack();
+            app_json(['error'=>'ثبت‌کننده درخواست نمی‌تواند درخواست خودش را بررسی کند؛ اپراتور دیگری باید تصمیم بگیرد.'],409);
+        }
         $tenantId=(int)$review['tenant_id'];
         $key=(string)$review['storage_key'];
         if($approve){
