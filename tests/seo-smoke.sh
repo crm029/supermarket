@@ -88,6 +88,12 @@ if grep -Fq "sm360Track('purchase'" "$OUT"; then
   echo "Unverified payment result must not emit a purchase event"
   exit 1
 fi
+check_page "/payment-result.php?status=review&order=999999" 'در حال بررسی پرداخت'
+check_page "/payment-result.php?status=review&order=999999" 'نتیجه از درگاه دریافت شد اما ثبت نهایی نیازمند بررسی است'
+if grep -Fq "sm360Track('purchase'" "$OUT"; then
+  echo "Late payment review result must not emit a purchase event"
+  exit 1
+fi
 check_page "/index.php" 'PostalAddress'
 check_page "/index.php" 'خیابان نمونه، پلاک ۱۰'
 check_page "/index.php" 'GeoCoordinates'
