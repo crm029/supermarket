@@ -56,6 +56,25 @@ $encrypted = app_payment_merchant_encrypt('merchant-secret-1234');
 if (app_payment_merchant_decrypt($encrypted) !== 'merchant-secret-1234' || str_contains($encrypted, 'merchant-secret-1234')) {
     throw new RuntimeException('ZarinPal merchant encryption is not protecting the stored value.');
 }
+$tamperedCiphertext = substr($encrypted, 0, -1) . (substr($encrypted, -1) === 'A' ? 'B' : 'A');
+$tamperedRejected = false;
+try {
+    app_payment_merchant_decrypt($tamperedCiphertext);
+} catch (RuntimeException $e) {
+    $tamperedRejected = true;
+}
+if (!$tamperedRejected) {
+    throw new RuntimeException('Tampered ZarinPal merchant ciphertext was accepted.');
+}
+$unsupportedCiphertextRejected = false;
+try {
+    app_payment_merchant_decrypt('plain:merchant-secret-1234');
+} catch (RuntimeException $e) {
+    $unsupportedCiphertextRejected = true;
+}
+if (!$unsupportedCiphertextRejected) {
+    throw new RuntimeException('Unsupported stored merchant credential format was accepted.');
+}
 $snapshot = app_payment_config(null, ['gateway_mode' => 'sandbox', 'merchant_id_encrypted' => $encrypted]);
 if ($snapshot['merchant_id'] !== 'merchant-secret-1234' || $snapshot['mode'] !== 'sandbox') {
     throw new RuntimeException('Payment attempt credential snapshot was not restored correctly.');
