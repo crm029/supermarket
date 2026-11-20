@@ -833,6 +833,12 @@ try {
         app_auth_register($db, $tenant);
     }
 
+    if ($path === '/auth/complete-registration' && $method === 'POST') {
+        $session = app_auth_require($db, $tenant);
+        app_auth_require_csrf($session);
+        app_auth_complete_registration($db, $tenant, $session);
+    }
+
     if ($path === '/auth/csrf' && $method === 'GET') {
         $session = app_auth_require($db, $tenant);
         app_auth_refresh_csrf($db, $session);
