@@ -50,7 +50,7 @@ function buildFreeMovementWorld(){
   const renderer=new THREE.WebGLRenderer({antialias:window.devicePixelRatio<2,powerPreference:"low-power",alpha:false});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));renderer.setSize(width,height);
   renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=false;
-  renderer.domElement.className="free-movement-canvas";renderer.domElement.setAttribute("aria-label","محیط سه‌بعدی فروشگاه؛ برای چرخش دید بکشید");
+  renderer.domElement.className="free-movement-canvas";renderer.domElement.tabIndex=0;renderer.domElement.setAttribute("role","img");renderer.domElement.setAttribute("aria-label","محیط سه‌بعدی فروشگاه؛ برای چرخش دید بکشید و پس از انتخاب این بخش با کلیدهای W، A، S، D یا جهت‌نما حرکت کنید.");
   const ambient=new THREE.HemisphereLight(0xffffff,0x8d887a,2.15);scene.add(ambient);
   const keyLight=new THREE.DirectionalLight(0xfff3d8,1.15);keyLight.position.set(-4,8,5);scene.add(keyLight);
   const floor=new THREE.Mesh(new THREE.PlaneGeometry(12,42),new THREE.MeshStandardMaterial({color:0xd6d0c2,roughness:.95}));
@@ -204,7 +204,9 @@ function refreshFreeMovementWorld(){
   if(movementMode==="free"&&freeWorld){stopFreeMovement();startFreeMovement();}
 }
 document.addEventListener("keydown",event=>{
-  if(movementMode!=="free"||document.querySelector("dialog[open]")||event.target.matches("input,textarea,select,[contenteditable=true]"))return;
+  if(movementMode!=="free"||document.querySelector("dialog[open]"))return;
+  const target=event.target;
+  if(target instanceof Element&&target.closest("input,textarea,select,button,a,[contenteditable]:not([contenteditable=false])"))return;
   const key=event.key.toLowerCase();if(["w","a","s","d","arrowup","arrowdown","arrowleft","arrowright"].includes(key)){freeMovementKeys.add(key);event.preventDefault();}
 });
 document.addEventListener("keyup",event=>freeMovementKeys.delete(event.key.toLowerCase()));
