@@ -20,7 +20,7 @@ This checklist is for the first real merchant deployment. Passing CI or configur
 - [ ] Verify phone/IP throttling and that resending does not invalidate or bypass security limits.
 - [ ] Confirm that provider failures return a safe user-facing error and do not activate an account.
 - [ ] Check the provider delivery report separately; an accepted API request is not proof of handset delivery.
-- [ ] Confirm logs contain no plaintext OTP, API key or password.
+- [ ] Confirm logs contain no plaintext OTP, API key or password. For 0098 VIP, verify that hosting and proxy logs do not retain the full query-string URL containing provider credentials or message text.
 
 ## 3. ZarinPal sandbox acceptance
 
