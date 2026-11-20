@@ -19,6 +19,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] OTP login challenge storage, expiry, attempt lockout and phone/IP rate limiting.
 - [x] Opaque database-backed sessions, HttpOnly cookies and CSRF-protected logout.
 - [x] Customer registration with pending status, OTP activation and optional referral attribution.
+- [x] Pending registrations keep caller-supplied profile and referral data out of the database until phone ownership is OTP-verified; authenticated profile completion is CSRF-protected and rate-limited against registration abuse.
 - [x] Kavenegar Verify Lookup production OTP adapter with server-side credentials and delivery response validation.
 - [x] Owner-only 0098 VIP SMS link adapter with encrypted credentials, configurable sender, provider selection and a rate-limited test message to the verified platform-owner mobile; provider delivery reports and password recovery remain open.
 - [x] Tenant/platform permission catalog, role grants, deny-by-default product API checks and product-change audit events.
@@ -50,6 +51,7 @@ Status is intentionally conservative: a checklist item is complete only when imp
 - [x] Transactional pending-order creation with cross-warehouse stock reservations and customer order history API.
 - [x] CLI worker to release expired stock reservations and cancel unpaid orders.
 - [x] ZarinPal server-side verification, order state transitions and customer order detail/cancellation.
+- [x] Payment callbacks resolve to each tenant's verified primary domain; redirected attempts retain their original merchant and sandbox/live mode, and concurrent in-flight requests cannot create duplicate attempts.
 - [ ] Live provider acceptance and settlement reconciliation; courier assignment, customer delivery tracking and operational delivery workflow are implemented.
 
 ## Phase 3 — immersive storefront
