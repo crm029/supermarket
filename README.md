@@ -65,6 +65,7 @@ Still in progress or requiring real-environment acceptance:
 - `docs/data-model.md` — database and transaction rules.
 - `docs/api-contract.md` — planned API surface.
 - `docs/local-setup.md` — local setup and current limitations.
+- `docs/xampp-test-guide.md` — step-by-step local XAMPP test guide and external acceptance boundaries.
 - `docs/tenant-onboarding.md` — merchant onboarding.
 - `docs/quality-gates.md` — release acceptance gates.
 - `docs/security.md` — security principles.
