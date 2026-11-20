@@ -1231,6 +1231,10 @@ assert_json registered-user
 REGISTERED_TOKEN="$(awk -F'[=;]' 'tolower($1) ~ /^set-cookie: sm_session$/ {print $2}' "$HEADERS" | tail -n 1)"
 REGISTERED_CSRF="$(php -r '$d=json_decode(file_get_contents($argv[1]),true); echo $d["data"]["csrf_token"]??"";' "$OUT")"
 if [[ -z "$REGISTERED_TOKEN" || -z "$REGISTERED_CSRF" ]]; then echo "OTP verification did not issue session and CSRF credentials."; exit 1; fi
+request POST /auth/complete-registration 419 '{"full_name":"مشتری ثبت‌نامی","referral_code":"APICUSTOMER1"}' "$REGISTERED_TOKEN"
+request POST /auth/complete-registration 422 '{"full_name":"مشتری ثبت‌نامی","referral_code":"INVALIDCIREF9999"}' "$REGISTERED_TOKEN" "$REGISTERED_CSRF"
+UNVERIFIED_PROFILE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT CONCAT(full_name,':',COALESCE(referred_by_user_id,'NULL')) FROM users WHERE tenant_id=1 AND mobile='09120000004'")"
+if [[ "$UNVERIFIED_PROFILE" != "کاربر جدید:NULL" ]]; then echo "Rejected registration profile update changed customer data."; exit 1; fi
 request POST /auth/complete-registration 200 '{"full_name":"مشتری ثبت‌نامی","referral_code":"APICUSTOMER1"}' "$REGISTERED_TOKEN" "$REGISTERED_CSRF"
 assert_json registered-profile
 REGISTERED_STATUS="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT status FROM users WHERE tenant_id=1 AND mobile='09120000004'")"
