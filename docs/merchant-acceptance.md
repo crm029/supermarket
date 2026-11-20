@@ -15,7 +15,7 @@ This checklist is for the first real merchant deployment. Passing CI or configur
 ## 2. SMS provider acceptance
 
 - [ ] Configure the provider credentials and approved OTP template in the server secret store.
-- [ ] Request an OTP for a test phone owned by the merchant/operator and confirm delivery.
+- [ ] Request an OTP for a test phone owned by the merchant/operator and confirm delivery. For 0098 VIP, use the platform-owner test-send control first, then exercise the OTP flow; the test-send control only targets the verified platform-owner mobile.
 - [ ] Verify a correct code, an incorrect code, an expired code and the maximum-attempt lockout.
 - [ ] Verify phone/IP throttling and that resending does not invalidate or bypass security limits.
 - [ ] Confirm that provider failures return a safe user-facing error and do not activate an account.
