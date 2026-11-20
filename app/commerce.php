@@ -193,9 +193,55 @@ function app_commerce_delete_address(PDO $db, array $tenant, array $session, int
     app_json(['data' => ['id' => $addressId], 'message' => 'نشانی از فهرست فعال حذف شد.']);
 }
 
+function app_commerce_checkout_fingerprint(array $body): string {
+    $normalize = static function (&$value) use (&$normalize): void {
+        if (!is_array($value)) return;
+        if (array_is_list($value)) {
+            foreach ($value as &$item) $normalize($item);
+            unset($item);
+            return;
+        }
+        ksort($value, SORT_STRING);
+        foreach ($value as &$item) $normalize($item);
+        unset($item);
+    };
+    $normalized = $body;
+    $normalize($normalized);
+    return hash('sha256', json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+}
+
+function app_commerce_checkout_idempotency_key(): ?string {
+    $key = trim((string)($_SERVER['HTTP_IDEMPOTENCY_KEY'] ?? ''));
+    if ($key === '') return null;
+    if (strlen($key) < 16 || strlen($key) > 128 || !preg_match('/^[A-Za-z0-9._:-]+$/D', $key)) {
+        app_json(['error' => 'کلید یکتای ثبت سفارش معتبر نیست.'], 422);
+    }
+    return $key;
+}
+
+function app_commerce_replay_checkout(PDO $db, array $tenant, array $session, string $key, string $fingerprint): never {
+    $stmt = $db->prepare(
+        'SELECT request_hash,response_json FROM checkout_idempotency
+         WHERE tenant_id=? AND user_id=? AND idempotency_key=? LIMIT 1'
+    );
+    $stmt->execute([$tenant['id'], $session['id'], $key]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) app_json(['error' => 'ثبت سفارش کامل نشد؛ دوباره تلاش کنید.'], 503);
+    if (!hash_equals((string)$row['request_hash'], $fingerprint)) {
+        app_json(['error' => 'این کلید قبلاً برای اطلاعات سفارش دیگری استفاده شده است.'], 409);
+    }
+    $payload = json_decode((string)($row['response_json'] ?? ''), true);
+    if (!is_array($payload) || !isset($payload['data']['id'])) {
+        app_json(['error' => 'نتیجه ثبت سفارش هنوز آماده نیست؛ کمی بعد دوباره تلاش کنید.'], 409);
+    }
+    app_json($payload, 201);
+}
+
 function app_commerce_create_order(PDO $db, array $tenant, array $session): never {
     $body = app_commerce_body();
     $lines = app_commerce_lines($body);
+    $idempotencyKey = app_commerce_checkout_idempotency_key();
+    $requestFingerprint = app_commerce_checkout_fingerprint($body);
     $fulfillment = (string)($body['fulfillment'] ?? 'delivery');
     if (!in_array($fulfillment, ['delivery', 'pickup'], true)) {
         app_json(['error' => 'روش دریافت سفارش معتبر نیست.'], 422);
@@ -241,6 +287,10 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
 
     $db->beginTransaction();
     try {
+        if ($idempotencyKey !== null) {
+            $claim = $db->prepare('INSERT INTO checkout_idempotency (tenant_id,user_id,idempotency_key,request_hash) VALUES (?,?,?,?)');
+            $claim->execute([$tenant['id'], $session['id'], $idempotencyKey, $requestFingerprint]);
+        }
         app_tenant_limit_guard($db,$tenant,'monthly_orders',1);
         if ($addressId !== null) {
             $address = $db->prepare('SELECT id,province,city,postal_code FROM customer_addresses WHERE tenant_id = ? AND user_id = ? AND id = ? AND is_active = 1 FOR UPDATE');
@@ -413,8 +463,7 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
         app_notification_notify_permission($db,(int)$tenant['id'],'orders.manage','new-order-'.$orderId,'order',
             'سفارش جدید ثبت شد','سفارش '.$orderNumber.' برای بررسی و آماده‌سازی ثبت شده است.','order',$orderId);
 
-        $db->commit();
-        app_json(['data' => [
+        $responsePayload = ['data' => [
             'id' => $orderId, 'order_number' => $orderNumber, 'status' => 'pending_payment',
             'fulfillment' => $fulfillment, 'items' => $quote['items'],
             'subtotal_rial' => $quote['subtotal_rial'], 'discount_rial' => $discountRial,
@@ -422,7 +471,23 @@ function app_commerce_create_order(PDO $db, array $tenant, array $session): neve
             'delivery_zone_id' => $deliveryZoneId, 'pickup_slot_id' => $pickupSlotId,
             'total_rial' => $orderTotalRial, 'reservation_expires_in_seconds' => $reservationMinutes * 60,
             'payment_required' => true,
-        ], 'message' => 'سفارش ثبت اولیه شد؛ برای نهایی‌شدن باید پرداخت تأیید شود.'], 201);
+        ], 'message' => 'سفارش ثبت اولیه شد؛ برای نهایی‌شدن باید پرداخت تأیید شود.'];
+        if ($idempotencyKey !== null) {
+            $saveResponse = $db->prepare('UPDATE checkout_idempotency SET order_id=?,response_json=? WHERE tenant_id=? AND user_id=? AND idempotency_key=?');
+            $saveResponse->execute([
+                $orderId, json_encode($responsePayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
+                $tenant['id'], $session['id'], $idempotencyKey
+            ]);
+            if ($saveResponse->rowCount() !== 1) throw new RuntimeException('Checkout idempotency result could not be stored.');
+        }
+        $db->commit();
+        app_json($responsePayload, 201);
+    } catch (PDOException $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        if ($idempotencyKey !== null && (string)$e->getCode() === '23000') {
+            app_commerce_replay_checkout($db, $tenant, $session, $idempotencyKey, $requestFingerprint);
+        }
+        throw $e;
     } catch (Throwable $e) {
         if ($db->inTransaction()) $db->rollBack();
         throw $e;
