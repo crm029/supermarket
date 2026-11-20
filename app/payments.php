@@ -45,7 +45,22 @@ function app_payment_merchant_decrypt(?string $stored): ?string {
     return $plain;
 }
 
-function app_payment_config(?PDO $db = null, ?array $attemptSnapshot = null): array {
+function app_payment_tenant_callback_host(PDO $db, int $tenantId): string {
+    $stmt = $db->prepare(
+        'SELECT host FROM tenant_domains
+         WHERE tenant_id = ? AND is_primary = 1 AND verified_at IS NOT NULL
+         ORDER BY id LIMIT 1'
+    );
+    $stmt->execute([$tenantId]);
+    $host = strtolower(rtrim(trim((string)$stmt->fetchColumn()), '.'));
+    if ($host === '' || strlen($host) > 253 ||
+        !preg_match('/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/', $host)) {
+        throw new RuntimeException('A verified primary tenant domain is required for payment callbacks.');
+    }
+    return $host;
+}
+
+function app_payment_config(?PDO $db = null, ?array $attemptSnapshot = null, ?string $tenantCallbackHost = null): array {
     $merchant = '';
     $mode = null;
     $encryptedMerchant = null;
@@ -84,11 +99,22 @@ function app_payment_config(?PDO $db = null, ?array $attemptSnapshot = null): ar
     $sandbox = $mode === 'sandbox';
     $apiBase = $sandbox ? 'https://sandbox.zarinpal.com/pg/v4/payment' : 'https://api.zarinpal.com/pg/v4/payment';
     $startPay = app_payment_start_url_for_mode($mode);
+    $callbackBaseUrl = $baseUrl;
+    if ($tenantCallbackHost !== null) {
+        $tenantCallbackHost = strtolower(rtrim(trim($tenantCallbackHost), '.'));
+        if (strlen($tenantCallbackHost) > 253 ||
+            !preg_match('/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/', $tenantCallbackHost)) {
+            throw new RuntimeException('Verified tenant callback host is invalid.');
+        }
+        $basePath = trim((string)($parts['path'] ?? ''), '/');
+        $callbackBaseUrl = strtolower((string)$parts['scheme']) . '://' . $tenantCallbackHost .
+            ($basePath !== '' ? '/' . $basePath : '');
+    }
     return [
         'merchant_id' => $merchant,
         'merchant_id_encrypted' => app_payment_merchant_encrypt($merchant),
         'mode' => $mode,
-        'callback_url' => $baseUrl . '/api/v1/payments/zarinpal/callback',
+        'callback_url' => $callbackBaseUrl . '/api/v1/payments/zarinpal/callback',
         'request_url' => $apiBase . '/request.json',
         'verify_url' => $apiBase . '/verify.json',
         'start_pay' => $startPay,
@@ -213,7 +239,7 @@ function app_payment_start(PDO $db, array $tenant, array $session): never {
         }
 
         try {
-            $config = app_payment_config($db);
+            $config = app_payment_config($db, null, app_payment_tenant_callback_host($db, (int)$tenant['id']));
         } catch (Throwable $e) {
             $db->rollBack();
             app_json(['error' => 'درگاه پرداخت هنوز پیکربندی نشده است.'], 503);
@@ -236,7 +262,7 @@ function app_payment_start(PDO $db, array $tenant, array $session): never {
         if ($previousAction === 'reuse') {
             try {
                 // Reuse the gateway environment and merchant snapshot from this exact attempt.
-                $previousConfig = app_payment_config($db, $previous);
+                $previousConfig = app_payment_config($db, $previous, app_payment_tenant_callback_host($db, (int)$tenant['id']));
             } catch (Throwable $e) {
                 $db->rollBack();
                 app_json(['error' => 'اطلاعات تلاش قبلی پرداخت قابل بازیابی نیست؛ با پشتیبانی تماس بگیرید.'], 503);
@@ -347,7 +373,7 @@ function app_payment_callback(PDO $db, array $tenant): never {
     }
 
     try {
-        $config = app_payment_config($db, $attempt);
+        $config = app_payment_config($db, $attempt, app_payment_tenant_callback_host($db, (int)$tenant['id']));
         $provider = app_payment_http_post($config['verify_url'], [
             'merchant_id' => $config['merchant_id'],
             'amount' => (int)$attempt['amount_rial'],
