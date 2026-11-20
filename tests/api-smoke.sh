@@ -832,6 +832,21 @@ REFERRAL_REVERSAL_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --
 if [[ "$REFUND_STATUS" != "refunded" || "$REFUND_COUNT" != "1" || "$REFERRAL_STATUS" != "reversed" || "$REFERRAL_REVERSAL_COUNT" != "1" ]]; then echo "Wallet refund or referral reversal ledger was not finalized."; exit 1; fi
 NO_PAYMENT_ORDER_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "INSERT INTO orders (tenant_id,user_id,order_number,status,fulfillment,subtotal_rial,discount_rial,delivery_fee_rial,total_rial) SELECT 1,id,'CI-NO-PAYMENT-REFUND','paid','delivery',10000,0,0,10000 FROM users WHERE tenant_id=1 AND mobile='09120000003'; SELECT LAST_INSERT_ID();")"
 request POST "/admin/orders/$NO_PAYMENT_ORDER_ID/refund-wallet" 409 '{"reason":"بازپرداخت بدون پرداخت تأییدشده"}' "$TOKEN" "$CSRF"
+# Ambiguous multiple verified payment attempts must be rejected without wallet credit.
+MULTI_PAYMENT_REFUND_ORDER_ID="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "
+  SET @customer_id=(SELECT id FROM users WHERE tenant_id=1 AND mobile='09120000003' LIMIT 1);
+  INSERT INTO orders (tenant_id,user_id,order_number,status,fulfillment,subtotal_rial,discount_rial,delivery_fee_rial,total_rial)
+    VALUES (1,@customer_id,'CI-MULTI-PAYMENT-REFUND','paid','delivery',30000,0,0,30000);
+  SET @order_id=LAST_INSERT_ID();
+  INSERT INTO payment_attempts (tenant_id,order_id,provider,authority,idempotency_key,amount_rial,status,verified_at)
+    VALUES
+      (1,@order_id,'ci',CONCAT('CI-MULTI-A-',@order_id),CONCAT('ci-multi-a-',@order_id),30000,'verified',UTC_TIMESTAMP()),
+      (1,@order_id,'ci',CONCAT('CI-MULTI-B-',@order_id),CONCAT('ci-multi-b-',@order_id),30000,'verified',UTC_TIMESTAMP());
+  SELECT @order_id;
+")"
+request POST "/admin/orders/$MULTI_PAYMENT_REFUND_ORDER_ID/refund-wallet" 409 '{"reason":"پرداخت‌های تأییدشده چندگانه باید دستی بررسی شوند"}' "$TOKEN" "$CSRF"
+MULTI_REFUND_STATE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT CONCAT(o.status,'|',(SELECT COUNT(*) FROM order_refunds r WHERE r.tenant_id=o.tenant_id AND r.order_id=o.id),'|',(SELECT COUNT(*) FROM wallet_entries w WHERE w.tenant_id=o.tenant_id AND w.source_type='order_refund' AND w.source_id=o.id)) FROM orders o WHERE o.tenant_id=1 AND o.id=$MULTI_PAYMENT_REFUND_ORDER_ID")"
+if [[ "$MULTI_REFUND_STATE" != "paid|0|0" ]]; then echo "Ambiguous payment refund created a refund or wallet credit."; exit 1; fi
 request POST /admin/coupons 201 '{"code":"WELCOME10","title":"تخفیف خوش‌آمدگویی","discount_type":"percentage","discount_value":10,"max_discount_rial":15000,"minimum_order_rial":1,"usage_limit":1,"per_user_limit":1,"starts_at":"2020-01-01T00:00","ends_at":"2030-01-01T00:00","is_active":true}' "$TOKEN" "$CSRF"
 COUPON_ID="$(assert_json created-id)"
 request POST /admin/coupons 409 '{"code":"WELCOME10","title":"کد تکراری","discount_type":"percentage","discount_value":10,"minimum_order_rial":1,"per_user_limit":1,"starts_at":"2020-01-01T00:00","ends_at":"2030-01-01T00:00","is_active":true}' "$TOKEN" "$CSRF"
