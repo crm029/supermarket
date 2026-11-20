@@ -17,6 +17,21 @@ function app_payment_merchant_encrypt(string $merchant): string {
     return 'v1:' . base64_encode($nonce . $tag . $ciphertext);
 }
 
+function app_payment_start_url_for_mode(string $mode): string {
+    if ($mode === 'sandbox') return 'https://sandbox.zarinpal.com/pg/StartPay/';
+    if ($mode === 'live') return 'https://www.zarinpal.com/pg/StartPay/';
+    throw new InvalidArgumentException('ZarinPal gateway mode is invalid.');
+}
+
+function app_payment_attempt_action(?array $attempt): string {
+    if ($attempt === null) return 'create';
+    $status = (string)($attempt['status'] ?? '');
+    if ($status === 'verified') return 'paid';
+    if ($status === 'redirected' && !empty($attempt['authority'])) return 'reuse';
+    if ($status === 'created') return 'pending';
+    return 'create';
+}
+
 function app_payment_merchant_decrypt(?string $stored): ?string {
     if ($stored === null || $stored === '') return null;
     if (!str_starts_with($stored, 'v1:') || !function_exists('openssl_decrypt')) {
@@ -68,7 +83,7 @@ function app_payment_config(?PDO $db = null, ?array $attemptSnapshot = null): ar
     }
     $sandbox = $mode === 'sandbox';
     $apiBase = $sandbox ? 'https://sandbox.zarinpal.com/pg/v4/payment' : 'https://api.zarinpal.com/pg/v4/payment';
-    $startPay = $sandbox ? 'https://sandbox.zarinpal.com/pg/StartPay/' : 'https://www.zarinpal.com/pg/StartPay/';
+    $startPay = app_payment_start_url_for_mode($mode);
     return [
         'merchant_id' => $merchant,
         'merchant_id_encrypted' => app_payment_merchant_encrypt($merchant),
@@ -211,20 +226,32 @@ function app_payment_start(PDO $db, array $tenant, array $session): never {
         );
         $expireStale->execute([$tenant['id'],$orderId]);
         $existing = $db->prepare(
-            "SELECT authority, status FROM payment_attempts
+            "SELECT authority, status, gateway_mode, merchant_id_encrypted FROM payment_attempts
              WHERE tenant_id = ? AND order_id = ? AND provider = 'zarinpal'
              ORDER BY id DESC LIMIT 1 FOR UPDATE"
         );
         $existing->execute([$tenant['id'], $orderId]);
-        $previous = $existing->fetch();
-        if ($previous && $previous['status'] === 'redirected' && $previous['authority']) {
+        $previous = $existing->fetch() ?: null;
+        $previousAction = app_payment_attempt_action($previous);
+        if ($previousAction === 'reuse') {
+            try {
+                // Reuse the gateway environment and merchant snapshot from this exact attempt.
+                $previousConfig = app_payment_config($db, $previous);
+            } catch (Throwable $e) {
+                $db->rollBack();
+                app_json(['error' => 'اطلاعات تلاش قبلی پرداخت قابل بازیابی نیست؛ با پشتیبانی تماس بگیرید.'], 503);
+            }
             $db->commit();
-            app_json(['data' => ['redirect_url' => $config['start_pay'] . $previous['authority'],
+            app_json(['data' => ['redirect_url' => $previousConfig['start_pay'] . $previous['authority'],
                 'authority' => $previous['authority'], 'order_number' => $order['order_number']]]);
         }
-        if ($previous && $previous['status'] === 'verified') {
+        if ($previousAction === 'paid') {
             $db->commit();
             app_json(['data' => ['already_paid' => true, 'order_number' => $order['order_number']]]);
+        }
+        if ($previousAction === 'pending') {
+            $db->rollBack();
+            app_json(['error' => 'درخواست پرداخت قبلی هنوز در حال پردازش است؛ چند لحظه دیگر دوباره تلاش کنید.'], 409);
         }
 
         $idempotency = 'order-' . $orderId . '-' . bin2hex(random_bytes(6));
