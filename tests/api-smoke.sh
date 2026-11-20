@@ -858,6 +858,43 @@ if [[ "$REPLAYED_ORDER_ID" != "$FIXED_COUPON_ORDER_ID" ]]; then echo "Checkout r
 request POST /checkout 409 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"fulfillment":"delivery","address_id":'$ADDRESS_ID',"coupon_code":"FIXED5000","customer_note":"different request"}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF" "localhost" "$CHECKOUT_IDEMPOTENCY_KEY"
 FIXED_DISCOUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT discount_rial FROM orders WHERE tenant_id=1 AND id=$FIXED_COUPON_ORDER_ID")"
 if [[ "$FIXED_DISCOUNT" != "50000" ]]; then echo "Fixed coupon amount was not applied."; exit 1; fi
+
+# Two simultaneous checkout requests with one key must resolve to one order.
+RACE_KEY="ci-checkout-race-000000000001"
+RACE_BODY='{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"fulfillment":"delivery","address_id":'$ADDRESS_ID'}'
+curl --silent --show-error --output /tmp/sm360-checkout-race-a.json --write-out "%{http_code}" -X POST \
+  -H "Host: localhost" -H "Accept: application/json" -H "Content-Type: application/json" \
+  -H "Cookie: sm_session=$CUSTOMER_TOKEN" -H "X-CSRF-Token: $CUSTOMER_CSRF" \
+  -H "Idempotency-Key: $RACE_KEY" --data "$RACE_BODY" "$BASE_URL/checkout" > /tmp/sm360-checkout-race-a.status &
+RACE_PID_A=$!
+curl --silent --show-error --output /tmp/sm360-checkout-race-b.json --write-out "%{http_code}" -X POST \
+  -H "Host: localhost" -H "Accept: application/json" -H "Content-Type: application/json" \
+  -H "Cookie: sm_session=$CUSTOMER_TOKEN" -H "X-CSRF-Token: $CUSTOMER_CSRF" \
+  -H "Idempotency-Key: $RACE_KEY" --data "$RACE_BODY" "$BASE_URL/checkout" > /tmp/sm360-checkout-race-b.status &
+RACE_PID_B=$!
+wait "$RACE_PID_A"
+wait "$RACE_PID_B"
+RACE_STATUS_A="$(cat /tmp/sm360-checkout-race-a.status)"
+RACE_STATUS_B="$(cat /tmp/sm360-checkout-race-b.status)"
+if [[ "$RACE_STATUS_A" != "201" || "$RACE_STATUS_B" != "201" ]]; then
+  echo "Concurrent checkout did not return two successful replay-compatible responses: $RACE_STATUS_A / $RACE_STATUS_B"
+  cat /tmp/sm360-checkout-race-a.json /tmp/sm360-checkout-race-b.json
+  exit 1
+fi
+RACE_ORDER_IDS="$(php -r '
+  $a=json_decode(file_get_contents($argv[1]),true);
+  $b=json_decode(file_get_contents($argv[2]),true);
+  $x=(int)($a["data"]["id"]??0); $y=(int)($b["data"]["id"]??0);
+  if ($x<1 || $x!==$y) { fwrite(STDERR,"Concurrent retries returned different order IDs.\\n"); exit(1); }
+  echo $x;
+' /tmp/sm360-checkout-race-a.json /tmp/sm360-checkout-race-b.json)"
+RACE_ORDER_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM orders WHERE tenant_id=1 AND id=$RACE_ORDER_IDS")"
+RACE_KEY_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM checkout_idempotency WHERE tenant_id=1 AND user_id=(SELECT id FROM users WHERE tenant_id=1 AND mobile='09120000992' LIMIT 1) AND idempotency_key='$RACE_KEY'")"
+if [[ "$RACE_ORDER_COUNT" != "1" || "$RACE_KEY_COUNT" != "1" ]]; then
+  echo "Concurrent checkout created duplicate order or idempotency records."
+  exit 1
+fi
+request POST "/me/orders/$RACE_ORDER_IDS/cancel" 200 "" "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 request POST "/me/orders/$FIXED_COUPON_ORDER_ID/cancel" 200 "" "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 request DELETE "/admin/coupons/$FIXED_COUPON_ID" 200 "" "$TOKEN" "$CSRF"
 request POST /checkout 422 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"fulfillment":"delivery","address_id":'$ADDRESS_ID',"coupon_code":"FIXED5000"}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
