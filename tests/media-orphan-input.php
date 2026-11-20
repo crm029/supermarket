@@ -15,6 +15,9 @@ $assert=static function(bool $ok,string $message):void{
     if(!$ok)throw new RuntimeException($message);
 };
 $assert(app_platform_orphan_file_path(7,$key)===$file,'Valid orphan file should resolve.');
+$assert(!app_platform_orphan_review_reviewer_allowed(12,12),'The requester must not review their own orphan request.');
+$assert(app_platform_orphan_review_reviewer_allowed(12,13),'A different authorized operator may review the request.');
+$assert(!app_platform_orphan_review_reviewer_allowed(0,13),'Invalid requester IDs must not pass reviewer separation.');
 $assert(app_platform_orphan_file_path(8,$key)===null,'Cross-tenant key must be rejected.');
 $assert(app_platform_orphan_file_path(7,'tenant-7/product/../secret.jpg')===null,'Traversal key must be rejected.');
 $symlink=$type.'/'.str_repeat('b',40).'.jpg';
