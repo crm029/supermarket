@@ -37,6 +37,7 @@ The repository's local `.env.example` is prefilled with the project-provided pub
 - [ ] Verify that stock reservations are committed only after server-side payment verification.
 - [ ] Test a cancelled/failed payment and confirm that the order remains unpaid and its reservation expires/releases correctly.
 - [ ] Replay the same callback and verify idempotency: no duplicate payment, stock commit, wallet credit or referral reward.
+- [ ] Simulate a provider timeout after request submission. Confirm the attempt moves to `review`, blocks another payment request, and is only resolved after checking the provider's transaction dashboard.
 - [ ] Attempt an amount mismatch and invalid authority/reference; both must be rejected.
 - [ ] Verify the customer result page does not emit a purchase analytics event for an unverified payment.
 - [ ] Reconcile application payment attempts against the provider's sandbox transaction report.
