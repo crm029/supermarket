@@ -58,6 +58,7 @@ if (app_payment_attempt_action(null) !== 'create' ||
     app_payment_attempt_action(['status' => 'created']) !== 'pending' ||
     app_payment_attempt_action(['status' => 'redirected', 'authority' => 'S123456']) !== 'reuse' ||
     app_payment_attempt_action(['status' => 'verified']) !== 'paid' ||
+    app_payment_attempt_action(['status' => 'review']) !== 'review' ||
     app_payment_attempt_action(['status' => 'failed']) !== 'create') {
     throw new RuntimeException('Payment attempt idempotency state handling is incorrect.');
 }
