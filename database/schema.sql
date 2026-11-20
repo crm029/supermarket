@@ -273,7 +273,7 @@ CREATE TABLE payment_attempts (
   authority VARCHAR(120) NULL,
   idempotency_key VARCHAR(100) NOT NULL,
   amount_rial BIGINT UNSIGNED NOT NULL,
-  status ENUM('created','redirected','verified','failed','refunded') NOT NULL DEFAULT 'created',
+  status ENUM('created','redirected','verified','failed','refunded','review') NOT NULL DEFAULT 'created',
   provider_reference VARCHAR(120) NULL,
   verified_at TIMESTAMP NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
