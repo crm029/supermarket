@@ -43,13 +43,25 @@ migrations=(
   2026_11_05_seo_url_redirects.sql
 )
 for migration in "${migrations[@]}"; do
+  if [[ "$migration" == "2026_11_20_pending_registration_profile.sql" ]]; then
+    "${DB[@]}" -e "INSERT INTO users (tenant_id,full_name,mobile,status,referral_code) VALUES (1,'Unverified migration fixture','09129999998','pending','PENDMIGR1')"
+  fi
   echo "Applying MariaDB migration: $migration"
   "${DB[@]}" < "database/migrations/$migration"
+  if [[ "$migration" == "2026_11_20_pending_registration_profile.sql" ]]; then
+    pending_profile="$("${DB[@]}" --skip-column-names -e "SELECT CONCAT(full_name,':',COALESCE(referred_by_user_id,'NULL')) FROM users WHERE tenant_id=1 AND mobile='09129999998'")"
+    if [[ "$pending_profile" != "کاربر جدید:NULL" ]]; then
+      echo "Pending registration migration did not clear unverified profile data."
+      exit 1
+    fi
+    "${DB[@]}" -e "DELETE FROM users WHERE tenant_id=1 AND mobile='09129999998'"
+  fi
 done
 
 "${DB[@]}" < database/tests/tenant-isolation.sql
 "${DB[@]}" < database/tests/platform-payment-settings.sql
 "${DB[@]}" < database/tests/platform-sms-settings.sql
+"${DB[@]}" < database/tests/media-orphan-reviews.sql
 "${DB[@]}" < database/tests/platform-billing.sql
 "${DB[@]}" < database/tests/pos-cash-register.sql
 echo "MariaDB 10.11 schema and migration compatibility checks passed"
