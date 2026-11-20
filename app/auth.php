@@ -205,7 +205,7 @@ function app_auth_complete_registration(PDO $db, array $tenant, array $session):
     $body = app_auth_request_body();
     $name = trim((string)($body['full_name'] ?? ''));
     $referralCode = strtoupper(trim((string)($body['referral_code'] ?? '')));
-    if ($name === '' || mb_strlen($name) > 160 ||
+    if ($name === '' || $name === 'کاربر جدید' || mb_strlen($name) > 160 ||
         ($referralCode !== '' && !preg_match('/^[A-Z0-9]{4,16}$/', $referralCode))) {
         app_json(['error' => 'نام یا کد معرف معتبر نیست.'], 422);
     }
