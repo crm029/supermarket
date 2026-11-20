@@ -60,6 +60,10 @@ $snapshot = app_payment_config(null, ['gateway_mode' => 'sandbox', 'merchant_id_
 if ($snapshot['merchant_id'] !== 'merchant-secret-1234' || $snapshot['mode'] !== 'sandbox') {
     throw new RuntimeException('Payment attempt credential snapshot was not restored correctly.');
 }
+if (app_payment_verified_result(false) !== 'success' ||
+    app_payment_verified_result(true) !== 'review') {
+    throw new RuntimeException('Verified payment result does not preserve late-settlement review state.');
+}
 if (app_payment_attempt_action(null) !== 'create' ||
     app_payment_attempt_action(['status' => 'created']) !== 'pending' ||
     app_payment_attempt_action(['status' => 'redirected', 'authority' => 'S123456']) !== 'reuse' ||
