@@ -412,8 +412,8 @@ function app_payment_callback(PDO $db, array $tenant): never {
         app_payment_redirect_result($result, (int)$attempt['order_id']);
     }
     if ($status !== 'OK') {
-        $fail = $db->prepare("UPDATE payment_attempts SET status = 'failed' WHERE id = ? AND status <> 'verified'");
-        $fail->execute([$attempt['id']]);
+        $fail = $db->prepare("UPDATE payment_attempts SET status = 'failed' WHERE tenant_id = ? AND id = ? AND status <> 'verified'");
+        $fail->execute([$tenant['id'], $attempt['id']]);
         app_payment_redirect_result('failed', (int)$attempt['order_id']);
     }
 
@@ -427,8 +427,8 @@ function app_payment_callback(PDO $db, array $tenant): never {
         $code = (int)($provider['data']['code'] ?? 0);
         $reference = (string)($provider['data']['ref_id'] ?? '');
         if (!in_array($code, [100, 101], true) || $reference === '') {
-            $fail = $db->prepare("UPDATE payment_attempts SET status = 'failed' WHERE id = ? AND status <> 'verified'");
-            $fail->execute([$attempt['id']]);
+            $fail = $db->prepare("UPDATE payment_attempts SET status = 'failed' WHERE tenant_id = ? AND id = ? AND status <> 'verified'");
+            $fail->execute([$tenant['id'], $attempt['id']]);
             app_payment_redirect_result('failed', (int)$attempt['order_id']);
         }
 
