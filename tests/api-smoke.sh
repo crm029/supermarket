@@ -9,6 +9,7 @@ CSRF="$(printf 'C%.0s' {1..43})"
 UNPRIVILEGED_TOKEN="$(printf 'T%.0s' {1..43})"
 CUSTOMER_TOKEN="$(printf 'U%.0s' {1..43})"
 CUSTOMER_CSRF="$(printf 'W%.0s' {1..43})"
+CHECKOUT_IDEMPOTENCY_KEY="ci-checkout-key-000000000001"
 WORKER_TOKEN="$(printf 'V%.0s' {1..43})"
 WORKER_CSRF="$(printf 'X%.0s' {1..43})"
 POS_TOKEN="$(printf 'P%.0s' {1..43})"
@@ -24,6 +25,7 @@ request() {
   local token="${5:-}"
   local csrf="${6:-}"
   local host="${7:-localhost}"
+  local idempotency_key="${8:-}"
   local args=(--silent --show-error --output "$OUT" --dump-header "$HEADERS" --write-out "%{http_code}" -X "$method"
     -H "Host: $host" -H "Accept: application/json")
   if [[ -n "$body" ]]; then
@@ -31,6 +33,7 @@ request() {
   fi
   if [[ -n "$token" ]]; then args+=(-H "Cookie: sm_session=$token"); fi
   if [[ -n "$csrf" ]]; then args+=(-H "X-CSRF-Token: $csrf"); fi
+  if [[ -n "$idempotency_key" ]]; then args+=(-H "Idempotency-Key: $idempotency_key"); fi
   local status
   status="$(curl "${args[@]}" "$BASE_URL$path")"
   if [[ "$status" != "$expected" ]]; then
@@ -847,8 +850,12 @@ COUPON_REUSE_ORDER_ID="$(assert_json order-created)"
 request POST "/me/orders/$COUPON_REUSE_ORDER_ID/cancel" 200 "" "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 request POST /admin/coupons 201 '{"code":"FIXED5000","title":"پنج هزار تومان تخفیف","discount_type":"fixed","discount_value":50000,"minimum_order_rial":1,"per_user_limit":2,"starts_at":"2020-01-01T00:00","ends_at":"2030-01-01T00:00","is_active":true}' "$TOKEN" "$CSRF"
 FIXED_COUPON_ID="$(assert_json created-id)"
-request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"fulfillment":"delivery","address_id":'$ADDRESS_ID',"coupon_code":"FIXED5000"}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"fulfillment":"delivery","address_id":'$ADDRESS_ID',"coupon_code":"FIXED5000"}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF" "localhost" "$CHECKOUT_IDEMPOTENCY_KEY"
 FIXED_COUPON_ORDER_ID="$(assert_json order-created)"
+request POST /checkout 201 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"fulfillment":"delivery","address_id":'$ADDRESS_ID',"coupon_code":"FIXED5000"}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF" "localhost" "$CHECKOUT_IDEMPOTENCY_KEY"
+REPLAYED_ORDER_ID="$(assert_json order-created)"
+if [[ "$REPLAYED_ORDER_ID" != "$FIXED_COUPON_ORDER_ID" ]]; then echo "Checkout retry created a different order."; exit 1; fi
+request POST /checkout 409 '{"items":[{"product_id":'$PRODUCT_ID',"quantity":1}],"fulfillment":"delivery","address_id":'$ADDRESS_ID',"coupon_code":"FIXED5000","customer_note":"different request"}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF" "localhost" "$CHECKOUT_IDEMPOTENCY_KEY"
 FIXED_DISCOUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT discount_rial FROM orders WHERE tenant_id=1 AND id=$FIXED_COUPON_ORDER_ID")"
 if [[ "$FIXED_DISCOUNT" != "50000" ]]; then echo "Fixed coupon amount was not applied."; exit 1; fi
 request POST "/me/orders/$FIXED_COUPON_ORDER_ID/cancel" 200 "" "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
