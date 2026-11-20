@@ -45,6 +45,13 @@ function app_payment_merchant_decrypt(?string $stored): ?string {
     return $plain;
 }
 
+function app_payment_callback_host_is_valid(string $host): bool {
+    $host = strtolower(rtrim(trim($host), '.'));
+    if (preg_match('/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/', $host)) return true;
+    $production = strtolower(app_env('APP_ENV', 'development') ?? 'development') === 'production';
+    return !$production && ($host === 'localhost' || filter_var($host, FILTER_VALIDATE_IP) !== false);
+}
+
 function app_payment_tenant_callback_host(PDO $db, int $tenantId): string {
     $stmt = $db->prepare(
         'SELECT host FROM tenant_domains
@@ -53,8 +60,7 @@ function app_payment_tenant_callback_host(PDO $db, int $tenantId): string {
     );
     $stmt->execute([$tenantId]);
     $host = strtolower(rtrim(trim((string)$stmt->fetchColumn()), '.'));
-    if ($host === '' || strlen($host) > 253 ||
-        !preg_match('/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/', $host)) {
+    if ($host === '' || strlen($host) > 253 || !app_payment_callback_host_is_valid($host)) {
         throw new RuntimeException('A verified primary tenant domain is required for payment callbacks.');
     }
     return $host;
@@ -102,8 +108,7 @@ function app_payment_config(?PDO $db = null, ?array $attemptSnapshot = null, ?st
     $callbackBaseUrl = $baseUrl;
     if ($tenantCallbackHost !== null) {
         $tenantCallbackHost = strtolower(rtrim(trim($tenantCallbackHost), '.'));
-        if (strlen($tenantCallbackHost) > 253 ||
-            !preg_match('/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/', $tenantCallbackHost)) {
+        if (strlen($tenantCallbackHost) > 253 || !app_payment_callback_host_is_valid($tenantCallbackHost)) {
             throw new RuntimeException('Verified tenant callback host is invalid.');
         }
         $basePath = trim((string)($parts['path'] ?? ''), '/');
