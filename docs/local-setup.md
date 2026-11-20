@@ -27,7 +27,7 @@ The root `index.php` provides a local storefront preview; live tenant catalogue,
 21. Apply `database/migrations/2026_11_05_customer_address_management.sql`.
 22. Apply `database/migrations/2026_11_05_barcode_stock_thresholds.sql`.
 23. Apply `database/migrations/2026_11_05_media_cleanup_queue.sql`.
-23. Apply `database/migrations/2026_11_20_media_orphan_reviews.sql`.
+24. Apply `database/migrations/2026_11_20_media_orphan_reviews.sql`.
 25. Apply `database/migrations/2026_11_05_delivery_zones.sql`.
 26. Apply `database/migrations/2026_11_05_pickup_slots.sql`.
 27. Apply `database/migrations/2026_11_05_coupons.sql`.
