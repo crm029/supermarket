@@ -7,6 +7,7 @@ DB=(mysql --ssl=0 --host=127.0.0.1 --user=root --password=root supermarket360)
 migrations=(
   2026_11_05_tenant_isolation.sql
   2026_11_05_auth_sessions_otp.sql
+  2026_11_20_pending_registration_profile.sql
   2026_11_05_permissions.sql
   2026_11_06_platform_payment_settings.sql
   2026_11_20_platform_sms_settings.sql
