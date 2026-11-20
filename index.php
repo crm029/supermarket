@@ -179,6 +179,7 @@ $seoJsonLd = $seoCanonical ? json_encode($seoStructuredData,JSON_UNESCAPED_UNICO
     </div>
     <label>کد تأیید پیامک <input id="accountOtp" inputmode="numeric" maxlength="6" placeholder="کد ۶ رقمی"></label>
     <button class="primary-button full" id="verifyOtpButton" type="button">تأیید و ورود</button>
+    <button class="primary-button full" id="completeRegistrationButton" type="button" hidden>تکمیل ثبت‌نام</button>
     <p id="accountMessage" class="form-message" role="status"></p>
   </div>
 </dialog>
