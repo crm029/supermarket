@@ -186,7 +186,8 @@ document.addEventListener("keydown",event=>{
   const key=event.key.toLowerCase();if(["w","a","s","d","arrowup","arrowdown","arrowleft","arrowright"].includes(key)){freeMovementKeys.add(key);event.preventDefault();}
 });
 document.addEventListener("keyup",event=>freeMovementKeys.delete(event.key.toLowerCase()));
-window.addEventListener("blur",()=>freeMovementKeys.clear());
+window.addEventListener("blur",()=>{freeMovementKeys.clear();freePointerLook=null;});
+document.addEventListener("visibilitychange",()=>{if(document.hidden){freeMovementKeys.clear();freePointerLook=null;}});
 const cartVariantCache=new Map();
 function addToCart(id,productOverride=null){
   const p=products.find(x=>x.id===Number(id))||productOverride;
