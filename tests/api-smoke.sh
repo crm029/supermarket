@@ -1010,9 +1010,23 @@ assert_json variant-detail
 request POST /cart/quote 409 '{"items":[{"product_id":'$VARIANT_PARENT_ID',"quantity":1}]}'
 request POST /cart/quote 200 '{"items":[{"product_id":'$VARIANT_1L_ID',"quantity":2}]}'
 assert_json variant-quote
+VARIANT_RESERVED_BEFORE_CANCEL="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COALESCE(SUM(reserved),0) FROM stock_levels WHERE tenant_id=1 AND product_id=$VARIANT_1L_ID")"
+VARIANT_BATCH_RESERVED_BEFORE_CANCEL="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COALESCE(SUM(reserved),0) FROM stock_batches WHERE tenant_id=1 AND product_id=$VARIANT_1L_ID")"
 request POST /checkout 201 '{"items":[{"product_id":'$VARIANT_1L_ID',"quantity":2}],"fulfillment":"delivery","address_id":'$ADDRESS_ID'}' "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
 VARIANT_ORDER_ID="$(assert_json order-created)"
 request POST "/me/orders/$VARIANT_ORDER_ID/cancel" 200 "" "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+VARIANT_CANCEL_STATE="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT CONCAT(o.status,'|',r.status,'|',COALESCE(SUM(sm.quantity),0)) FROM orders o JOIN stock_reservations r ON r.tenant_id=o.tenant_id AND r.order_id=o.id LEFT JOIN stock_movements sm ON sm.tenant_id=o.tenant_id AND sm.reference_type='order' AND sm.reference_id=o.id AND sm.movement_type='release' WHERE o.tenant_id=1 AND o.id=$VARIANT_ORDER_ID GROUP BY o.id,r.id")"
+VARIANT_RESERVED_AFTER_CANCEL="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COALESCE(SUM(reserved),0) FROM stock_levels WHERE tenant_id=1 AND product_id=$VARIANT_1L_ID")"
+VARIANT_BATCH_RESERVED_AFTER_CANCEL="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COALESCE(SUM(reserved),0) FROM stock_batches WHERE tenant_id=1 AND product_id=$VARIANT_1L_ID")"
+if [[ "$VARIANT_CANCEL_STATE" != "cancelled|released|-2" ||
+      "$VARIANT_RESERVED_AFTER_CANCEL" != "$VARIANT_RESERVED_BEFORE_CANCEL" ||
+      "$VARIANT_BATCH_RESERVED_AFTER_CANCEL" != "$VARIANT_BATCH_RESERVED_BEFORE_CANCEL" ]]; then
+  echo "Customer cancellation did not release the order reservation exactly once."
+  exit 1
+fi
+request POST "/me/orders/$VARIANT_ORDER_ID/cancel" 409 "" "$CUSTOMER_TOKEN" "$CUSTOMER_CSRF"
+VARIANT_RELEASE_COUNT="$(mysql --host=127.0.0.1 --user=root --password=root --skip-column-names supermarket360 -e "SELECT COUNT(*) FROM stock_movements WHERE tenant_id=1 AND reference_type='order' AND reference_id=$VARIANT_ORDER_ID AND movement_type='release'")"
+if [[ "$VARIANT_RELEASE_COUNT" != "1" ]]; then echo "Repeated cancellation duplicated the stock release movement."; exit 1; fi
 request DELETE "/admin/products/$VARIANT_PARENT_ID/variants/$VARIANT_500_ID" 200 "" "$TOKEN" "$CSRF"
 request DELETE "/admin/products/$VARIANT_PARENT_ID" 200 "" "$TOKEN" "$CSRF"
 request POST /cart/quote 409 '{"items":[{"product_id":'$VARIANT_1L_ID',"quantity":1}]}'
