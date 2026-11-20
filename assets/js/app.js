@@ -580,12 +580,24 @@ function renderScenes() {
   if (!scene) return;
   // Prefer the primary scene image, but retain the merchant-configured fallback.
   const url = safeImageURL(scene.media?.url) || safeImageURL(scene.fallback_media?.url);
-  if (!url) return;
+  view.querySelectorAll(".scene-hotspot").forEach(node => node.remove());
+  if (!url) {
+    // Never leave the previous aisle visible when the selected scene has no usable media.
+    view.style.backgroundImage = "linear-gradient(145deg,#eef2e9,#dce5d7)";
+    view.style.backgroundSize = "cover";
+    view.style.backgroundPosition = "center";
+    view.classList.remove("panorama-mode");
+    document.getElementById("aisleTitle").textContent = scene.title || "فروشگاه";
+    const emptyOverlay = view.querySelector(".scene-overlay");
+    if (emptyOverlay) emptyOverlay.innerHTML = "<span>تصویر این راهرو آماده نیست</span><span>مدیر فروشگاه می‌تواند تصویر اصلی یا جایگزین را بارگذاری کند.</span>";
+    const emptyCounter = document.querySelector(".aisle-number b");
+    if (emptyCounter) emptyCounter.textContent = new Intl.NumberFormat("fa-IR").format(currentScene + 1).padStart(2, "۰");
+    return;
+  }
   view.style.backgroundImage = "linear-gradient(180deg,#ffffff00 55%,#17241c88),url('" + url.replace(/'/g, "%27") + "')";
   view.style.backgroundSize = scene.scene_type === "panorama" ? "200% 100%" : "cover";
   view.style.backgroundPosition = scene.scene_type === "panorama" ? panoramaOffset + "% center" : "center";
   view.classList.toggle("panorama-mode", scene.scene_type === "panorama");
-  view.querySelectorAll(".scene-hotspot").forEach(node => node.remove());
   (scene.hotspots || []).forEach(hotspot => {
     const button = document.createElement("button");
     button.type = "button";
