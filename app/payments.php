@@ -23,6 +23,11 @@ function app_payment_start_url_for_mode(string $mode): string {
     throw new InvalidArgumentException('ZarinPal gateway mode is invalid.');
 }
 
+function app_payment_provider_request_state(int $code, string $authority): string {
+    if ($code !== 100) return 'failed';
+    return preg_match('/^[A-Za-z0-9_-]{5,64}$/', $authority) ? 'redirected' : 'review';
+}
+
 function app_payment_attempt_action(?array $attempt): string {
     if ($attempt === null) return 'create';
     $status = (string)($attempt['status'] ?? '');
@@ -320,12 +325,13 @@ function app_payment_start(PDO $db, array $tenant, array $session): never {
         ]);
         $code = (int)($provider['data']['code'] ?? 0);
         $authority = (string)($provider['data']['authority'] ?? '');
-        if ($code !== 100) {
+        $requestState = app_payment_provider_request_state($code, $authority);
+        if ($requestState === 'failed') {
             $fail = $db->prepare("UPDATE payment_attempts SET status = 'failed' WHERE tenant_id = ? AND id = ? AND status = 'created'");
             $fail->execute([$tenant['id'], $attemptId]);
             app_json(['error' => 'درگاه پرداخت درخواست را نپذیرفت.'], 502);
         }
-        if (!preg_match('/^[A-Za-z0-9_-]{5,64}$/', $authority)) {
+        if ($requestState === 'review') {
             $review = $db->prepare("UPDATE payment_attempts SET status = 'review' WHERE tenant_id = ? AND id = ? AND status = 'created'");
             $review->execute([$tenant['id'], $attemptId]);
             app_json(['error' => 'درگاه درخواست را پذیرفته اما شناسه پیگیری معتبر برنگردانده است؛ وضعیت پرداخت باید بررسی شود.'], 502);
