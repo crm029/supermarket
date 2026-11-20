@@ -7,6 +7,7 @@ BEGIN
   DECLARE setting_count INT DEFAULT 0;
   DECLARE permission_count INT DEFAULT 0;
   DECLARE snapshot_columns INT DEFAULT 0;
+  DECLARE review_state_exists INT DEFAULT 0;
 
   SELECT COUNT(*) INTO setting_count
   FROM platform_payment_settings
@@ -28,6 +29,14 @@ BEGIN
     AND column_name IN ('gateway_mode','merchant_id_encrypted');
   IF snapshot_columns <> 2 THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Payment attempts must snapshot gateway mode and encrypted merchant ID';
+  END IF;
+
+  SELECT COUNT(*) INTO review_state_exists
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'payment_attempts'
+    AND column_name = 'status' AND column_type LIKE '%review%';
+  IF review_state_exists <> 1 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Uncertain payment attempts must support manual review state';
   END IF;
 END//
 DELIMITER ;
