@@ -320,10 +320,15 @@ function app_payment_start(PDO $db, array $tenant, array $session): never {
         ]);
         $code = (int)($provider['data']['code'] ?? 0);
         $authority = (string)($provider['data']['authority'] ?? '');
-        if ($code !== 100 || !preg_match('/^[A-Za-z0-9_-]{5,64}$/', $authority)) {
+        if ($code !== 100) {
             $fail = $db->prepare("UPDATE payment_attempts SET status = 'failed' WHERE tenant_id = ? AND id = ? AND status = 'created'");
             $fail->execute([$tenant['id'], $attemptId]);
             app_json(['error' => 'درگاه پرداخت درخواست را نپذیرفت.'], 502);
+        }
+        if (!preg_match('/^[A-Za-z0-9_-]{5,64}$/', $authority)) {
+            $review = $db->prepare("UPDATE payment_attempts SET status = 'review' WHERE tenant_id = ? AND id = ? AND status = 'created'");
+            $review->execute([$tenant['id'], $attemptId]);
+            app_json(['error' => 'درگاه درخواست را پذیرفته اما شناسه پیگیری معتبر برنگردانده است؛ وضعیت پرداخت باید بررسی شود.'], 502);
         }
         $update = $db->prepare(
             "UPDATE payment_attempts SET authority = ?, status = 'redirected'
