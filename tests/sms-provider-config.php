@@ -26,14 +26,14 @@ if(!app_sms_0098_response_success('0') || !app_sms_0098_response_success(" 0\n")
     throw new RuntimeException('0098 provider response-code validation failed.');
 }
 $mobileCases = [
-    '09123456789' => '09123456789',
-    '+989123456789' => '09123456789',
-    '00989123456789' => '09123456789',
-    '989123456789' => '09123456789',
-    '0912345678' => null,
-    '02112345678' => null,
+    ['09123456789', '09123456789'],
+    ['+989123456789', '09123456789'],
+    ['00989123456789', '09123456789'],
+    ['989123456789', '09123456789'],
+    ['0912345678', null],
+    ['02112345678', null],
 ];
-foreach ($mobileCases as $input => $expected) {
+foreach ($mobileCases as [$input, $expected]) {
     if (app_auth_mobile($input) !== $expected) {
         throw new RuntimeException('Iranian mobile normalization failed for ' . $input . '.');
     }
