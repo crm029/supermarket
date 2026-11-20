@@ -1,44 +1,100 @@
-# Local test guide (XAMPP)
+# راهنمای نصب و آزمایش محلی با XAMPP
 
-This guide is for exercising the application locally before production acceptance. Use a disposable database and test credentials only. Never use live customer data or a live payment merchant ID on a local machine.
+این راهنما برای اجرای پروژه روی رایانه شخصی و بررسی امکانات آن پیش از تأیید نهایی انتشار است. فقط از پایگاه داده و اطلاعات آزمایشی استفاده کنید. هرگز اطلاعات مشتریان واقعی یا شناسه پذیرنده درگاه پرداخت واقعی را روی محیط محلی وارد نکنید.
 
-## 1. Start XAMPP
+## ۱. راه‌اندازی XAMPP
 
-1. Install a PHP 8.2+ XAMPP build.
-2. Start Apache and MySQL from the XAMPP Control Panel.
-3. Put the repository folder under `C:\\xampp\\htdocs\\supermarket`.
-4. Open `http://localhost/supermarket/` and confirm the storefront loads.
-5. Confirm Apache rewrite support is enabled; the clean product/category URLs and API routing depend on the supplied `.htaccess`.
+۱. نسخه‌ای از XAMPP را نصب کنید که PHP نسخه ۸.۲ یا بالاتر داشته باشد.
 
-## 2. Prepare a disposable database
+۲. از طریق پنل کنترل XAMPP، سرویس‌های Apache و MySQL را روشن کنید.
 
-1. Open phpMyAdmin at `http://localhost/phpmyadmin`.
-2. Create a database named `supermarket360` using `utf8mb4`.
-3. Import `database/schema.sql`, then `database/demo-seed.sql`.
-4. Apply every migration in the exact dependency order in `docs/local-setup.md`; do not sort by filename.
-5. Configure the database variables and a unique local `APP_KEY` in the PHP environment or local `.env`. Never commit `.env`.
-6. For local OTP only, use `APP_ENV=local` and `SMS_PROVIDER=log`; read the one-time code from the PHP error log.
+۳. پوشه پروژه را در مسیر زیر قرار دهید:
 
-## 3. Verify PHP prerequisites
+`C:\\xampp\\htdocs\\supermarket`
 
-The API requires PHP 8.2+ and these extensions: `pdo_mysql`, `mbstring`, `curl`, `openssl`, and `fileinfo`. Check the active Apache PHP configuration through `http://localhost/dashboard/phpinfo.php` or the XAMPP PHP information page. If an extension is missing, enable it in the Apache-loaded `php.ini` and restart Apache.
+۴. نشانی زیر را در مرورگر باز کنید و مطمئن شوید صفحه فروشگاه نمایش داده می‌شود:
 
-## 4. Exercise the main flows
+`http://localhost/supermarket/`
 
-- Browse the storefront, categories and product detail pages.
-- Register a disposable customer, request OTP, and verify the account.
-- Create a disposable staff/manager account and grant only the permissions needed for catalog and order tests.
-- Add products and stock, add items to cart, quote the cart, and place a sandbox checkout.
-- Confirm payment completion only after the ZarinPal sandbox callback and server-side verification. Do not mark a payment successful by editing the database.
-- Test order acceptance, picking, courier assignment, dispatch, recipient-confirmed delivery and customer order timeline.
-- Test POS shift opening, cash sale, receipt print preview, reconciliation and shift closing.
-- Test subscription invoice issuance and manual partial/full receipt in the platform billing panel. This is manual receipt recording, not automatic card charging.
-- Check `/robots.txt`, `/sitemap.xml`, `/sitemap-core.xml`, product/category canonical URLs and structured data.
+۵. مطمئن شوید قابلیت بازنویسی نشانی‌ها (Apache Rewrite) فعال است. نشانی‌های مرتب محصولات و دسته‌بندی‌ها و همچنین مسیریابی API به فایل تنظیمات `.htaccess` وابسته‌اند.
 
-## 5. What a local pass does not prove
+## ۲. ساخت پایگاه داده آزمایشی
 
-A local pass does not verify production DNS/TLS, real SMS delivery, provider acceptance, bank settlement, automated recurring SaaS collection, CDN/image performance, Google Search Console indexing, production backups/restore, load, penetration or accessibility testing. Keep these as separate acceptance gates.
+۱. نشانی زیر را باز کنید تا وارد phpMyAdmin شوید:
 
-## 6. Evidence to record
+`http://localhost/phpmyadmin`
 
-For each test, record the date, XAMPP/PHP version, browser, scenario, expected result, actual result and any error-log excerpt with secrets and personal data removed. Do not paste OTPs, merchant IDs, API keys, session cookies or customer details into issue reports.
+۲. یک پایگاه داده با نام `supermarket360` و مجموعه نویسه `utf8mb4` ایجاد کنید.
+
+۳. ابتدا فایل `database/schema.sql` و سپس فایل `database/demo-seed.sql` را در پایگاه داده وارد (Import) کنید.
+
+۴. تمام فایل‌های مهاجرت پایگاه داده (Migration) را دقیقاً به ترتیب وابستگی درج‌شده در `docs/local-setup.md` اجرا کنید. فایل‌ها را صرفاً بر اساس نام یا تاریخ مرتب نکنید؛ ترتیب اجرا اهمیت دارد.
+
+۵. متغیرهای اتصال پایگاه داده و یک مقدار اختصاصی و محلی برای `APP_KEY` را در متغیرهای محیطی PHP یا فایل محلی `.env` تنظیم کنید. فایل `.env` را هرگز در Git ثبت یا منتشر نکنید.
+
+۶. برای آزمایش رمز یک‌بارمصرف (OTP) در محیط محلی، فقط از تنظیمات زیر استفاده کنید:
+
+- `APP_ENV=local`
+- `SMS_PROVIDER=log`
+
+کد یک‌بارمصرف آزمایشی را در گزارش خطای PHP (PHP error log) پیدا کنید. این روش پیامک واقعی ارسال نمی‌کند.
+
+## ۳. بررسی پیش‌نیازهای PHP
+
+API پروژه به PHP نسخه ۸.۲ یا بالاتر و افزونه‌های زیر نیاز دارد:
+
+- `pdo_mysql`
+- `mbstring`
+- `curl`
+- `openssl`
+- `fileinfo`
+
+برای بررسی تنظیمات PHP که Apache واقعاً از آن استفاده می‌کند، نشانی `http://localhost/dashboard/phpinfo.php` یا صفحه اطلاعات PHP در XAMPP را باز کنید.
+
+اگر افزونه‌ای فعال نیست، فایل `php.ini` مورد استفاده Apache را باز کنید، افزونه مربوطه را فعال کنید و سپس Apache را مجدداً راه‌اندازی کنید.
+
+## ۴. آزمایش امکانات اصلی
+
+موارد زیر را به‌ترتیب بررسی کنید:
+
+- صفحه اصلی فروشگاه، دسته‌بندی‌ها و صفحه جزئیات محصولات را باز کنید.
+- یک حساب مشتری آزمایشی بسازید، درخواست کد OTP بدهید و حساب را با آن تأیید کنید.
+- یک حساب آزمایشی برای کارمند یا مدیر ایجاد کنید و فقط مجوزهای لازم برای آزمایش کالاها و سفارش‌ها را به آن بدهید.
+- محصول و موجودی ثبت کنید، کالاها را به سبد خرید اضافه کنید، مبلغ سبد را استعلام بگیرید و یک سفارش را با پرداخت آزمایشی ثبت کنید.
+- تکمیل پرداخت را فقط پس از دریافت پاسخ بازگشت از محیط آزمایشی زرین‌پال و تأیید سمت سرور معتبر بدانید. برای موفق نشان دادن پرداخت، وضعیت را مستقیماً در پایگاه داده تغییر ندهید.
+- پذیرش سفارش، جمع‌آوری کالاها، تخصیص پیک، ارسال، تأیید تحویل توسط گیرنده و نمایش روند سفارش برای مشتری را آزمایش کنید.
+- در بخش صندوق فروشگاهی (POS)، باز کردن شیفت، فروش نقدی، پیش‌نمایش چاپ رسید، تطبیق صندوق و بستن شیفت را بررسی کنید.
+- صدور صورتحساب اشتراک و ثبت دریافت دستیِ بخشی از مبلغ یا کل آن را در پنل مالی پلتفرم آزمایش کنید. این قابلیت ثبت دستی دریافت وجه است و به معنی برداشت خودکار وجه از کارت یا حساب پذیرنده نیست.
+- نشانی‌های زیر و همچنین نشانی‌های استاندارد (Canonical) صفحات محصول و دسته‌بندی و داده‌های ساختاریافته را بررسی کنید:
+  - `/robots.txt`
+  - `/sitemap.xml`
+  - `/sitemap-core.xml`
+
+## ۵. مواردی که موفقیت آزمایش محلی اثبات نمی‌کند
+
+موفقیت پروژه روی رایانه شخصی به‌تنهایی موارد زیر را تأیید نمی‌کند؛ این موارد باید جداگانه و در محیط واقعی بررسی شوند:
+
+- تنظیم صحیح DNS و گواهی امنیتی HTTPS در سرور اصلی
+- ارسال واقعی پیامک
+- تأیید تراکنش توسط سرویس‌دهنده پرداخت و تطبیق آن با واریزی بانکی
+- دریافت خودکار و دوره‌ای هزینه اشتراک‌های SaaS
+- عملکرد شبکه توزیع محتوا (CDN) و سرعت بارگذاری تصاویر
+- ثبت مالکیت سایت و بررسی ایندکس شدن صفحات در Google Search Console
+- تهیه نسخه پشتیبان واقعی و آزمایش بازگردانی آن
+- آزمون فشار و ظرفیت، آزمون نفوذ امنیتی و بررسی دسترس‌پذیری
+
+این موارد را به‌عنوان مراحل جداگانه تأیید و آماده‌سازی انتشار در نظر بگیرید.
+
+## ۶. ثبت نتیجه آزمایش‌ها
+
+برای هر آزمایش، اطلاعات زیر را یادداشت کنید:
+
+- تاریخ انجام آزمایش
+- نسخه XAMPP و PHP
+- نام و نسخه مرورگر
+- سناریو یا قابلیتی که آزمایش کرده‌اید
+- نتیجه مورد انتظار
+- نتیجه واقعی
+- متن مرتبط از گزارش خطا، پس از حذف اطلاعات محرمانه و شخصی
+
+کدهای OTP، شناسه پذیرنده، کلیدهای API، کوکی‌های نشست (Session Cookies) و اطلاعات مشتریان را در گزارش خطا یا پیام‌های پشتیبانی قرار ندهید.
