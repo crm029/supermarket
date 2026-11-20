@@ -8,6 +8,12 @@ VALUES (2,'فروشگاه آزمایشی دوم','tenant-two-test','active','Asi
 INSERT INTO categories (id,tenant_id,title,slug,is_active)
 VALUES (20,2,'دسته آزمایشی مستأجر دوم','tenant-two-test-category',TRUE);
 
+INSERT INTO warehouses (tenant_id,title,warehouse_type,is_active)
+VALUES (2,'انبار آزمایشی مستأجر دوم','main',TRUE);
+SET @tenant_two_warehouse = LAST_INSERT_ID();
+SET @tenant_one_product = (SELECT id FROM products WHERE tenant_id=1 ORDER BY id LIMIT 1);
+
+
 INSERT INTO users (tenant_id,full_name,mobile,referral_code,status)
 VALUES (1,'کاربر مستأجر اول','09120000001','TENANTONE01','active');
 SET @tenant_one_user = LAST_INSERT_ID();
@@ -38,6 +44,19 @@ BEGIN
     (1,20,'CROSS-TENANT-TEST','نباید ثبت شود','عدد',1000,TRUE);
   IF rejected = FALSE THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cross-tenant product category reference was accepted';
+  END IF;
+END//
+
+CREATE PROCEDURE assert_cross_tenant_stock_warehouse_rejected()
+BEGIN
+  DECLARE rejected BOOLEAN DEFAULT FALSE;
+  BEGIN
+    DECLARE CONTINUE HANDLER FOR SQLSTATE '23000' SET rejected = TRUE;
+    INSERT INTO stock_levels (tenant_id,warehouse_id,product_id,on_hand,reserved)
+    VALUES (1,@tenant_two_warehouse,@tenant_one_product,1,0);
+  END;
+  IF rejected = FALSE THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cross-tenant stock warehouse reference was accepted';
   END IF;
 END//
 
@@ -85,11 +104,13 @@ END//
 DELIMITER ;
 
 CALL assert_cross_tenant_product_rejected();
+CALL assert_cross_tenant_stock_warehouse_rejected();
 CALL assert_cross_tenant_role_rejected();
 CALL assert_role_scope_change_rejected();
 CALL assert_cross_tenant_audit_actor_rejected();
 
 DROP PROCEDURE assert_cross_tenant_product_rejected;
+DROP PROCEDURE assert_cross_tenant_stock_warehouse_rejected;
 DROP PROCEDURE assert_cross_tenant_role_rejected;
 DROP PROCEDURE assert_role_scope_change_rejected;
 DROP PROCEDURE assert_cross_tenant_audit_actor_rejected;
