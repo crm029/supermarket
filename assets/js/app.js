@@ -117,6 +117,15 @@ function startFreeMovement(){
     freeWorld=buildFreeMovementWorld();const canvas=freeWorld.renderer.domElement;
     freeWorld.resizeHandler=()=>{if(!freeWorld)return;const width=Math.max(320,view.clientWidth),height=Math.max(210,view.clientHeight);freeWorld.camera.aspect=width/height;freeWorld.camera.updateProjectionMatrix();freeWorld.renderer.setSize(width,height);};
     window.addEventListener("resize",freeWorld.resizeHandler);
+    canvas.addEventListener("webglcontextlost",event=>{
+      event.preventDefault();
+      stopFreeMovement();
+      movementMode="tour";
+      document.querySelectorAll("[data-mode]").forEach(button=>button.classList.toggle("active",button.dataset.mode==="tour"));
+      view.classList.add("free-movement-fallback");
+      document.getElementById("modeHint").textContent="ارتباط گرافیکی سه‌بعدی مرورگر قطع شد؛ برای ادامه از تور تصویری و راهنمای دسته‌ها استفاده کن.";
+      document.getElementById("freeMovementStatus").textContent="حالت سه‌بعدی موقتاً در دسترس نیست.";
+    },{once:true});
     const raycaster=new freeWorld.THREE.Raycaster(),pointer=new freeWorld.THREE.Vector2();let pointerMoved=false;
     canvas.addEventListener("pointerdown",event=>{freePointerLook={id:event.pointerId,x:event.clientX,y:event.clientY,lastX:event.clientX,lastY:event.clientY};pointerMoved=false;canvas.setPointerCapture(event.pointerId);});
     canvas.addEventListener("pointermove",event=>{
