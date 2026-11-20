@@ -51,6 +51,7 @@ jobs:
       - name: Check storefront JavaScript syntax
         run: |
           node --check assets/js/app.js
+          node tests/storefront-image-url.js
           node --check assets/js/admin.js
           node --check assets/js/analytics-consent.js
           node --check assets/js/staff.js
