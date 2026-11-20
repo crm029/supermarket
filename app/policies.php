@@ -9,11 +9,14 @@ function app_auth_has_permission(PDO $db, array $tenant, array $session, string 
     $stmt = $db->prepare(
         "SELECT 1
          FROM user_roles ur
+         JOIN roles r
+           ON r.role_scope_id = ur.role_scope_id AND r.id = ur.role_id
          JOIN role_permissions rp
-           ON rp.role_scope_id = ur.role_scope_id AND rp.role_id = ur.role_id
+           ON rp.role_scope_id = r.role_scope_id AND rp.role_id = r.id
          JOIN permissions p ON p.id = rp.permission_id
          WHERE ur.tenant_id = :tenant
            AND ur.user_id = :user
+           AND r.tenant_id = :tenant
            AND p.permission_key = :permission
            AND p.scope = 'tenant'
          LIMIT 1"
