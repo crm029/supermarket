@@ -1228,7 +1228,7 @@ OTP_HASH="$(php -r 'echo hash_hmac("sha256", "123456", "ci-test-secret-with-more
 mysql --host=127.0.0.1 --user=root --password=root supermarket360 -e "INSERT INTO auth_challenges (tenant_id,mobile,purpose,otp_hash,attempts,expires_at) VALUES (1,'09120000004','login','$OTP_HASH',0,DATE_ADD(UTC_TIMESTAMP(), INTERVAL 5 MINUTE))"
 request POST /auth/verify-otp 200 '{"mobile":"09120000004","code":"123456"}'
 assert_json registered-user
-REGISTERED_TOKEN="$(sed -n 's/^Set-Cookie: sm_session=\\([^;]*\\).*/\\1/ip' "$HEADERS" | tail -n 1)"
+REGISTERED_TOKEN="$(awk -F'[=;]' 'tolower($1) ~ /^set-cookie: sm_session$/ {print $2}' "$HEADERS" | tail -n 1)"
 REGISTERED_CSRF="$(php -r '$d=json_decode(file_get_contents($argv[1]),true); echo $d["data"]["csrf_token"]??"";' "$OUT")"
 if [[ -z "$REGISTERED_TOKEN" || -z "$REGISTERED_CSRF" ]]; then echo "OTP verification did not issue session and CSRF credentials."; exit 1; fi
 request POST /auth/complete-registration 200 '{"full_name":"مشتری ثبت‌نامی","referral_code":"APICUSTOMER1"}' "$REGISTERED_TOKEN" "$REGISTERED_CSRF"
