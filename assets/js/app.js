@@ -339,13 +339,30 @@ let currentScene = 0;
 let panoramaOffset = 50;
 let panoramaPointer = null;
 
-async function apiPost(path, body, withCsrf = false) {
+async function apiPost(path, body, withCsrf = false, idempotencyKey = null) {
   const headers = { Accept: "application/json", "Content-Type": "application/json" };
   if (withCsrf && csrfToken) headers["X-CSRF-Token"] = csrfToken;
+  if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
   const response = await fetch(apiBase + path, { method: "POST", headers, credentials: "same-origin", body: JSON.stringify(body) });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.error || "درخواست انجام نشد.");
   return payload;
+}
+function checkoutIdempotencyKey(payload) {
+  const fingerprint = JSON.stringify(payload);
+  const storageKey = "sm360_checkout_idempotency";
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(storageKey) || "null");
+    if (saved && saved.fingerprint === fingerprint && typeof saved.key === "string") return saved.key;
+  } catch (_) {}
+  const key = globalThis.crypto?.randomUUID
+    ? globalThis.crypto.randomUUID()
+    : Array.from(globalThis.crypto.getRandomValues(new Uint8Array(24)), byte => byte.toString(16).padStart(2, "0")).join("");
+  try { sessionStorage.setItem(storageKey, JSON.stringify({fingerprint, key})); } catch (_) {}
+  return key;
+}
+function clearCheckoutIdempotencyKey() {
+  try { sessionStorage.removeItem("sm360_checkout_idempotency"); } catch (_) {}
 }
 async function apiPatch(path, body, withCsrf = false) {
   const headers = { Accept: "application/json", "Content-Type": "application/json" };
@@ -878,12 +895,15 @@ document.getElementById("placeOrderButton").addEventListener("click",async()=>{
       addressId=address.data.id;
       }
     }
-    const order=await apiPost("checkout",{
+    const checkoutPayload={
       items:[...cart].map(([product_id,quantity])=>({product_id,quantity})),
       fulfillment,address_id:addressId,pickup_slot_id:pickupSlotId,
       coupon_code:document.getElementById("couponCodeInput").value.trim().toUpperCase(),
       customer_note:document.getElementById("orderNote").value.trim()
-    },true);
+    };
+    const checkoutKey=checkoutIdempotencyKey(checkoutPayload);
+    const order=await apiPost("checkout",checkoutPayload,true,checkoutKey);
+    clearCheckoutIdempotencyKey();
     pendingPaymentOrderId=Number(order.data.id);
     cart.clear();updateCart();persistCustomerCart();
     document.getElementById("cartItems").innerHTML='<p class="empty-cart">سفارش با موفقیت ثبت شد.</p>';
