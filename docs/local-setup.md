@@ -7,48 +7,49 @@ The root `index.php` provides a local storefront preview; live tenant catalogue,
 1. Create a database named `supermarket360` with utf8mb4.
 2. Import `database/schema.sql` using phpMyAdmin.
 3. For a disposable local demo only, import `database/demo-seed.sql`.
-4. Back up the database, then apply every migration below in the exact order shown. This is the same dependency-verified order used by the MySQL integration workflow; do not sort by filename because some later-named migrations must run before earlier-named feature migrations.
+4. Back up the database, then apply every migration below in the exact order shown. This is a dependency-verified order; CI runs an equivalent dependency order. Do not sort by filename because some later-named migrations must run before earlier-named feature migrations.
 5. Apply `database/migrations/2026_11_05_tenant_isolation.sql`.
 6. Apply `database/migrations/2026_11_05_auth_sessions_otp.sql`.
 7. Apply `database/migrations/2026_11_20_pending_registration_profile.sql` to clear unverified profile/referral values from pending registrations.
 8. Apply `database/migrations/2026_11_05_permissions.sql`.
 9. Apply `database/migrations/2026_11_06_platform_payment_settings.sql`.
-10. Apply `database/migrations/2026_11_20_platform_sms_settings.sql`.
-11. Apply `database/migrations/2026_11_19_platform_subscriptions.sql`.
-12. Apply `database/migrations/2026_11_19_subscription_plan_changes.sql`.
-13. Apply `database/migrations/2026_11_06_order_assignments.sql`.
-14. Apply `database/migrations/2026_11_06_pickup_handoff.sql`.
-15. Apply `database/migrations/2026_11_06_notifications.sql`.
-16. Apply `database/migrations/2026_11_19_notification_retention_index.sql`.
-17. Apply `database/migrations/2026_11_06_order_delivery_tracking.sql`.
-18. Apply `database/migrations/2026_11_06_order_wallet_refunds.sql`.
-19. Apply `database/migrations/2026_11_06_domain_verification_challenge.sql`.
-20. Apply `database/migrations/2026_11_05_customer_carts.sql`.
-21. Apply `database/migrations/2026_11_05_customer_address_management.sql`.
-22. Apply `database/migrations/2026_11_05_barcode_stock_thresholds.sql`.
-23. Apply `database/migrations/2026_11_05_media_cleanup_queue.sql`.
-24. Apply `database/migrations/2026_11_20_media_orphan_reviews.sql`.
-25. Apply `database/migrations/2026_11_05_delivery_zones.sql`.
-26. Apply `database/migrations/2026_11_05_pickup_slots.sql`.
-27. Apply `database/migrations/2026_11_05_coupons.sql`.
-28. Apply `database/migrations/2026_11_05_product_variants.sql`.
-29. Apply `database/migrations/2026_11_05_supplier_purchase_orders.sql`.
-30. Apply `database/migrations/2026_11_05_supplier_returns.sql`.
-31. Apply `database/migrations/2026_11_05_stock_batches.sql`.
-32. Apply `database/migrations/2026_11_06_pos_cash_register.sql`.
-33. Apply `database/migrations/2026_11_06_pos_refunds.sql`.
-34. Apply `database/migrations/2026_11_08_pos_return_inspection.sql`.
-35. Apply `database/migrations/2026_11_08_pos_return_inspection_status.sql`.
-36. Apply `database/migrations/2026_11_05_expired_stock_writeoff.sql`.
-37. Apply `database/migrations/2026_11_05_seo_content_fields.sql`.
-38. Apply `database/migrations/2026_11_05_product_seo_slugs.sql`.
-39. Apply `database/migrations/2026_11_05_seo_url_redirects.sql`.
-40. For an existing database, review and repair inconsistent tenant references before applying migrations. Never run schema or demo seed imports over a live production database.
-41. The demo seed configures the `localhost` domain for a disposable local demo. For a new tenant, use the platform dashboard and publish its generated DNS TXT challenge before activation.
-42. Configure `DB_HOST`, `DB_DATABASE`, `DB_USERNAME` and `DB_PASSWORD` in the PHP server environment. Set a unique `APP_KEY` of at least 32 characters. Keep all secrets out of Git.
-43. For local OTP testing, set `APP_ENV=local` and `SMS_PROVIDER=log`. The one-time code is written only to the PHP error log. This development driver is forbidden in production.
-44. Optionally set `MEDIA_BASE_URL` to the HTTPS base URL of your public media storage. Without it, media metadata is returned but image URLs are `null`.
-45. Route `/api/v1/*` to `api/v1/index.php` using the web server rewrite configuration, or call the PHP entry point directly while developing.
+10. Apply `database/migrations/2026_11_20_payment_attempt_review.sql`.
+11. Apply `database/migrations/2026_11_20_platform_sms_settings.sql`.
+12. Apply `database/migrations/2026_11_19_platform_subscriptions.sql`.
+13. Apply `database/migrations/2026_11_19_subscription_plan_changes.sql`.
+14. Apply `database/migrations/2026_11_06_order_assignments.sql`.
+15. Apply `database/migrations/2026_11_06_pickup_handoff.sql`.
+16. Apply `database/migrations/2026_11_06_notifications.sql`.
+17. Apply `database/migrations/2026_11_19_notification_retention_index.sql`.
+18. Apply `database/migrations/2026_11_06_order_delivery_tracking.sql`.
+19. Apply `database/migrations/2026_11_06_order_wallet_refunds.sql`.
+20. Apply `database/migrations/2026_11_06_domain_verification_challenge.sql`.
+21. Apply `database/migrations/2026_11_05_customer_carts.sql`.
+22. Apply `database/migrations/2026_11_05_customer_address_management.sql`.
+23. Apply `database/migrations/2026_11_05_barcode_stock_thresholds.sql`.
+24. Apply `database/migrations/2026_11_05_media_cleanup_queue.sql`.
+25. Apply `database/migrations/2026_11_20_media_orphan_reviews.sql`.
+26. Apply `database/migrations/2026_11_05_delivery_zones.sql`.
+27. Apply `database/migrations/2026_11_05_pickup_slots.sql`.
+28. Apply `database/migrations/2026_11_05_coupons.sql`.
+29. Apply `database/migrations/2026_11_05_product_variants.sql`.
+30. Apply `database/migrations/2026_11_05_supplier_purchase_orders.sql`.
+31. Apply `database/migrations/2026_11_05_supplier_returns.sql`.
+32. Apply `database/migrations/2026_11_05_stock_batches.sql`.
+33. Apply `database/migrations/2026_11_06_pos_cash_register.sql`.
+34. Apply `database/migrations/2026_11_06_pos_refunds.sql`.
+35. Apply `database/migrations/2026_11_08_pos_return_inspection.sql`.
+36. Apply `database/migrations/2026_11_08_pos_return_inspection_status.sql`.
+37. Apply `database/migrations/2026_11_05_expired_stock_writeoff.sql`.
+38. Apply `database/migrations/2026_11_05_seo_content_fields.sql`.
+39. Apply `database/migrations/2026_11_05_product_seo_slugs.sql`.
+40. Apply `database/migrations/2026_11_05_seo_url_redirects.sql`.
+41. For an existing database, review and repair inconsistent tenant references before applying migrations. Never run schema or demo seed imports over a live production database.
+42. The demo seed configures the `localhost` domain for a disposable local demo. For a new tenant, use the platform dashboard and publish its generated DNS TXT challenge before activation.
+43. Configure `DB_HOST`, `DB_DATABASE`, `DB_USERNAME` and `DB_PASSWORD` in the PHP server environment. Set a unique `APP_KEY` of at least 32 characters. Keep all secrets out of Git.
+44. For local OTP testing, set `APP_ENV=local` and `SMS_PROVIDER=log`. The one-time code is written only to the PHP error log. This development driver is forbidden in production.
+45. Optionally set `MEDIA_BASE_URL` to the HTTPS base URL of your public media storage. Without it, media metadata is returned but image URLs are `null`.
+46. Route `/api/v1/*` to `api/v1/index.php` using the web server rewrite configuration, or call the PHP entry point directly while developing.
 ## Create a local test account
 The sample seed contains no customer accounts. In a disposable local database, create one active test user with phpMyAdmin:
 
