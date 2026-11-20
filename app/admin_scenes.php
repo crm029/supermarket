@@ -92,7 +92,7 @@ function app_admin_scene_update(PDO $db, array $tenant, array $session, int $sce
     if($sets===[])app_json(['error'=>'هیچ تغییری ارسال نشده است.'],422);
     $db->beginTransaction();
     try{
-        $exists=$db->prepare('SELECT id,media_id FROM store_scenes WHERE tenant_id=? AND id=? FOR UPDATE');
+        $exists=$db->prepare('SELECT id,media_id,is_published FROM store_scenes WHERE tenant_id=? AND id=? FOR UPDATE');
         $exists->execute([$tenant['id'],$sceneId]);$current=$exists->fetch();
         if(!$current){$db->rollBack();app_json(['error'=>'صحنه پیدا نشد.'],404);}
         $nextPublished=$params['is_published']??(int)$current['is_published'];
