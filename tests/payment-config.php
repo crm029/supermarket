@@ -68,6 +68,12 @@ if (app_payment_attempt_action(null) !== 'create' ||
     app_payment_attempt_action(['status' => 'failed']) !== 'create') {
     throw new RuntimeException('Payment attempt idempotency state handling is incorrect.');
 }
+if (app_payment_provider_request_state(100, 'S123456') !== 'redirected' ||
+    app_payment_provider_request_state(101, 'S123456') !== 'failed' ||
+    app_payment_provider_request_state(100, '') !== 'review' ||
+    app_payment_provider_request_state(100, 'invalid authority') !== 'review') {
+    throw new RuntimeException('ZarinPal provider response classification is unsafe.');
+}
 putenv('APP_ENV=production');
 putenv('APP_BASE_URL=https://market.example');
 putenv('ZARINPAL_SANDBOX=false');
